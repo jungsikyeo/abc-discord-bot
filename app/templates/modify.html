@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SearchFI Calendar Modify</title>
+    <link rel="stylesheet" href="/static/styles.css?ver=1.7">
+    <script type="text/javascript">
+		const project_list = {{ projects | tojson | safe }};
+        
+        function setProject(index) {
+            const id = document.getElementById("id");
+            const discordUrl = document.getElementById("discordUrl");
+            const twitterUrl = document.getElementById("twitterUrl");
+            const twitterProfileImage = document.getElementById("twitterProfileImage");
+            const mintDate = document.getElementById("mintDate");
+            const supply = document.getElementById("supply");
+            const wlPrice = document.getElementById("wlPrice");
+            const pubPrice = document.getElementById("pubPrice");
+            const blockchain = document.getElementById("blockchain");
+            if(index > 0) {
+                id.value = project_list[index-1].id;
+                discordUrl.value = project_list[index-1].discordUrl;
+                twitterUrl.value = project_list[index-1].twitterUrl;
+                twitterProfileImage.value = project_list[index-1].twitterProfileImage;
+                mintDate.value = project_list[index-1].mintDate;
+                supply.value = project_list[index-1].supply;
+                wlPrice.value = project_list[index-1].wlPrice;
+                pubPrice.value = project_list[index-1].pubPrice;
+                blockchain.value = project_list[index-1].blockchain;
+
+                discordUrl.readOnly = false;
+                twitterUrl.readOnly = false;
+                twitterProfileImage.readOnly = false;
+                mintDate.readOnly = false;
+                supply.readOnly = false;
+                wlPrice.readOnly = false;
+                pubPrice.readOnly = false;
+                blockchain.readOnly = false;
+            } else {
+                id.value = "";
+                discordUrl.value = "";
+                twitterUrl.value = "";
+                twitterProfileImage.value = "";
+                mintDate.value = "{{ today }}T00:00";
+                supply.value = "";
+                wlPrice.value = "";
+                pubPrice.value = "";
+                blockchain.value = "ETH";
+
+                discordUrl.readOnly = true;
+                twitterUrl.readOnly = true;
+                twitterProfileImage.readOnly = true;
+                mintDate.readOnly = true;
+                supply.readOnly = true;
+                wlPrice.readOnly = true;
+                pubPrice.readOnly = true;
+                blockchain.readOnly = true;
+            }
+        }
+	</script>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to SearchFI Calendar Modify!</h1>
+        <form id="form" name="form" method="post" target="iframe" action="/update">
+            <input type="hidden" id="id" name="id" value=""/>
+            <div>
+                <label for="name">Project Name</label>
+                <select id="name" name="name" onchange="setProject(this.selectedIndex)">
+                    <option value="">-- Select Project --</option>
+                </select>
+                <script>
+                    const select = document.getElementById("name");
+                    for (let i = 0; i < project_list.length; i++) {
+                        const option = document.createElement("option");
+                        option.text = project_list[i].name;
+                        select.add(option);
+                    }
+                </script>
+            </div>
+            <div>
+                <label for="discordUrl">DC Url (Optional)</label>
+                <input type="url" id="discordUrl" name="discordUrl" placeholder="insert discord url" readonly>
+            </div>
+            <div>
+                <label for="twitterUrl">Twitter Url</label>
+                <input type="url" id="twitterUrl" name="twitterUrl" placeholder="insert twitter url" required readonly>
+            </div>
+            <div>
+                <label for="twitterProfileImage">Twitter Profile (Image Url)</label>
+                <input type="url" id="twitterProfileImage" name="twitterProfileImage" required readonly>
+            </div>
+            <div class="group">
+                <div class="group_item mr5">
+                    <label for="mintDate">Mint Date</label>
+                    <input type="datetime-local" id="mintDate" name="mintDate" value="" required readonly>
+                </div>
+                <div class="group_item ml5">
+                    <label for="supply">Supply</label>
+                    <input type="number" id="supply" name="supply" required readonly>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group_item mr5">
+                    <label for="wlPrice">WL Price</label>
+                    <input type="number" id="wlPrice" name="wlPrice" step="0.00001" pattern="[0-9\.]+" required readonly>
+                </div>
+                <div class="group_item ml5">
+                    <label for="pubPrice">Pubic Price</label>
+                    <input type="number" id="pubPrice" name="pubPrice" step="0.00001" pattern="[0-9\.]+" required readonly>
+                </div>
+            </div>
+            <div>
+                <label for="blockchain">Blockchain</label>
+                <select id="blockchain" name="blockchain" required readonly>
+                    <option value="ETH">ETH</option>
+                    <option value="SOL">SOL</option>
+                    <option value="APT">APT</option>
+                </select>
+            </div>
+            <div>
+                <label for="regUser">Creator by {{user.username}}#{{user.discriminator}}</label>
+                <input type="hidden" id="regUser" name="regUser" value="{{user.username}}#{{user.discriminator}}"/>
+            </div>
+            <div class="group">
+                <div class="group_item mr5 submit">
+                    <button type="submit" id="update" name="update" class="button">Update</button>
+                </div>
+                <div class="group_item ml5 submit">
+                    <button type="submit" id="delete" name="delete" class="red-button">Delete</button>
+                </div>
+                <iframe id="iframe" name="iframe" style="display:none;"></iframe>
+                <script>
+                    function winClose(comment) {
+                        alert(comment)
+                        window.open("about:blank","_self").close()
+                    }
+                    document.getElementById("update").addEventListener("click", function(event) {
+                        form = document.querySelector('form');
+                        const input = document.querySelector('input');
+                        if(form.name.value == "") {
+                            form.name.focus()
+                            event.preventDefault();
+                        }
+                        input.addEventListener('input', event => {
+                            if(!input.checkValidity()) {
+                                event.preventDefault();
+                            }
+                        });
+                    });
+                    document.getElementById("delete").addEventListener("click", function(event) {
+                        form = document.querySelector('form');
+                        const input = document.querySelector('input');
+                        if(form.name.value == "") {
+                            form.name.focus()
+                            event.preventDefault();
+                        } else {
+                            form.action = "/delete"
+                            form.target = "iframe"
+                            form.submit()
+                        }
+                    });
+                </script>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SearchFI Calendar Register</title>
+    <link rel="stylesheet" href="/static/styles.css?ver=1.7">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to SearchFI Calendar Register!</h1>
+        <form method="post" target="iframe" action="/regist">
+            <div>
+                <label for="name">Project Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div>
+                <label for="discordUrl">DC Url (Optional)</label>
+                <input type="url" id="discordUrl" name="discordUrl">
+            </div>
+            <div>
+                <label for="twitterUrl">Twitter Url</label>
+                <input type="url" id="twitterUrl" name="twitterUrl" required>
+            </div>
+            <div>
+                <label for="twitterProfileImage">Twitter Profile (Image Url)</label>
+                <input type="url" id="twitterProfileImage" name="twitterProfileImage" required>
+            </div>
+            <div class="group">
+                <div class="group_item mr5">
+                    <label for="mintDate">Mint Date</label>
+                    <input type="datetime-local" id="mintDate" name="mintDate" value="{{ today }}T00:00" required>
+                </div>
+                <div class="group_item ml5">
+                    <label for="supply">Supply</label>
+                    <input type="number" id="supply" name="supply" required>
+                </div>
+            </div>
+            <div class="group">
+                <div class="group_item mr5">
+                    <label for="wlPrice">WL Price</label>
+                    <input type="number" id="wlPrice" name="wlPrice" step="0.00001" pattern="[0-9\.]+" required>
+                </div>
+                <div class="group_item ml5">
+                    <label for="pubPrice">Pubic Price</label>
+                    <input type="number" id="pubPrice" name="pubPrice" step="0.00001" pattern="[0-9\.]+" required>
+                </div>
+            </div>
+            <div>
+                <label for="blockchain">Blockchain</label>
+                <select id="blockchain" name="blockchain" required>
+                    <option value="ETH">ETH</option>
+                    <option value="SOL">SOL</option>
+                    <option value="APT">APT</option>
+                    <option value="USDC">USDC</option>
+                </select>
+            </div>
+            <div>
+                <label for="regUser">Creator by {{user.username}}#{{user.discriminator}}</label>
+                <input type="hidden" id="regUser" name="regUser" value="{{user.username}}#{{user.discriminator}}"/>
+            </div>
+            <div class="submit">
+                <button type="submit" class="button">Register</button>
+            </div>
+            <iframe id="iframe" name="iframe" style="display:none;"></iframe>
+            <script>
+                function winClose(comment) {
+                    alert(comment)
+                    window.open("about:blank","_self").close()
+                }
+            </script>
+        </form>
+    </div>
+</body>
+</html>
+

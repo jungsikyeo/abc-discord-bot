@@ -1,0 +1,26 @@
+version: "3.7"
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "y204312580"
+      MYSQL_DATABASE: "alphabot"
+      MYSQL_USER: "bot"
+      MYSQL_PASSWORD: "y204312580"
+      TZ: Asia/Seoul
+    ports:
+      - 4306:3306
+    volumes:
+      - ./data:/var/lib/mysql
+  fastapi:
+    image: fastapi
+    environment:
+      TZ: Asia/Seoul
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+    ports:
+      - 9080:8080
+    volumes:
+      - ./app:/code/app
+    depends_on:
+      - db

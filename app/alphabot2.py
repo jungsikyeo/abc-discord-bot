@@ -11,6 +11,13 @@ from paginator import Paginator, Page, NavigationType
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from urllib.parse import quote
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+bot_token = os.getenv("TEST_BOT_TOKEN")
+
 
 class UpDownView(View):
     def __init__(self, ctx, embed_message, embed, db, project_id):
@@ -665,5 +672,5 @@ async def lm(ctx, amount: int = 1):
         await ctx.send("Error: Could not fetch the price.")
 
 
-bot.run("MTA5MDE2OTYzODc2NTIwNzU3NA.G_esfH.C19KBQa7wf5A_lco3GE8mVO8aK2FuMVguvEmeI")
+bot.run(bot_token)
 

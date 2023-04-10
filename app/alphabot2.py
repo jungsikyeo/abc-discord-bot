@@ -676,7 +676,10 @@ async def msearch(ctx, project_name):
             if before_mint_day == "":
                 before_mint_day = item['mintDay']
             if before_mint_day != item['mintDay']:
-                color = "+" 
+                if color == "+":
+                    color = "-" 
+                else:
+                    color = "+"
             cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
             pages.append(cal)
 

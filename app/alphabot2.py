@@ -535,7 +535,7 @@ async def mint(ctx):
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
         embed=buttonView.makeEmbed(item)
-        cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
+        cal = Page(content=f"```diff\n+[{item['mintDay']}]+```", embed=embed)
         pages.append(cal)
 
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)

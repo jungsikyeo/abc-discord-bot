@@ -437,6 +437,7 @@ class Queries:
 
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 paginator = Paginator(bot)
+paginator_search = Paginator(bot)
 db = Database("172.27.0.2", "bot", "y20431", "alphabot")
 days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -638,7 +639,7 @@ async def msearch(ctx, project_name):
             cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
             pages.append(cal)
 
-        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+        await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
         await ctx.send(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```")
 

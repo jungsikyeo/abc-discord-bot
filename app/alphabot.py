@@ -436,6 +436,7 @@ class Queries:
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 paginator = Paginator(bot)
+paginator_search = Paginator(bot)
 db = Database("172.27.0.2", "bot", "y20431", "alphabot")
 days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -504,6 +505,8 @@ async def mpage(ctx):
     buttonView = ButtonView(ctx, db, "")
     pages = []
     projects = Queries.select_all_projects(db, today_string, tomorrow_string)
+    before_mint_day = ""
+    color = "-"
     for item in projects:
         try:
             avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
@@ -511,7 +514,12 @@ async def mpage(ctx):
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
         embed=buttonView.makeEmbed(item)
-        cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
+
+        if before_mint_day == "":
+            before_mint_day = item['mintDay']
+        if before_mint_day != item['mintDay']:
+            color = "+" 
+        cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
@@ -526,6 +534,8 @@ async def mint(ctx):
     buttonView = ButtonView(ctx, db, "")
     pages = []
     projects = Queries.select_all_projects(db, today_string, tomorrow_string)
+    before_mint_day = ""
+    color = "-"
     for item in projects:
         try:
             avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
@@ -533,7 +543,12 @@ async def mint(ctx):
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
         embed=buttonView.makeEmbed(item)
-        cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
+
+        if before_mint_day == "":
+            before_mint_day = item['mintDay']
+        if before_mint_day != item['mintDay']:
+            color = "+" 
+        cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
@@ -646,6 +661,8 @@ async def msearch(ctx, project_name):
     buttonView = ButtonView(ctx, db, "")
     pages = []
     projects = Queries.select_search_project(db, project_name)
+    before_mint_day = ""
+    color = "-"
     if len(projects) > 0:
         for item in projects:
             try:
@@ -654,10 +671,15 @@ async def msearch(ctx, project_name):
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
             item["avatar_url"] = avatar_url
             embed=buttonView.makeEmbed(item)
-            cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
+
+            if before_mint_day == "":
+                before_mint_day = item['mintDay']
+            if before_mint_day != item['mintDay']:
+                color = "+" 
+            cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
             pages.append(cal)
 
-        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+        await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
         await ctx.send(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```")
 

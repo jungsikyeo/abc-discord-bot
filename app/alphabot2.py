@@ -518,7 +518,27 @@ async def mpage(ctx):
 
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
+@bot.command()
+async def mint(ctx):
+    today = datetime.datetime.now().date()
+    today_string = today.strftime("%Y-%m-%d")
+    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+    tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 
+    buttonView = ButtonView(ctx, db, "")
+    pages = []
+    projects = Queries.select_all_projects(db, today_string, tomorrow_string)
+    for item in projects:
+        try:
+            avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
+        except Exception as e:
+            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        item["avatar_url"] = avatar_url
+        embed=buttonView.makeEmbed(item)
+        cal = Page(content=f"``` ** {item['mintDay']} {item['timeType']} ** ```", embed=embed)
+        pages.append(cal)
+
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
 async def my(ctx):

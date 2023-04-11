@@ -17,6 +17,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 bot_token = os.getenv("TEST_BOT_TOKEN")
+mysql_ip = os.getenv("MYSQL_IP")
+mysql_port = os.getenv("MYSQL_PORT")
+mysql_id = os.getenv("MYSQL_ID")
+mysql_passwd = os.getenv("MYSQL_PASSWD")
+mysql_db = os.getenv("MYSQL_DB")
 
 
 class UpDownView(View):
@@ -172,12 +177,13 @@ class ButtonView(discord.ui.View):
             pass        
 
 class Database:
-    def __init__(self, host, user, password, db):
+    def __init__(self, host, port, user, password, db):
         self.pool = PooledDB(
             creator=pymysql,
             maxconnections=5,
             mincached=2,
             host=host,
+            port=int(port),
             user=user,
             password=password,
             database=db,
@@ -438,7 +444,7 @@ class Queries:
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
-db = Database("172.27.0.2", "bot", "y20431", "alphabot")
+db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 @bot.event

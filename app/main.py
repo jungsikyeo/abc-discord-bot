@@ -3,21 +3,34 @@ import os
 import uuid
 import pymysql
 import datetime
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from urllib.parse import unquote
+from typing import List
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
+
+mysql_ip = os.getenv("MYSQL_IP")
+mysql_port = os.getenv("MYSQL_PORT")
+mysql_id = os.getenv("MYSQL_ID")
+mysql_passwd = os.getenv("MYSQL_PASSWD")
+mysql_db = os.getenv("MYSQL_DB")
 
 
 class Database:
-    def __init__(self, host, user, password, db):
+    def __init__(self, host, port, user, password, db):
         self.pool = PooledDB(
             creator=pymysql,
             maxconnections=5,
             mincached=2,
             host=host,
+            port=int(port),
             user=user,
             password=password,
             database=db,
@@ -51,6 +64,7 @@ class Queries:
 
     def insert_project(db, uuid, form):
         name = form["name"]
+        discordUrl = form["discordUrl"]
         twitterUrl = form["twitterUrl"]
         twitterProfileImage = form["twitterProfileImage"]
         mintDate = form["mintDate"]
@@ -63,17 +77,18 @@ class Queries:
         insert_query = f"""
             insert into projects
             (
-                id, name, twitterUrl, twitterProfileImage, mintDate, 
+                id, name, discordUrl, twitterUrl, twitterProfileImage, mintDate, 
                 supply, wlPrice, pubPrice, blockchain, hasTime, 
                 regUser, isAlphabot, lastUpdated, dateCreated
             ) 
             values 
             (
-                '{uuid}', '{name}', '{twitterUrl}', '{twitterProfileImage}', concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000'), 
+                '{uuid}', '{name}', '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000'), 
                 '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', 'True', 
                 '{regUser}', 'N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
             )
         """
+        print(insert_query)
         try:
             with db.get_connection() as conn:
                 with conn.cursor() as cursor:
@@ -158,64 +173,134 @@ class Queries:
                 result = cursor.fetchall()
                 return 
                 
-    def merge_recommend(db, project_id, regUser, recommend_type):
-        insert_query = f"""
-            insert into recommends
-            (
-                projectId, regUser, recommendType
-            ) 
-            values 
-            (
-                '{project_id}', '{regUser}', '{recommend_type}'
-            )
-            ON DUPLICATE KEY UPDATE recommendType='{recommend_type}';
+    # def merge_recommend(db, project_id, regUser, recommend_type):
+    #     insert_query = f"""
+    #         insert into recommends
+    #         (
+    #             projectId, regUser, recommendType
+    #         ) 
+    #         values 
+    #         (
+    #             '{project_id}', '{regUser}', '{recommend_type}'
+    #         )
+    #         ON DUPLICATE KEY UPDATE recommendType='{recommend_type}';
+    #     """
+    #     try:
+    #         with db.get_connection() as conn:
+    #             with conn.cursor() as cursor:
+    #                 cursor.execute(insert_query)
+    #                 conn.commit()
+    #         return {"status":"OK"}
+    #     except Exception as e:
+    #         conn.rollback()
+    #         print(e)
+    #         return {"status": "ERROR", "msg": e}
+    
+    def search_projects_by_name(db, project_name):
+        project_name = f"%{project_name}%"
+        select_query = f"""
+            SELECT
+                id,
+                name,
+                twitterUrl,
+                twitterProfileImage,
+                supply,
+                wlPrice,
+                pubPrice,
+                blockchain,
+                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%dT%H:%i') mintDate,
+                regUser
+            FROM projects
+            WHERE name LIKE '{project_name}'
+            ORDER BY name ASC
         """
+
         try:
             with db.get_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(insert_query)
-                    conn.commit()
-            return {"status":"OK"}
+                    cursor.execute(select_query)
+                    result = cursor.fetchall()
+                    return result
         except Exception as e:
-            conn.rollback()
             print(e)
-            return {"status": "ERROR", "msg": e}
- 
+            return None
+        
+    def search_projects_by_twitter(db, twitter_url):
+        twitter_url = f"%{twitter_url}%"
+        select_query = f"""
+            SELECT
+                id,
+                name,
+                twitterUrl,
+                twitterProfileImage,
+                supply,
+                wlPrice,
+                pubPrice,
+                blockchain,
+                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%dT%H:%i') mintDate,
+                regUser
+            FROM projects
+            WHERE twitterUrl LIKE '{twitter_url}'
+            ORDER BY name ASC
+        """
+        
+        try:
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(select_query)
+                    result = cursor.fetchall()
+                    return result
+        except Exception as e:
+            print(e)
+            return None
+
+class ProjectModel(BaseModel):
+    name: str = Field(..., example="My Project")
+    twitterUrl: str = Field(..., example="https://twitter.com/myproject")
+    twitterProfileImage: str = Field(..., example="https://example.com/profile.jpg")
+    mintDate: str = Field(..., example="2023-05-01 23:00:00")
+    supply: int = Field(..., example=10000)
+    wlPrice: float = Field(..., example=0.05)
+    pubPrice: float = Field(..., example=0.1)
+    discordUrl: str = Field("None", example="https://discord.com/myproject")
+    blockchain: str = Field("ETH", example="ETH")
+
+
 app = FastAPI()
-db = Database("172.27.0.2", "bot", "y20431", "alphabot")
+db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 
 @app.get("/")
 def read_root():
     return ""
 
-@app.get("/good/{project_id}/{dc_id}")
-def good_item(project_id: str, dc_id: str):
-    result = Queries.merge_recommend(db, project_id, dc_id, 'UP')
-    html = """
-    <html>
-        <script>
-            alert("It's been recommended.");
-            window.close();
-        </script>
-    </html>
-    """
-    return HTMLResponse(content=html)
+# @app.get("/good/{project_id}/{dc_id}")
+# def good_item(project_id: str, dc_id: str):
+#     result = Queries.merge_recommend(db, project_id, dc_id, 'UP')
+#     html = """
+#     <html>
+#         <script>
+#             alert("It's been recommended.");
+#             window.close();
+#         </script>
+#     </html>
+#     """
+#     return HTMLResponse(content=html)
 
-@app.get("/bad/{project_id}/{dc_id}")
-def good_item(project_id: str, dc_id: str):
-    result = Queries.merge_recommend(db, project_id, dc_id, 'DOWN')
-    html = """
-    <html>
-        <script>
-            alert("It's not recommended.");
-            window.close();
-        </script>
-    </html>
-    """
-    return HTMLResponse(content=html)
+# @app.get("/bad/{project_id}/{dc_id}")
+# def good_item(project_id: str, dc_id: str):
+#     result = Queries.merge_recommend(db, project_id, dc_id, 'DOWN')
+#     html = """
+#     <html>
+#         <script>
+#             alert("It's not recommended.");
+#             window.close();
+#         </script>
+#     </html>
+#     """
+#     return HTMLResponse(content=html)
 
-app.mount("/static", StaticFiles(directory="/code/app/static"), name="static")
-templates = Jinja2Templates(directory="/code/app/templates")
+app.mount("/static", StaticFiles(directory=os.getenv("STATIC_FOLDER")), name="static")
+templates = Jinja2Templates(directory=os.getenv("TEMPLATES_FOLDER"))
 
 DISCORD_CLIENT_ID = "1069463768247050321"
 DISCORD_CLIENT_SECRET = "cJHM69WsrLjlEqgkii1rNfy2cICOtLWW"
@@ -341,3 +426,99 @@ async def delete_submit(request: Request):
     """
     return HTMLResponse(content=html)
 
+@app.get("/api/projects/search/{project_name}")
+async def search_projects(project_name: str):
+    try:
+        projects = Queries.search_projects_by_name(db, project_name)
+        if projects:
+            return {"status": "OK", "data": projects}
+        else:
+            return {"status": "ERROR", "message": "No projects found"}
+    except Exception as e:
+        print(e)
+        return {"status": "ERROR", "message": "An error occurred while searching for projects"}
+
+@app.post("/api/project", summary="Create a new project", description="Create a new project with the given details")
+async def create_project(project: ProjectModel):
+    try:
+        # URL-decode the parameters
+        name = unquote(project.name)
+        twitterUrl = unquote(project.twitterUrl)
+        twitterProfileImage = unquote(project.twitterProfileImage)
+        mintDate = unquote(project.mintDate)
+        
+        # Check for duplicate twitterUrl
+        existing_project = Queries.search_projects_by_twitter(db, twitterUrl)
+        if len(existing_project) > 0:
+            return {"status": "ERROR", "message": "This project already exists"}
+
+        # Generate a unique UUID for the project
+        unique_id = uuid.uuid4()
+
+        form_data = {
+            "name": name,
+            "twitterUrl": twitterUrl,
+            "twitterProfileImage": twitterProfileImage,
+            "mintDate": mintDate,
+            "supply": project.supply,
+            "wlPrice": project.wlPrice,
+            "pubPrice": project.pubPrice,
+            "discordUrl": project.discordUrl,
+            "blockchain": project.blockchain,
+            "regUser": "으노아부지#2642",  # Set a default user for API-created projects
+        }
+
+        result = Queries.insert_project(db, unique_id, form_data)
+
+        if result["status"] == "OK":
+            return JSONResponse(content={"status": "OK", "message": "Project created successfully"})
+        else:
+            return JSONResponse(content={"status": "ERROR", "message": "An error occurred while creating the project"})
+    except Exception as e:
+        print(e)
+        return {"status": "ERROR", "message": "An error occurred while creating for projects"}
+    
+@app.post("/api/projects/bulk", summary="Create multiple projects", description="Create multiple projects with the given details")
+async def create_projects(projects: List[ProjectModel]):
+    results = []
+
+    for project in projects:
+        try:
+            # URL-decode the parameters
+            name = unquote(project.name)
+            twitterUrl = unquote(project.twitterUrl)
+            twitterProfileImage = unquote(project.twitterProfileImage)
+            mintDate = unquote(project.mintDate)
+
+            # Check for duplicate twitterUrl
+            existing_project = Queries.search_projects_by_twitter(db, twitterUrl)
+            if len(existing_project) > 0:
+                results.append({"status": "ERROR", "message": f"Project {name} already exists"})
+                continue
+
+            # Generate a unique UUID for the project
+            unique_id = uuid.uuid4()
+
+            form_data = {
+                "name": name,
+                "discordUrl": project.discordUrl,
+                "twitterUrl": twitterUrl,
+                "twitterProfileImage": twitterProfileImage,
+                "mintDate": mintDate,
+                "supply": project.supply,
+                "wlPrice": project.wlPrice,
+                "pubPrice": project.pubPrice,
+                "blockchain": project.blockchain,
+                "regUser": "으노아부지#2642",  # Set a default user for API-created projects
+            }
+
+            print(form_data)
+
+            result = Queries.insert_project(db, unique_id, form_data)
+            results.append(result)
+
+        except Exception as e:
+            print(e)
+            results.append({"status": "ERROR", "message": f"An error occurred while creating project {project.name}"})
+
+    return results

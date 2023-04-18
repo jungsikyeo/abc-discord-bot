@@ -531,10 +531,19 @@ async def mpage(ctx):
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
-async def mint(ctx):
-    today = datetime.datetime.now().date()
+async def mint(ctx, *, arg="today"):
+    if arg == "today":
+        today = datetime.datetime.now().date()
+        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+    else:
+        try:
+            target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
+        except ValueError:
+            await ctx.send("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyy-mm-dd)")
+            return
+        today = target_date
+        tomorrow = target_date + datetime.timedelta(days=1)
     today_string = today.strftime("%Y-%m-%d")
-    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
     tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 
     buttonView = ButtonView(ctx, db, "")

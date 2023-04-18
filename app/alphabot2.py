@@ -111,7 +111,7 @@ class ButtonView(discord.ui.View):
         return embed
 
     def regButton(self):
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
         view = discord.ui.View()
         view.add_item(button)
@@ -134,7 +134,7 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item['regUser']:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
@@ -163,7 +163,7 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item["regUser"]:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
@@ -477,7 +477,7 @@ async def m(ctx):
     await ctx.send(embed=embed)
     await ctx.send("", view=ButtonView(ctx, db, date_string))
 
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
@@ -537,6 +537,12 @@ async def mint(ctx):
     today_string = today.strftime("%Y-%m-%d")
     tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
     tomorrow_string = tomorrow.strftime("%Y-%m-%d")
+
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("http://localhost:8080/discord-callback/mymint")}&response_type=code&scope=identify'
+    button = discord.ui.Button(style=discord.ButtonStyle.green, label="Save My Mint", url=button_url)
+    view = discord.ui.View()
+    view.add_item(button)
+    await ctx.send(view=view)
 
     buttonView = ButtonView(ctx, db, "")
     pages = []

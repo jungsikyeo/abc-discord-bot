@@ -1,8 +1,12 @@
 import requests
 import os
+import glob
+import sqlite3
+import http.cookiejar
 import uuid
 import pymysql
 import datetime
+import browsercookie
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pymysql.cursors import DictCursor
@@ -369,7 +373,121 @@ async def modify_discord_callback(request: Request, code: str):
     except Exception as e:
         print(e)
         return templates.TemplateResponse("error.html", {"request": request})
+
+
+
+
+
+def load_chrome_cookies(cookie_file, domain):
+    con = sqlite3.connect(cookie_file)
+    cur = con.cursor()
+    cur.execute("SELECT host_key, name, value, path FROM cookies WHERE host_key LIKE ?", (f"%{domain}%",))
+    cookies = cur.fetchall()
+    con.close()
+
+    cookie_jar = http.cookiejar.CookieJar()
+
+    for host_key, name, value, path in cookies:
+        cookie = http.cookiejar.Cookie(
+            version=0,
+            name=name,
+            value=value,
+            port=None,
+            port_specified=False,
+            domain=host_key,
+            domain_specified=True,
+            domain_initial_dot=host_key.startswith("."),
+            path=path,
+            path_specified=True,
+            secure=False,
+            expires=None,
+            discard=False,
+            comment=None,
+            comment_url=None,
+            rest=None,
+            rfc2109=False,
+        )
+        cookie_jar.set_cookie(cookie)
+        print(cookie_jar)
+
+    return cookie_jar
+
+
+@app.get("/discord-callback/mymint")
+async def mymint_discord_callback(request: Request, code: str):
+    try:
+        session = requests.Session()
+        session.headers.update({ 
+            "Content-Type": "application/x-www-form-urlencoded"
+        })
+        data = {
+            "client_id": "1090169638765207574",
+            "client_secret": "jCbUl3bYbyVOa9-U5YELAd90IOMBXKMm",
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": f"http://localhost:8080/discord-callback/mymint",
+            "scope": "identify"
+        }
+        token_response = session.post("https://discord.com/api/oauth2/token", data=data)
+        token_response.raise_for_status()
+        access_token = token_response.json()["access_token"]
+
+        session.headers.update({ 
+            "Authorization": f"Bearer {access_token}"
+        })
+        user_response = session.get("https://discord.com/api/users/@me")
+        user_response.raise_for_status()
+        user_info = user_response.json()
+
+        # print('user_info', user_info)
+
+        # cj = browsercookie.chrome()
+        # Chrome 사용자 프로필 디렉터리 경로를 지정하세요.
+        if os.name == "nt":
+            profiles_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data")
+        elif os.name == "posix":
+            profiles_dir = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+
+        # 사용자 프로필 디렉터리에서 모든 프로필 찾기
+        profiles = [name for name in os.listdir(profiles_dir) if os.path.isdir(os.path.join(profiles_dir, name)) and "Profile" in name or "Default" == name]
+
+        # 각 프로필의 쿠키 파일 경로 가져오기
+        for profile in profiles:
+            cookie_file = os.path.join(profiles_dir, profile, "Cookies")
+            if os.path.isfile(cookie_file):
+                print(f"Profile: {profile}, Cookie file: {cookie_file}")
+                
+                # load_chrome_cookies 함수를 사용하여 쿠키 가져오기
+                cj = load_chrome_cookies(cookie_file, "alphabot.app")
+                
+                # 가져온 쿠키를 사용하여 API 호출
+                alphabot_response = requests.get("https://www.alphabot.app/api/auth/session", cookies=cj)
+                alphabot_response.raise_for_status()
+                alphabot_session = alphabot_response.json()
+
+                print(alphabot_session)
+            else:
+                print(f"Profile: {profile}, Cookie file not found")
+
         
+
+        today = datetime.datetime.now().date()
+        date_string = today.strftime("%Y-%m-%d")
+        return templates.TemplateResponse("register.html", {"request": request, "user": user_info, "today": date_string})
+    except Exception as e:
+        print(e)
+        return templates.TemplateResponse("error.html", {"request": request})
+    
+
+
+
+
+
+
+
+
+
+
 @app.post("/regist")
 async def regist_submit(request: Request):
     unique_id = uuid.uuid4()

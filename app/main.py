@@ -3,8 +3,6 @@ import os
 import uuid
 import pymysql
 import datetime
-import cloudscraper
-import json
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pymysql.cursors import DictCursor

@@ -1,12 +1,10 @@
 import requests
 import os
-import glob
-import sqlite3
-import http.cookiejar
 import uuid
 import pymysql
 import datetime
-import browsercookie
+import cloudscraper
+import json
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pymysql.cursors import DictCursor
@@ -17,6 +15,7 @@ from urllib.parse import unquote
 from typing import List
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from pycookiecheat import chrome_cookies
 
 load_dotenv()
 
@@ -257,6 +256,54 @@ class Queries:
         except Exception as e:
             print(e)
             return None
+        
+    
+        
+    def set_winner(db, dc_id, data):
+        def is_json_key_present(json_data, key):
+            try:
+                buf = str(json_data[key])
+            except Exception as e:
+                print("parse error:",e)
+                return ""
+
+            return buf
+        
+        try:
+            index = 0
+            with db.get_connection() as conn:
+                for project in data["projects"]:
+                    id = is_json_key_present(project, "_id")
+                    is_winner = is_json_key_present(project, "isWinner")
+                    if is_winner == "True":
+                        project_id = id
+                        regUser = dc_id
+                        recommend_type = "UP"
+
+                        insert_query = f"""
+                        insert into recommends
+                        (
+                            projectId, regUser, recommendType
+                        ) 
+                        values 
+                        (
+                            '{project_id}', '{regUser}', '{recommend_type}'
+                        )
+                        ON DUPLICATE KEY UPDATE recommendType='{recommend_type}';
+                        """
+                        with conn.cursor() as cursor:
+                            cursor.execute(insert_query)
+                        
+
+                conn.commit()
+                
+            return {"status":"OK"}
+        except Exception as e:
+            conn.rollback()
+            print(e)
+            return {"status": "ERROR", "msg": e}
+
+
 
 class ProjectModel(BaseModel):
     name: str = Field(..., example="My Project")
@@ -377,44 +424,37 @@ async def modify_discord_callback(request: Request, code: str):
 
 
 
+def today_date():
+    today = datetime.datetime.now().date()
+    date_string = today.strftime("%Y-%m-%d 00:00:00")
+    date_object = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+    today_date = str(int(date_object.timestamp()))
+    print("today:" + date_string)
+    return str(today_date)
 
-def load_chrome_cookies(cookie_file, domain):
-    con = sqlite3.connect(cookie_file)
-    cur = con.cursor()
-    cur.execute("SELECT host_key, name, value, path FROM cookies WHERE host_key LIKE ?", (f"%{domain}%",))
-    cookies = cur.fetchall()
-    con.close()
+def month_date():
+    month = (datetime.datetime.now() + datetime.timedelta(days=31)).date()
+    date_string = month.strftime("%Y-%m-%d 23:59:59")
+    date_object = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+    month_date = str(int(date_object.timestamp()))
+    print("month:" + date_string)
+    return str(month_date) 
 
-    cookie_jar = http.cookiejar.CookieJar()
-
-    for host_key, name, value, path in cookies:
-        cookie = http.cookiejar.Cookie(
-            version=0,
-            name=name,
-            value=value,
-            port=None,
-            port_specified=False,
-            domain=host_key,
-            domain_specified=True,
-            domain_initial_dot=host_key.startswith("."),
-            path=path,
-            path_specified=True,
-            secure=False,
-            expires=None,
-            discard=False,
-            comment=None,
-            comment_url=None,
-            rest=None,
-            rfc2109=False,
-        )
-        cookie_jar.set_cookie(cookie)
-        print(cookie_jar)
-
-    return cookie_jar
+def get_project_data(today_timestamp, tomorrow_timestamp):
+    scraper = cloudscraper.create_scraper()
+    try:
+        print(today_timestamp, tomorrow_timestamp)
+        headers = {"cookie": "__Host-next-auth.csrf-token=1419d8fd0c5c5b8231034db078e9f88defda6ef8dd5c011e25282b47549485fc%7Ca3172f7f55f479b244f6472e74d9610a27498eaecadb0d7d31a8a8d927c8ea38; __Secure-next-auth.callback-url=https%3A%2F%2Fwww.alphabot.app%2Fdegen-zoo-x-ghouls-bml6u2; CookieConsent=true; __gads=ID=8da0d488c04e22fe-2275d95846da00ec:T=1677615672:RT=1677615672:S=ALNI_MYaqnYqPUHALnAzLbkbhJMAjGz5xQ; _gid=GA1.2.1942091217.1679879916; __gpi=UID=00000bce464649a7:T=1677615672:RT=1680841107:S=ALNI_MbCw5Uf6RxhzIkndj2Omgp4b44plA; __cf_bm=5wIKuTU7qHvMFXRix4hGWSJfXbo_3EPEo0AB0LAJDbI-1680858378-0-ASN+uR2si9jX4z4X3dAI9QW5rQo1bON3jaMfsiPqxqsy66jxm0xIwI3rwfIpLcazUioFCmZhfRdkN03GxQJoO7JbdXeA72Gw6cKYN4vshYw2a4Sdk9Lfl1Zs6V/xYUOd6g==; _ga=GA1.2.19617137.1676810584; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..OO-02a3eYZgSsmzg.GMKRbSPQwNkhMFj8DMi-ilpNITKjI8rwDIak-ZKDUQwLulr3q5wztsJD7nWXkJin2J34yr3419bhZkqba7Uqt4GVmZGzPPwF135J_83PZOQCWi4Dcwl3ESICsRcrgc3oPI9ebnXrXqV6prXNqUxdMCHlRLWQ3QX7LMvLrNbMLKq7vCVf-EnQb8Yc0i7XVjWUUovIX3iBYxGce6UorOqAx9CqCjyQcX1hlSJX82pxRm-RvFHF5Gx6i2Cj1QwRBvSy243FYptWP86dKH38I2ejuFyvCFWrCAOLvbIR6Uh-nYcMIkvsH15Bv2-uqVv8DQJUmAg-DatD-QTh3s0VL6U4Zp35F5XTsJCWVbMLFejoiD19xdZV2-FmlnDnI20EyXMkzqLW7lN9i7qZ5Temci_1tgvkwnmac9nkjhGWxWcKSG63K-2I3O_KinNa8q73-tbZtaSIYOQs1571w2L4ltTxxC9964Chlkgm2rad4J7s-_FJ-n4VibR8fStwxlMkEwQFbRy34uFUUUMDN9-cylh1gi_lIgA9vhHujlgvxe2LrDNiqiVO8W61mkEn2JlxnWVPe0VuTX3dXu6vsvcqLKynfvEsRDDSzcJ4AfUYhnfqcusWNURlvJ6DDdbI914ietaLMQ6cctc36g5euOeMLs_dkTIx_7y3dP6Y7TZX4GR5jVDTk0J--V17tK1OOmk9JHZnyfmdN3SUwEoR2eje2xm5qDCu6iVdo62uZLagXu7WiiQ.lHOSozDRz92RtrCdYgSrJg; _ga_5P3HN827YC=GS1.1.1680855929.250.1.1680858660.0.0.0; mp_e07f9907b6792861d8448bc4004fb2b4_mixpanel=%7B%22distinct_id%22%3A%20%2218669b2f5f1106c-0a7f2bd95c706e-16525635-1d4c00-18669b2f5f21222%22%2C%22%24device_id%22%3A%20%2218669b2f5f1106c-0a7f2bd95c706e-16525635-1d4c00-18669b2f5f21222%22%2C%22%24initial_referrer%22%3A%20%22%24direct%22%2C%22%24initial_referring_domain%22%3A%20%22%24direct%22%7D"}
+        response = scraper.get(f"https://www.alphabot.app/api/projectData?calendar=true&startDate={today_timestamp}&endDate={tomorrow_timestamp}&selectedMonth=2&a=0xa1B1ec6eaD8CEfa028Df12609F38EEDAc356a697", headers=headers).text 
+        return json.loads(response)
+    except Exception as e:
+        print("Error:", e)
+        return ""
 
 
 @app.get("/discord-callback/mymint")
 async def mymint_discord_callback(request: Request, code: str):
+    result = None
     try:
         session = requests.Session()
         session.headers.update({ 
@@ -439,10 +479,9 @@ async def mymint_discord_callback(request: Request, code: str):
         user_response.raise_for_status()
         user_info = user_response.json()
 
-        # print('user_info', user_info)
+        dc_id = f"{user_info['username']}#{user_info['discriminator']}"
+        print('user_info', user_info)
 
-        # cj = browsercookie.chrome()
-        # Chrome 사용자 프로필 디렉터리 경로를 지정하세요.
         if os.name == "nt":
             profiles_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data")
         elif os.name == "posix":
@@ -452,28 +491,52 @@ async def mymint_discord_callback(request: Request, code: str):
         profiles = [name for name in os.listdir(profiles_dir) if os.path.isdir(os.path.join(profiles_dir, name)) and "Profile" in name or "Default" == name]
 
         # 각 프로필의 쿠키 파일 경로 가져오기
+        isBreak = False
         for profile in profiles:
+            if isBreak == True:
+                break
             cookie_file = os.path.join(profiles_dir, profile, "Cookies")
             if os.path.isfile(cookie_file):
                 print(f"Profile: {profile}, Cookie file: {cookie_file}")
-                
-                # load_chrome_cookies 함수를 사용하여 쿠키 가져오기
-                cj = load_chrome_cookies(cookie_file, "alphabot.app")
-                
+
+                cj = chrome_cookies("https://www.alphabot.app", cookie_file)
+
                 # 가져온 쿠키를 사용하여 API 호출
                 alphabot_response = requests.get("https://www.alphabot.app/api/auth/session", cookies=cj)
                 alphabot_response.raise_for_status()
                 alphabot_session = alphabot_response.json()
 
-                print(alphabot_session)
-            else:
-                print(f"Profile: {profile}, Cookie file not found")
+                if alphabot_session and alphabot_session['connections']:
+                    for connection in alphabot_session['connections']:
+                        if connection['name'] == dc_id:
+                            isBreak = True
+                            try:
+                                today_timestamp = today_date() + "000"
+                                tomorrow_timestamp = month_date() + "000"
+                                print(today_timestamp, tomorrow_timestamp)
+                                projects_response = requests.get(f"https://www.alphabot.app/api/projectData?calendar=true&startDate={today_timestamp}&endDate={tomorrow_timestamp}&selectedMonth=2&a=", cookies=cj)
+                                projects_response.raise_for_status()
+                                projects = projects_response.json()
+                                result = Queries.set_winner(db, dc_id, projects)
+                            except Exception as e:
+                                print(e)
+                                return templates.TemplateResponse("error.html", {"request": request})
 
-        
-
-        today = datetime.datetime.now().date()
-        date_string = today.strftime("%Y-%m-%d")
-        return templates.TemplateResponse("register.html", {"request": request, "user": user_info, "today": date_string})
+        if result["status"] == "OK":
+            comment = "Your Mint Schedule Saved!"
+        else:
+            comment = "Mint Schedule Save Error!"
+            
+        html = f"""
+        <html>
+            <script>
+                alert('{comment}')
+                window.close()
+            </script>
+        </html>
+        """
+        print(html)
+        return HTMLResponse(content=html)
     except Exception as e:
         print(e)
         return templates.TemplateResponse("error.html", {"request": request})

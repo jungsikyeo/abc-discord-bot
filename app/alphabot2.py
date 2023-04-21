@@ -268,7 +268,7 @@ class Queries:
              AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') >= '{today}' 
              AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') <= '{tomorrow}' 
              /*AND hasTime = 'True' */
-             AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
+             /*AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')*/
              ORDER BY mintDate ASC 
         ) A 
         WHERE 1=1 
@@ -540,8 +540,9 @@ async def mint(ctx, *, arg="today"):
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
         except ValueError:
-            await ctx.send("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyy-mm-dd)")
+            await ctx.send("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)")
             return
+        print(target_date)
         today = target_date
         tomorrow = target_date + datetime.timedelta(days=1)
     today_string = today.strftime("%Y-%m-%d")

@@ -538,7 +538,7 @@ async def mint(ctx):
     tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
     tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/mymint")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1090169638765207574&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/mymint")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Save My Mint", url=button_url)
     view = discord.ui.View()
     view.add_item(button)

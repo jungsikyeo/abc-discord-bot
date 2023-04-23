@@ -439,7 +439,7 @@ def month_date():
     return str(month_date)
 
 
-@app.get("/mymint")
+@app.get("/discord-callback/mymint")
 async def mymint_discord_callback(request: Request, code: str):
     result = None
     try:

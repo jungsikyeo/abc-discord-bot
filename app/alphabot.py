@@ -278,6 +278,49 @@ class Queries:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
+            
+    def select_today_projects(db, today, tomorrow):
+        select_query = f"""
+        SELECT  
+            A.*,  
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
+            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week
+        FROM ( 
+             SELECT
+                id, 
+                name, 
+                ifnull(discordUrl, '-') discordUrl, 
+                ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(twitterProfileImage, '-') twitterProfileImage,  
+                ifnull(nullif(supply, ''), '-') supply,  
+                ifnull(nullif(wlPrice, ''), '-') wlPrice,  
+                ifnull(nullif(pubPrice, ''), '-') pubPrice,  
+                ifnull(blockchain, '-') blockchain,  
+                ifnull(starCount, '0') starCount,  
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
+                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
+                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
+                FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
+                regUser,
+                hasTime  
+             FROM projects AA
+             WHERE 1=1 
+             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d %H:%i') >= '{today}' 
+             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') <= '{tomorrow}' 
+             /*AND hasTime = 'True' */
+             AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
+             ORDER BY mintDate ASC 
+        ) A 
+        WHERE 1=1 
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query)
+                result = cursor.fetchall()
+                return result
 
     def select_one_project(db, project_id):
         select_query = f"""
@@ -548,7 +591,10 @@ async def mint(ctx, *, arg="today"):
 
     buttonView = ButtonView(ctx, db, "")
     pages = []
-    projects = Queries.select_all_projects(db, today_string, tomorrow_string)
+    if arg == "today":
+        projects = Queries.select_today_projects(db, today_string, tomorrow_string)
+    else:
+        projects = Queries.select_all_projects(db, today_string, tomorrow_string)
     before_mint_day = ""
     color = "-"
     for item in projects:

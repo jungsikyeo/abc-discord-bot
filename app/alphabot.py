@@ -499,8 +499,9 @@ async def on_ready():
 @bot.command()
 async def m(ctx):
     bot_channel_id = 1089590412164993044
-    if ctx.channel.id != bot_channel_id:
-        await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
+    if ctx.channel.id != 1088659865397903391:
+        if ctx.channel.id != bot_channel_id:
+            await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
         return
 
     today = datetime.datetime.now().date()

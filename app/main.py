@@ -370,6 +370,7 @@ async def reg_discord_callback(request: Request, code: str):
             "redirect_uri": f"{DISCORD_REDIRECT_URI}/register",
             "scope": "identify"
         }
+        print("data:",data)
         response = requests.post("https://discord.com/api/oauth2/token", headers=headers, data=data)
         print(response)
         response.raise_for_status()

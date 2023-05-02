@@ -351,8 +351,8 @@ def read_root():
 app.mount("/static", StaticFiles(directory=os.getenv("STATIC_FOLDER")), name="static")
 templates = Jinja2Templates(directory=os.getenv("TEMPLATES_FOLDER"))
 
-DISCORD_CLIENT_ID = "1069463768247050321"
-DISCORD_CLIENT_SECRET = "cJHM69WsrLjlEqgkii1rNfy2cICOtLWW"
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID_DEV")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET_DEV")
 DISCORD_REDIRECT_URI = "https://code.yjsdev.tk/discord-callback"
 
 @app.get("/discord-callback/register")
@@ -420,7 +420,57 @@ async def modify_discord_callback(request: Request, code: str):
         return templates.TemplateResponse("error.html", {"request": request})
 
 
+class CookieData(BaseModel):
+    cookie: str
 
+@app.post("/send-cookie")
+async def send_cookie(cookie_data: CookieData):
+    if not cookie_data.cookie:
+        print("No cookie received")
+        return JSONResponse(content={"status": "ERROR", "message": "No cookie received"}, status_code=422)
+    print("cookie : ", cookie_data.cookie)
+
+    if os.name == "nt":
+        profiles_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data")
+    elif os.name == "posix":
+        profiles_dir = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+
+    # 사용자 프로필 디렉터리에서 모든 프로필 찾기
+    profiles = [name for name in os.listdir(profiles_dir) if os.path.isdir(os.path.join(profiles_dir, name)) and "Profile" in name or "Default" == name]
+
+    # 각 프로필의 쿠키 파일 경로 가져오기
+    isBreak = False
+    for profile in profiles:
+        if isBreak == True:
+            break
+        cookie_file = os.path.join(profiles_dir, profile, "Cookies")
+        if os.path.isfile(cookie_file):
+            print(f"Profile: {profile}, Cookie file: {cookie_file}")
+
+            cj = chrome_cookies("https://www.alphabot.app", cookie_file)
+
+            # 가져온 쿠키를 사용하여 API 호출
+            alphabot_response = requests.get("https://www.alphabot.app/api/auth/session", cookies=cj)
+            alphabot_response.raise_for_status()
+            alphabot_session = alphabot_response.json()
+
+            if alphabot_session and alphabot_session['connections']:
+                for connection in alphabot_session['connections']:
+                    if connection['name'] == cookie_data.dc_id:
+                        isBreak = True
+                        try:
+                            today_timestamp = today_date() + "000"
+                            tomorrow_timestamp = month_date() + "000"
+                            print(today_timestamp, tomorrow_timestamp)
+                            projects_response = requests.get(f"https://www.alphabot.app/api/projectData?calendar=true&startDate={today_timestamp}&endDate={tomorrow_timestamp}&selectedMonth=2&a=", cookies=cj)
+                            projects_response.raise_for_status()
+                            projects = projects_response.json()
+                            result = Queries.set_winner(db, cookie_data.dc_id, projects)
+                        except Exception as e:
+                            print(e)
+                            return templates.TemplateResponse("error.html")
+
+    pass
 
 def today_date():
     today = datetime.datetime.now().date()
@@ -452,7 +502,7 @@ async def mymint_discord_callback(request: Request, code: str):
             "client_secret": "jCbUl3bYbyVOa9-U5YELAd90IOMBXKMm",
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": f"https://code.yjsdev.tk/discord-callback/mymint",
+            "redirect_uri": f"http://localhost:8080/discord-callback/mymint",
             "scope": "identify"
         }
         token_response = session.post("https://discord.com/api/oauth2/token", data=data)
@@ -469,56 +519,37 @@ async def mymint_discord_callback(request: Request, code: str):
         dc_id = f"{user_info['username']}#{user_info['discriminator']}"
         print('user_info', user_info)
 
-        if os.name == "nt":
-            profiles_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data")
-        elif os.name == "posix":
-            profiles_dir = os.path.expanduser("~/Library/Application Support/Google/Chrome")
-
-        # 사용자 프로필 디렉터리에서 모든 프로필 찾기
-        profiles = [name for name in os.listdir(profiles_dir) if os.path.isdir(os.path.join(profiles_dir, name)) and "Profile" in name or "Default" == name]
-
-        # 각 프로필의 쿠키 파일 경로 가져오기
-        isBreak = False
-        for profile in profiles:
-            if isBreak == True:
-                break
-            cookie_file = os.path.join(profiles_dir, profile, "Cookies")
-            if os.path.isfile(cookie_file):
-                print(f"Profile: {profile}, Cookie file: {cookie_file}")
-
-                cj = chrome_cookies("https://www.alphabot.app", cookie_file)
-
-                # 가져온 쿠키를 사용하여 API 호출
-                alphabot_response = requests.get("https://www.alphabot.app/api/auth/session", cookies=cj)
-                alphabot_response.raise_for_status()
-                alphabot_session = alphabot_response.json()
-
-                if alphabot_session and alphabot_session['connections']:
-                    for connection in alphabot_session['connections']:
-                        if connection['name'] == dc_id:
-                            isBreak = True
-                            try:
-                                today_timestamp = today_date() + "000"
-                                tomorrow_timestamp = month_date() + "000"
-                                print(today_timestamp, tomorrow_timestamp)
-                                projects_response = requests.get(f"https://www.alphabot.app/api/projectData?calendar=true&startDate={today_timestamp}&endDate={tomorrow_timestamp}&selectedMonth=2&a=", cookies=cj)
-                                projects_response.raise_for_status()
-                                projects = projects_response.json()
-                                result = Queries.set_winner(db, dc_id, projects)
-                            except Exception as e:
-                                print(e)
-                                return templates.TemplateResponse("error.html", {"request": request})
-
-        if result["status"] == "OK":
-            comment = "Your Mint Schedule Saved!"
-        else:
-            comment = "Mint Schedule Save Error!"
             
         html = f"""
         <html>
             <script>
-                alert('{comment}')
-                window.close()
+                // 클라이언트 측에서 쿠키 읽기
+                function getCookie(name) {{
+                    alert(document.cookie)
+                    const value = "; " + document.cookie;
+                    const parts = value.split("; " + name + "=");
+                    if (parts.length === 2) return parts.pop().split(";").shift();
+                }}
+
+                // 쿠키 값을 가져온 후 서버로 전송
+                const cookieValue = getCookie("https://www.alphabot.app");
+                alert(cookieValue)
+                fetch("http://localhost:8080/send-cookie", {{
+                    method: "POST",
+                    headers: {{
+                        "Content-Type": "application/json"
+                    }},
+                    body: JSON.stringify({{ cookie: cookieValue}})
+                }})
+                .then(response => response.json())
+                .then(result => {{
+                    if (result.status === "OK") {{
+                        alert("Your Mint Schedule Saved!");
+                    }} else {{
+                        alert("Mint Schedule Save Error!");
+                    }}
+                    //window.close();
+                }});
             </script>
         </html>
         """

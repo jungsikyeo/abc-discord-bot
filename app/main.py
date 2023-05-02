@@ -370,9 +370,7 @@ async def reg_discord_callback(request: Request, code: str):
             "redirect_uri": f"{DISCORD_REDIRECT_URI}/register",
             "scope": "identify"
         }
-        print("data: ",data)
         response = requests.post("https://discord.com/api/oauth2/token", headers=headers, data=data)
-        print(response)
         response.raise_for_status()
         access_token = response.json()["access_token"]
         headers = {
@@ -386,7 +384,6 @@ async def reg_discord_callback(request: Request, code: str):
         date_string = today.strftime("%Y-%m-%d")
         return templates.TemplateResponse("register.html", {"request": request, "user": user, "today": date_string})
     except Exception as e:
-        print(e)
         traceback.print_exc()
         return templates.TemplateResponse("error.html", {"request": request})
 

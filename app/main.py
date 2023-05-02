@@ -371,6 +371,7 @@ async def reg_discord_callback(request: Request, code: str):
             "scope": "identify"
         }
         response = requests.post("https://discord.com/api/oauth2/token", headers=headers, data=data)
+        print(response)
         response.raise_for_status()
         access_token = response.json()["access_token"]
         headers = {

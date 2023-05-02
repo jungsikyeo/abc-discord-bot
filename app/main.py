@@ -3,6 +3,7 @@ import os
 import uuid
 import pymysql
 import datetime
+import traceback
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pymysql.cursors import DictCursor
@@ -384,6 +385,7 @@ async def reg_discord_callback(request: Request, code: str):
         return templates.TemplateResponse("register.html", {"request": request, "user": user, "today": date_string})
     except Exception as e:
         print(e)
+        traceback.print_exc()
         return templates.TemplateResponse("error.html", {"request": request})
 
 @app.get("/discord-callback/modify")

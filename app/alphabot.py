@@ -860,7 +860,7 @@ async def sui(ctx, amount: float = 1):
         total_price = current_price * amount
         total_price_rounded = round(total_price, 1)
 
-        embed = Embed(title="LM Price", color=0x3498db)
+        embed = Embed(title="SUI Price", color=0x3498db)
         embed.add_field(name="1 SUI", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.add_field(name=f"{amount} SUI", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")

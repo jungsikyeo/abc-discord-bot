@@ -556,7 +556,7 @@ async def m(ctx):
     bot_channel_id = 1089590412164993044
     if ctx.channel.id != 1088659865397903391:
         if ctx.channel.id != bot_channel_id:
-            await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
+            await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
         return
 
     today = datetime.datetime.now().date()
@@ -585,7 +585,7 @@ async def m(ctx):
 async def mday(ctx, date):
     bot_channel_id = 1089590412164993044
     if ctx.channel.id != bot_channel_id:
-        await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
+        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
         return
 
     try:
@@ -638,7 +638,7 @@ async def mint(ctx, *, arg="today"):
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
         except ValueError:
-            await ctx.send("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)")
+            await ctx.reply("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)", mention_author=True)
             return
         today = target_date
         tomorrow = target_date + datetime.timedelta(days=1)
@@ -798,7 +798,7 @@ async def msearch(ctx, project_name):
 
         await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
-        await ctx.send(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```")
+        await ctx.reply(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```", mention_author=True)
 
 @bot.command()
 async def mrank(ctx):
@@ -848,9 +848,9 @@ async def lm(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 @bot.command()
 async def sui(ctx, amount: float = 1):
@@ -865,9 +865,9 @@ async def sui(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} SUI", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 @bot.command()
 async def bnb(ctx, amount: float = 1):
@@ -882,9 +882,9 @@ async def bnb(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} BNB", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 bot.run(bot_token)
 

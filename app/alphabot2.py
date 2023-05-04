@@ -554,7 +554,7 @@ async def on_ready():
 async def m(ctx):
     bot_channel_id = 1089590412164993044
     if ctx.channel.id != bot_channel_id:
-        await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
+        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
         return
 
     today = datetime.datetime.now().date()
@@ -583,7 +583,7 @@ async def m(ctx):
 async def mday(ctx, date):
     bot_channel_id = 1089590412164993044
     if ctx.channel.id != bot_channel_id:
-        await ctx.send(f"This command only works in <#{bot_channel_id}> channel.")
+        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
         return
 
     try:
@@ -591,7 +591,7 @@ async def mday(ctx, date):
         day = date_db['date_date'].weekday()
     except Exception as e:
         print("Error:", e)
-        await ctx.send("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```")
+        await ctx.reply("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```", mention_author=True)
         return
 
     embed=discord.Embed(title=f"**{date_db['date_string']} {days[day]}**")
@@ -636,7 +636,7 @@ async def mint(ctx, *, arg="today"):
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
         except ValueError:
-            await ctx.send("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)")
+            await ctx.reply("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)", mention_author=True)
             return
         print(target_date)
         today = target_date
@@ -797,7 +797,7 @@ async def msearch(ctx, project_name):
 
         await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
-        await ctx.send(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```")
+        await ctx.reply(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```", mention_author=True)
 
 from discord import Embed
 
@@ -817,13 +817,17 @@ async def mrank(ctx):
         embed.add_field(name=field_name, value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")
 
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed, mention_author=True)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
     await ctx.send(view=view)
+
+@bot.command()
+async def mup(ctx, twitter_handle):
+    await ctx.send("")
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"
@@ -849,9 +853,9 @@ async def lm(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 @bot.command()
 async def sui(ctx, amount: float = 1):
@@ -866,9 +870,9 @@ async def sui(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} SUI", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 @bot.command()
 async def bnb(ctx, amount: float = 1):
@@ -883,9 +887,9 @@ async def bnb(ctx, amount: float = 1):
         embed.add_field(name=f"{amount} BNB", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.send("Error: Could not fetch the price.")
+        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 bot.run(bot_token)
 

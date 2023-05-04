@@ -482,6 +482,61 @@ class Queries:
                 result = cursor.fetchall()
                 return result
 
+    def select_ranking(db, month):
+        select_query = f"""
+        SELECT
+            DENSE_RANK() OVER (ORDER BY (up_score + star_score - down_score) DESC) AS ranking,
+            id,
+            name,
+            twitterUrl,
+            discordUrl,
+            FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') mintDate,
+            up_score,
+            down_score,
+            star_score
+        FROM (
+                 SELECT
+                     c.id,
+                     c.name,
+                     c.mintDate,
+                     c.twitterUrl,
+                     c.discordUrl,
+                     SUM(c.up_score) AS up_score,
+                     SUM(c.down_score) AS down_score,
+                     MAX(c.star_score) AS star_score
+                 FROM (
+                          SELECT
+                              a.id,
+                              a.name,
+                              a.mintDate,
+                              a.twitterUrl,
+                              a.discordUrl,
+                              CASE WHEN b.recommendType = 'UP' THEN 1
+                                   ELSE 0
+                                  END up_score,
+                              CASE WHEN b.recommendType = 'DOWN' THEN 1
+                                   ELSE 0
+                                  END down_score,
+                              CASE WHEN COALESCE(a.starCount, 0) = '' THEN 0
+                                  ELSE COALESCE(a.starCount, 0)
+                                END star_score
+                          FROM projects a
+                                   LEFT OUTER JOIN recommends b ON a.id = b.projectId
+                           /*WHERE FROM_UNIXTIME(a.mintDate/1000, '%%Y%%m') = COALESCE(%s, DATE_FORMAT(NOW(), '%%Y%%m'))*/
+                            WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
+                      ) c
+                 GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
+             ) d
+        ORDER BY (up_score + star_score - down_score) DESC
+        LIMIT 10;
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (month,))
+                result = cursor.fetchall()
+                return result
+
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
@@ -714,9 +769,6 @@ async def your(ctx, dc_id):
     embed.add_field(name="", value=list_massage, inline=True)
     await ctx.send(embed=embed)
 
-
-
-
 @bot.command()
 async def msearch(ctx, project_name):
     buttonView = ButtonView(ctx, db, "")
@@ -747,6 +799,31 @@ async def msearch(ctx, project_name):
     else:
         await ctx.send(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```")
 
+from discord import Embed
+
+@bot.command()
+async def mrank(ctx):
+    results = Queries.select_ranking(db, None)
+
+    embed = Embed(title="Projects Ranking", color=0x00ff00)
+
+    for item in results:
+        link_url = f"[Twitter]({item['twitterUrl']})"
+        if item['discordUrl']:
+            link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+
+        field_name = f"```{item['ranking']}.``` {item['name']} :star: {item['star_score']}  :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+        field_value = f"{item['mintDate']} (KST)  |  {link_url}"
+        embed.add_field(name=field_name, value=field_value, inline=False)
+        embed.set_footer(text=f"by SearchFI Bot")
+
+    await ctx.send(embed=embed)
+
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
+    view = discord.ui.View()
+    view.add_item(button)
+    await ctx.send(view=view)
 
 def get_current_price():
     url = "https://api.bithumb.com/public/ticker/LM_KRW"
@@ -760,7 +837,7 @@ def get_current_price():
         return None
 
 @bot.command()
-async def lm(ctx, amount: int = 1):
+async def lm(ctx, amount: float = 1.0):
     current_price = get_current_price()
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -768,8 +845,8 @@ async def lm(ctx, amount: int = 1):
         total_price_rounded = round(total_price, 1)
 
         embed = Embed(title="LM Price", color=0x3498db)
-        embed.add_field(name="1LM", value=f"```\n{format(current_price_rounded, ',')} KRW\n```", inline=True)
-        embed.add_field(name=f"{amount}LM", value=f"```\n{format(total_price_rounded, ',')} KRW\n```", inline=True)
+        embed.add_field(name="1LM", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.add_field(name=f"{amount}LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
         await ctx.send(embed=embed)

@@ -804,7 +804,7 @@ async def msearch(ctx, project_name):
 async def mrank(ctx):
     results = Queries.select_ranking(db, None)
 
-    embed = Embed(title="Projects Ranking", color=0x00ff00)
+    embed = Embed(title="Project Ranking", color=0x00ff00)
 
     for item in results:
         link_url = f"[Twitter]({item['twitterUrl']})"
@@ -824,8 +824,8 @@ async def mrank(ctx):
     view.add_item(button)
     await ctx.send(view=view)
 
-def get_current_price():
-    url = "https://api.bithumb.com/public/ticker/LM_KRW"
+def get_current_price(token):
+    url = f"https://api.bithumb.com/public/ticker/{token}_KRW"
     headers = {"accept": "application/json"}
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -836,16 +836,33 @@ def get_current_price():
         return None
 
 @bot.command()
-async def lm(ctx, amount: float = 1.0):
-    current_price = get_current_price()
+async def lm(ctx, amount: float = 1):
+    current_price = get_current_price('LM')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
         total_price = current_price * amount
         total_price_rounded = round(total_price, 1)
 
         embed = Embed(title="LM Price", color=0x3498db)
-        embed.add_field(name="1LM", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.add_field(name=f"{amount}LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.add_field(name="1 LM", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.add_field(name=f"{amount} LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("Error: Could not fetch the price.")
+
+@bot.command()
+async def sui(ctx, amount: float = 1):
+    current_price = get_current_price('SUI')
+    if current_price is not None:
+        current_price_rounded = round(current_price, 1)
+        total_price = current_price * amount
+        total_price_rounded = round(total_price, 1)
+
+        embed = Embed(title="LM Price", color=0x3498db)
+        embed.add_field(name="1 SUI", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.add_field(name=f"{amount} SUI", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
         embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
         await ctx.send(embed=embed)

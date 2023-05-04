@@ -761,7 +761,7 @@ def get_current_price():
         return None
 
 @bot.command()
-async def lm(ctx, amount: int = 1):
+async def lm(ctx, amount: float = 1.0):
     current_price = get_current_price()
     if current_price is not None:
         current_price_rounded = round(current_price, 1)

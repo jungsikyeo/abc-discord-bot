@@ -870,6 +870,22 @@ async def sui(ctx, amount: float = 1):
     else:
         await ctx.send("Error: Could not fetch the price.")
 
+@bot.command()
+async def bnb(ctx, amount: float = 1):
+    current_price = get_current_price('BNB')
+    if current_price is not None:
+        current_price_rounded = round(current_price, 1)
+        total_price = current_price * amount
+        total_price_rounded = round(total_price, 1)
+
+        embed = Embed(title="BNB Price", color=0x3498db)
+        embed.add_field(name="1 BNB", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.add_field(name=f"{amount} BNB", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
+        embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("Error: Could not fetch the price.")
 
 bot.run(bot_token)
 

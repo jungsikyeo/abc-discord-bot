@@ -75,9 +75,17 @@ try:
     index = 0
     for project in data["projects"]:
         with connection.cursor() as cursor:
-            id = is_json_key_present(project, "_id")
-            delete_query = f"DELETE FROM projects WHERE id = '{id}'"
-            cursor.execute(delete_query)
+            twitter_url = is_json_key_present(project, "twitterUrl")
+
+            select_query = f"SELECT * FROM projects WHERE twitterUrl = '{twitter_url}'"
+            cursor.execute(select_query)
+            existing_project = cursor.fetchone()
+
+            # If there is an existing project, delete it
+            if existing_project:
+                id = existing_project['id']
+            else:
+                id = is_json_key_present(project, "_id")
 
             insert_sql = (
                 "INSERT INTO projects ("
@@ -95,10 +103,17 @@ try:
                 + "%s, %s, %s, %s, %s,"
                 + "%s"
                 ")"
+                + " ON DUPLICATE KEY UPDATE "
+                + "name=VALUES(name), discordUrl=VALUES(discordUrl), instagramUrl=VALUES(instagramUrl),"
+                + "telegramUrl=VALUES(telegramUrl), twitterId=VALUES(twitterId), osUrl=VALUES(osUrl), twitterBannerImage=VALUES(twitterBannerImage), twitterProfileImage=VALUES(twitterProfileImage),"
+                + "hasTime=VALUES(hasTime), mintDate=VALUES(mintDate), mintDateString=VALUES(mintDateString), supply=VALUES(supply), wlPrice=VALUES(wlPrice),"
+                + "pubPrice=VALUES(pubPrice), isWinner=VALUES(isWinner), isStarred=VALUES(isStarred),  blockchain=VALUES(blockchain),"
+                + "lastUpdated=VALUES(lastUpdated), dateCreated=VALUES(dateCreated), vetted=VALUES(vetted), denied=VALUES(denied), starCount=VALUES(starCount),"
+                + "batchUpdated=VALUES(batchUpdated)"
             )
 
             insert_values = (
-                is_json_key_present(project, "_id"),
+                id,
                 is_json_key_present(project, "name"),
                 is_json_key_present(project, "discordUrl"),
                 is_json_key_present(project, "twitterUrl"),

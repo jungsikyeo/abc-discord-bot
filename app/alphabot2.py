@@ -1,9 +1,7 @@
 import datetime
-import time
 import pymysql
 import discord
 import requests
-import math
 from discord.ui import Button, View
 from discord.ext import commands
 from discord import Embed

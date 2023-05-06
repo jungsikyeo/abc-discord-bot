@@ -852,14 +852,14 @@ from discord import Embed
 async def mrank(ctx):
     results = Queries.select_ranking(db, None)
 
-    embed = Embed(title="Project Ranking", color=0x00ff00)
+    embed = Embed(title="🏆 Project Ranking 🏆", color=0x00ff00)
 
     for item in results:
         link_url = f"[Twitter]({item['twitterUrl']})"
         if item['discordUrl']:
             link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
-        field_name = f"```{item['ranking']}.``` {item['name']} :star: {item['star_score']}  :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+        field_name = f"`{item['ranking']}.` {item['name']} :star: {item['star_score']}  :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
         field_value = f"{item['mintDate']} (KST)  |  {link_url}"
         embed.add_field(name=field_name, value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")

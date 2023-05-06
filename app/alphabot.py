@@ -538,6 +538,53 @@ class Queries:
                 result = cursor.fetchall()
                 return result
 
+    def add_recommendation(db, project_id, reg_user, recommend_type):
+        insert_query = f"""
+        INSERT INTO recommends (projectId, regUser, recommendType)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE recommendType=%s;
+        """
+
+        previous_recommendation = Queries.get_previous_recommendation(db, project_id, reg_user)
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(insert_query, (project_id, reg_user, recommend_type, recommend_type))
+                conn.commit()
+
+        return previous_recommendation
+
+    def get_previous_recommendation(db, project_id, reg_user):
+        select_query = f"""
+        SELECT recommendType FROM recommends WHERE projectId=%s AND regUser=%s;
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (project_id, reg_user))
+                result = cursor.fetchone()
+
+        if result:
+            return result['recommendType']
+        return None
+
+
+    def get_project_id_by_twitter_handle(db, twitter_handle):
+        select_query = f"""
+        SELECT id
+        FROM projects
+        WHERE twitterUrl LIKE replace(%s, '@', '');
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (f"%{twitter_handle}",))
+                result = cursor.fetchone()
+
+        if result is None:
+            return None
+
+        return result
+
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
@@ -823,6 +870,54 @@ async def mrank(ctx):
     view = discord.ui.View()
     view.add_item(button)
     await ctx.send(view=view)
+
+@bot.command()
+async def mup(ctx, twitter_handle: str):
+    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+    # Find the project ID by Twitter handle
+    project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+
+    if project_info is None:
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        return
+
+    project_id = project_info['id']
+
+    # Add recommendation to the database and get the previous recommendation type
+    previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "UP")
+
+    # Send an appropriate message
+    if previous_recommendation is None:
+        await ctx.reply(f"✅ Successfully recommended `{twitter_handle}` project!", mention_author=True)
+    elif previous_recommendation == "UP":
+        await ctx.reply(f"ℹ️ You have already recommended `{twitter_handle}` project.", mention_author=True)
+    else:  # previous_recommendation == "DOWN"
+        await ctx.reply(f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!", mention_author=True)
+
+@bot.command()
+async def mdown(ctx, twitter_handle: str):
+    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+    # Find the project ID by Twitter handle
+    project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+
+    if project_info is None:
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        return
+
+    project_id = project_info['id']
+
+    # Add downvote to the database and get the previous recommendation type
+    previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "DOWN")
+
+    # Send an appropriate message
+    if previous_recommendation is None:
+        await ctx.reply(f"❌ Successfully downvoted `{twitter_handle}` project!", mention_author=True)
+    elif previous_recommendation == "DOWN":
+        await ctx.reply(f"ℹ️ You have already downvoted `{twitter_handle}` project.", mention_author=True)
+    else:  # previous_recommendation == "UP"
+        await ctx.reply(f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

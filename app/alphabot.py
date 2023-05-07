@@ -488,7 +488,7 @@ class Queries:
     def select_ranking(db, month):
         select_query = f"""
         SELECT
-            DENSE_RANK() OVER (ORDER BY up_score DESC) AS ranking,
+            DENSE_RANK() OVER (ORDER BY up_score - down_score DESC) AS ranking,
             id,
             name,
             twitterUrl,
@@ -530,8 +530,8 @@ class Queries:
                       ) c
                  GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
              ) d
-        ORDER BY up_score DESC
-        LIMIT 10;
+        ORDER BY (up_score - down_score) DESC
+        LIMIT 50;
         """
 
         with db.get_connection() as conn:

@@ -302,8 +302,8 @@ def read_root():
 app.mount("/static", StaticFiles(directory=os.getenv("STATIC_FOLDER")), name="static")
 templates = Jinja2Templates(directory=os.getenv("TEMPLATES_FOLDER"))
 
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID_DEV")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET_DEV")
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = "https://code.yjsdev.tk/discord-callback"
 
 @app.get("/discord-callback/register")

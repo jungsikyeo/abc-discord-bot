@@ -853,19 +853,31 @@ async def msearch(ctx, project_name):
 async def mrank(ctx):
     results = Queries.select_ranking(db, None)
 
-    embed = Embed(title="🏆 Project Ranking 🏆", color=0x00ff00)
+    pages = []
 
-    for item in results:
-        link_url = f"[Twitter]({item['twitterUrl']})"
-        if item['discordUrl']:
-            link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+    for page in range(5):
+        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
 
-        field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
-        field_value = f"{item['mintDate']} (KST)  |  {link_url}"
-        embed.add_field(name=field_name, value=field_value, inline=False)
-        embed.set_footer(text=f"by SearchFI Bot")
+        for i in range(10):
+            index = page * 10 + i
+            if index >= len(results):
+                break
 
-    await ctx.send(embed=embed, mention_author=True)
+            item = results[index]
+            link_url = f"[Twitter]({item['twitterUrl']})"
+            if item['discordUrl']:
+                link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+
+            field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+            field_value = f"{item['mintDate']} (KST)  |  {link_url}"
+            embed.add_field(name=field_name, value=field_value, inline=False)
+            embed.set_footer(text=f"by SearchFI Bot")
+
+        cal = Page(content=f"**🏆 Project Ranking Top 50 🏆**", embed=embed)
+        pages.append(cal)
+
+    paginator = Paginator(bot)
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)

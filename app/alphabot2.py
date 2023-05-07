@@ -498,7 +498,7 @@ class Queries:
     def select_ranking(db, month):
         select_query = f"""
         SELECT
-            DENSE_RANK() OVER (ORDER BY up_score DESC) AS ranking,
+            DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
             id,
             name,
             twitterUrl,
@@ -540,8 +540,8 @@ class Queries:
                       ) c
                  GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
              ) d
-        ORDER BY up_score DESC
-        LIMIT 10;
+        ORDER BY (up_score - down_score) DESC
+        LIMIT 50;
         """
 
         with db.get_connection() as conn:
@@ -866,25 +866,35 @@ async def msearch(ctx, project_name):
     else:
         await ctx.reply(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```", mention_author=True)
 
-from discord import Embed
-
 @bot.command()
 async def mrank(ctx):
     results = Queries.select_ranking(db, None)
 
-    embed = Embed(title="🏆 Project Ranking 🏆", color=0x00ff00)
+    pages = []
 
-    for item in results:
-        link_url = f"[Twitter]({item['twitterUrl']})"
-        if item['discordUrl']:
-            link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+    for page in range(5):
+        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
 
-        field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
-        field_value = f"{item['mintDate']} (KST)  |  {link_url}"
-        embed.add_field(name=field_name, value=field_value, inline=False)
-        embed.set_footer(text=f"by SearchFI Bot")
+        for i in range(10):
+            index = page * 10 + i
+            if index >= len(results):
+                break
 
-    await ctx.send(embed=embed, mention_author=True)
+            item = results[index]
+            link_url = f"[Twitter]({item['twitterUrl']})"
+            if item['discordUrl']:
+                link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+
+            field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+            field_value = f"{item['mintDate']} (KST)  |  {link_url}"
+            embed.add_field(name=field_name, value=field_value, inline=False)
+            embed.set_footer(text=f"by SearchFI Bot")
+
+        cal = Page(content=f"**🏆 Project Ranking Top 50 🏆**", embed=embed)
+        pages.append(cal)
+
+    paginator = Paginator(bot)
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)

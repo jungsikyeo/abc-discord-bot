@@ -21,6 +21,7 @@ mysql_id = os.getenv("MYSQL_ID")
 mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")
 
+discord_client_id = os.getenv("DISCORD_CLIENT_ID_DEV")
 
 class UpDownView(View):
     def __init__(self, ctx, embed_message, embed, db, project_id):
@@ -115,7 +116,7 @@ class ButtonView(discord.ui.View):
         return embed
 
     def regButton(self):
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
         view = discord.ui.View()
         view.add_item(button)
@@ -138,7 +139,7 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item['regUser']:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
@@ -167,7 +168,7 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item["regUser"]:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
@@ -639,7 +640,7 @@ async def m(ctx):
     await ctx.send(embed=embed)
     await ctx.send("", view=ButtonView(ctx, db, date_string))
 
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
@@ -885,7 +886,7 @@ async def mrank(ctx):
 
     await ctx.send(embed=embed, mention_author=True)
 
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id=1069463768247050321&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)

@@ -8,7 +8,7 @@ from discord import Embed
 from paginator import Paginator, Page, NavigationType
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 import os
 from dotenv import load_dotenv
 
@@ -86,17 +86,23 @@ class ButtonView(discord.ui.View):
 
     def makeEmbed(self, item):        
         if item['hasTime'] == "True":
-            mintTime = f"{item['timeType']} {item['mintTime12']} (UTC+9/KST)"
+            mintTime = f"{item['timeType']} {item['mintTime12']} (KST)"
         else:
             mintTime = "NoneTime"
+
+        link_url = f"[Twitter]({item['twitterUrl']})"
+        if item['discordUrl'] != '-':
+            link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+        if item['walletCheckerUrl'] != '-':
+            link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
             
         if str(self.mobile) == "online":
-            embed=discord.Embed(title=item['name'], description=f"""{mintTime} |  [Twitter]({item['twitterUrl']})  |  [Discord]({item['discordUrl']})\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:star: {item['starCount']}     :thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:star: {item['starCount']}     :thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.set_footer(text=f"by {item['regUser']}")
         else:
-            embed=discord.Embed(title=item['name'], description=f"{mintTime} | [Twitter]({item['twitterUrl']}) | [Discord]({item['discordUrl']})", color=0x04ff00)
+            embed=discord.Embed(title=item['name'], description=f"{mintTime} | {link_url}", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.add_field(name=f"""Supply       """, value=f"{item['supply']}", inline=True)
@@ -205,6 +211,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl,  
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -247,6 +254,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -290,6 +298,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -333,6 +342,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -372,6 +382,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -450,6 +461,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl,  
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -485,7 +497,7 @@ class Queries:
     def select_ranking(db, month):
         select_query = f"""
         SELECT
-            DENSE_RANK() OVER (ORDER BY (up_score + star_score - down_score) DESC) AS ranking,
+            DENSE_RANK() OVER (ORDER BY up_score DESC) AS ranking,
             id,
             name,
             twitterUrl,
@@ -527,7 +539,7 @@ class Queries:
                       ) c
                  GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
              ) d
-        ORDER BY (up_score + star_score - down_score) DESC
+        ORDER BY up_score DESC
         LIMIT 10;
         """
 
@@ -566,7 +578,6 @@ class Queries:
             return result['recommendType']
         return None
 
-
     def get_project_id_by_twitter_handle(db, twitter_handle):
         select_query = f"""
         SELECT id
@@ -583,6 +594,14 @@ class Queries:
             return None
 
         return result
+
+    def update_wallet_checker_url(db, project_id, wallet_checker_url):
+        update_query = "UPDATE projects SET walletCheckerUrl = %s WHERE id = %s"
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (wallet_checker_url, project_id))
+                conn.commit()
 
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 paginator = Paginator(bot)
@@ -859,7 +878,7 @@ async def mrank(ctx):
         if item['discordUrl']:
             link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
-        field_name = f"`{item['ranking']}.` {item['name']} :star: {item['star_score']}  :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+        field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
         field_value = f"{item['mintDate']} (KST)  |  {link_url}"
         embed.add_field(name=field_name, value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")
@@ -919,6 +938,32 @@ async def mdown(ctx, twitter_handle: str):
         await ctx.reply(f"ℹ️ You have already downvoted `{twitter_handle}` project.", mention_author=True)
     else:  # previous_recommendation == "UP"
         await ctx.reply(f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!", mention_author=True)
+
+@bot.command()
+async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
+    if twitter_handle is None or wallet_checker_url is None:
+        await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)
+        return
+
+    # Validate the URL
+    parsed_url = urlparse(wallet_checker_url)
+    if not parsed_url.scheme or not parsed_url.netloc:
+        await ctx.reply(f"Please enter a `{wallet_checker_url}` valid URL format.", mention_author=True)
+        return
+
+    # Find the project ID using the Twitter handle
+    project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+
+    if project_info is None:
+        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.", mention_author=True)
+        return
+
+    project_id = project_info['id']
+
+    # Update the Wallet Checker URL
+    Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
+
+    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

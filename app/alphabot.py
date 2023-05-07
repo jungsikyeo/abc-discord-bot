@@ -486,7 +486,7 @@ class Queries:
     def select_ranking(db, month):
         select_query = f"""
         SELECT
-            DENSE_RANK() OVER (ORDER BY (up_score + star_score - down_score) DESC) AS ranking,
+            DENSE_RANK() OVER (ORDER BY up_score DESC) AS ranking,
             id,
             name,
             twitterUrl,
@@ -528,7 +528,7 @@ class Queries:
                       ) c
                  GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
              ) d
-        ORDER BY (up_score + star_score - down_score) DESC
+        ORDER BY up_score DESC
         LIMIT 10;
         """
 
@@ -858,7 +858,7 @@ async def mrank(ctx):
         if item['discordUrl']:
             link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
-        field_name = f"`{item['ranking']}.` {item['name']} :star: {item['star_score']}  :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+        field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
         field_value = f"{item['mintDate']} (KST)  |  {link_url}"
         embed.add_field(name=field_name, value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")

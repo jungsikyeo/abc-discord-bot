@@ -910,7 +910,14 @@ async def mup(ctx, twitter_handle: str):
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
+
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
+        view = discord.ui.View()
+        view.add_item(button)
+        await ctx.send(view=view)
+
         return
 
     project_id = project_info['id']
@@ -934,7 +941,14 @@ async def mdown(ctx, twitter_handle: str):
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
+
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
+        view = discord.ui.View()
+        view.add_item(button)
+        await ctx.send(view=view)
+
         return
 
     project_id = project_info['id']

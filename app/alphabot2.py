@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+command_flag = os.getenv("TEST_BOT_FLAG")
 bot_token = os.getenv("TEST_BOT_TOKEN")
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
@@ -613,7 +614,7 @@ class Queries:
                 cursor.execute(update_query, (wallet_checker_url, project_id))
                 conn.commit()
 
-bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
+bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
 db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)

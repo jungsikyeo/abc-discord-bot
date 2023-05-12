@@ -894,6 +894,13 @@ async def mrank(ctx):
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
+async def mreg(ctx):
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
+    view = discord.ui.View()
+    view.add_item(button)
+    await ctx.reply(view=view, mention_author=True)
+@bot.command()
 async def mup(ctx, twitter_handle: str):
     user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 

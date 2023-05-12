@@ -757,7 +757,7 @@ async def my(ctx):
                     embed.add_field(name="", value=list_massage, inline=True)
                     await ctx.send(embed=embed)
                     embed=discord.Embed(title="", description="")
-                    list_massage = "\n"         
+                    list_massage = "\n"
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
@@ -765,7 +765,7 @@ async def my(ctx):
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
-                    if before_time != "": 
+                    if before_time != "":
                         list_massage = list_massage + "\n"
                     list_massage = list_massage + f"""{item_time}\n"""
                     before_time = item_time
@@ -773,20 +773,21 @@ async def my(ctx):
                 # print(len(list_massage))
             list_massage = list_massage + ""
         else:
-            update_channel = await bot.fetch_channel(1089590412164993044)
-            mention_string = update_channel.mention
-            list_massage = list_massage + f"No projects have been recommend.\n\nPlease go to {mention_string} Channel and press UP for the project you want to recommend."
+            # update_channel = await bot.fetch_channel(1089590412164993044)
+            # mention_string = update_channel.mention
+            list_massage = list_massage + f"No projects have been recommend.\n\nPlease press `!mup @twitter_handle` for the project you want to recommend."
+            embed.add_field(name="", value=list_massage, inline=True)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
     except Exception as e:
         print("Error:", e)
         return
 
-    
     embed.add_field(name="", value=list_massage, inline=True)
     await ctx.send(embed=embed)
 
-
 @bot.command()
-async def your(ctx, dc_id):
+async def you(ctx, dc_id):
     try:
         print(dc_id[2:-1])
         user = await bot.fetch_user(dc_id[2:-1])
@@ -801,7 +802,12 @@ async def your(ctx, dc_id):
 
         embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
 
-        my_up_list = Queries.select_my_up(db, regUser)
+        today = datetime.datetime.now().date()
+        today_string = today.strftime("%Y-%m-%d")
+        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
+
+        my_up_list = Queries.select_my_up(db, regUser, today_string, tomorrow_string)
         before_date = ""
         before_time = ""
         list_massage = "\n"
@@ -811,7 +817,7 @@ async def your(ctx, dc_id):
                     embed.add_field(name="", value=list_massage, inline=True)
                     await ctx.send(embed=embed)
                     embed=discord.Embed(title="", description="")
-                    list_massage = "\n"         
+                    list_massage = "\n"
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
@@ -819,7 +825,7 @@ async def your(ctx, dc_id):
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
-                    if before_time != "": 
+                    if before_time != "":
                         list_massage = list_massage + "\n"
                     list_massage = list_massage + f"""{item_time}\n"""
                     before_time = item_time
@@ -828,11 +834,13 @@ async def your(ctx, dc_id):
             list_massage = list_massage + ""
         else:
             list_massage = list_massage + f"No projects have been recommend."
+            embed.add_field(name="", value=list_massage, inline=True)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
     except Exception as e:
         print("Error:", e)
         return
 
-    
     embed.add_field(name="", value=list_massage, inline=True)
     await ctx.send(embed=embed)
 

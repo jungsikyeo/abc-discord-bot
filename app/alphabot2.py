@@ -1,4 +1,6 @@
 import datetime
+import time
+
 import pymysql
 import discord
 import requests
@@ -87,7 +89,7 @@ class ButtonView(discord.ui.View):
 
     def makeEmbed(self, item):        
         if item['hasTime'] == "True":
-            mintTime = f"{item['timeType']} {item['mintTime12']} (KST)"
+            mintTime = f"<t:{int(item['unixMintDate'])}>"
         else:
             mintTime = "NoneTime"
 
@@ -221,6 +223,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -264,6 +267,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -307,7 +311,8 @@ class Queries:
                 ifnull(blockchain, '-') blockchain,  
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
+                mintDate/1000 unixMintDate,  
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -351,7 +356,8 @@ class Queries:
                 ifnull(blockchain, '-') blockchain,  
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
+                mintDate/1000 unixMintDate, 
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -392,6 +398,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -471,6 +478,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -504,6 +512,7 @@ class Queries:
             twitterUrl,
             discordUrl,
             FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') mintDate,
+            mintDate/1000 unixMintDate,
             up_score,
             down_score,
             star_score
@@ -761,13 +770,13 @@ async def my(ctx):
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n**{item_date}**\n"""
+                    list_massage = list_massage + f"""\n\n"""
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
                     if before_time != "":
                         list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""{item_time}\n"""
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
                 # print(len(list_massage))
@@ -821,13 +830,13 @@ async def you(ctx, dc_id):
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n**{item_date}**\n"""
+                    list_massage = list_massage + f"""\n\n"""
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
                     if before_time != "":
                         list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""{item_time}\n"""
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
                 # print(len(list_massage))
@@ -900,7 +909,7 @@ async def mrank(ctx):
                 link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
             field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
-            field_value = f"{item['mintDate']} (KST)  |  {link_url}"
+            field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
             embed.add_field(name=field_name, value=field_value, inline=False)
             embed.set_footer(text=f"by SearchFI Bot")
 

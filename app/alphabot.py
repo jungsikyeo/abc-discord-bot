@@ -1,16 +1,16 @@
 import datetime
 import time
+
 import pymysql
 import discord
 import requests
-import math
 from discord.ui import Button, View
 from discord.ext import commands
 from discord import Embed
 from paginator import Paginator, Page, NavigationType
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 import os
 from dotenv import load_dotenv
 
@@ -79,7 +79,7 @@ class ButtonView(discord.ui.View):
         self.username = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
         self.desktop = ctx.message.author.desktop_status
         self.mobile = ctx.message.author.mobile_status
-    
+
     async def get_member_avatar(self, member_name: str, member_discriminator: str):
         member = discord.utils.get(self.ctx.message.guild.members, name=member_name, discriminator=member_discriminator)
         if member is None:
@@ -87,19 +87,25 @@ class ButtonView(discord.ui.View):
         else:
             return member.avatar
 
-    def makeEmbed(self, item):        
+    def makeEmbed(self, item):
         if item['hasTime'] == "True":
-            mintTime = f"{item['timeType']} {item['mintTime12']} (UTC+9/KST)"
+            mintTime = f"<t:{int(item['unixMintDate'])}>"
         else:
             mintTime = "NoneTime"
-            
+
+        link_url = f"[Twitter]({item['twitterUrl']})"
+        if item['discordUrl'] != '-':
+            link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+        if item['walletCheckerUrl'] != '-':
+            link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
+
         if str(self.mobile) == "online":
-            embed=discord.Embed(title=item['name'], description=f"""{mintTime} |  [Twitter]({item['twitterUrl']})  |  [Discord]({item['discordUrl']})\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:star: {item['starCount']}     :thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:star: {item['starCount']}     :thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.set_footer(text=f"by {item['regUser']}")
         else:
-            embed=discord.Embed(title=item['name'], description=f"{mintTime} | [Twitter]({item['twitterUrl']}) | [Discord]({item['discordUrl']})", color=0x04ff00)
+            embed=discord.Embed(title=item['name'], description=f"{mintTime} | {link_url}", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.add_field(name=f"""Supply       """, value=f"{item['supply']}", inline=True)
@@ -119,7 +125,7 @@ class ButtonView(discord.ui.View):
         return view
 
     @discord.ui.button(label="AM", row=0, style=discord.ButtonStyle.success)
-    async def am_button_callback(self, button, interaction):        
+    async def am_button_callback(self, button, interaction):
         await interaction.response.defer()
         await self.ctx.send(f"```* {self.day} AM *\n\nSearching...```")
 
@@ -175,7 +181,7 @@ class ButtonView(discord.ui.View):
         try:
             await interaction.response.send_message("")
         except:
-            pass        
+            pass
 
 class Database:
     def __init__(self, host, port, user, password, db):
@@ -191,7 +197,7 @@ class Database:
             charset='utf8mb4',
             cursorclass=DictCursor
         )
-    
+
     def get_connection(self):
         return self.pool.connection()
 
@@ -208,6 +214,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl,  
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -216,6 +223,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -237,7 +245,7 @@ class Queries:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
-    
+
     def select_all_projects(db, today, tomorrow):
         select_query = f"""
         SELECT  
@@ -250,6 +258,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -258,6 +267,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -266,7 +276,7 @@ class Queries:
                 hasTime  
              FROM projects AA
              WHERE 1=1 
-             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') >= '{today}' 
+             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d %H:%i') >= '{today}' 
              AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') <= '{tomorrow}' 
              /*AND hasTime = 'True' */
              /*AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')*/
@@ -280,7 +290,7 @@ class Queries:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
-            
+
     def select_today_projects(db, today, tomorrow):
         select_query = f"""
         SELECT  
@@ -293,6 +303,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -300,7 +311,8 @@ class Queries:
                 ifnull(blockchain, '-') blockchain,  
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
+                mintDate/1000 unixMintDate,  
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -336,6 +348,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -343,7 +356,8 @@ class Queries:
                 ifnull(blockchain, '-') blockchain,  
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
+                mintDate/1000 unixMintDate, 
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -375,6 +389,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -383,6 +398,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -453,6 +469,7 @@ class Queries:
                 name, 
                 ifnull(discordUrl, '-') discordUrl,  
                 ifnull(twitterUrl, '-') twitterUrl,  
+                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -461,6 +478,7 @@ class Queries:
                 ifnull(starCount, '0') starCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                mintDate/1000 unixMintDate,
                 FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
@@ -488,12 +506,13 @@ class Queries:
     def select_ranking(db, month):
         select_query = f"""
         SELECT
-            DENSE_RANK() OVER (ORDER BY up_score - down_score DESC) AS ranking,
+            DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
             id,
             name,
             twitterUrl,
             discordUrl,
             FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') mintDate,
+            mintDate/1000 unixMintDate,
             up_score,
             down_score,
             star_score
@@ -569,7 +588,6 @@ class Queries:
             return result['recommendType']
         return None
 
-
     def get_project_id_by_twitter_handle(db, twitter_handle):
         select_query = f"""
         SELECT id
@@ -587,7 +605,15 @@ class Queries:
 
         return result
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+    def update_wallet_checker_url(db, project_id, wallet_checker_url):
+        update_query = "UPDATE projects SET walletCheckerUrl = %s WHERE id = %s"
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (wallet_checker_url, project_id))
+                conn.commit()
+
+bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
 db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
@@ -603,15 +629,14 @@ async def on_ready():
 @bot.command()
 async def m(ctx):
     bot_channel_id = 1089590412164993044
-    if ctx.channel.id != 1088659865397903391:
-        if ctx.channel.id != bot_channel_id:
-            await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
+    if ctx.channel.id != bot_channel_id:
+        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
         return
 
     today = datetime.datetime.now().date()
     date_string = today.strftime("%Y-%m-%d")
     day = today.weekday()
-    
+
     embed=discord.Embed(title=f"**{date_string} {days[day]}**")
     await ctx.send(embed=embed)
     await ctx.send("", view=ButtonView(ctx, db, date_string))
@@ -642,7 +667,7 @@ async def mday(ctx, date):
         day = date_db['date_date'].weekday()
     except Exception as e:
         print("Error:", e)
-        await ctx.send("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```")
+        await ctx.reply("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```", mention_author=True)
         return
 
     embed=discord.Embed(title=f"**{date_db['date_string']} {days[day]}**")
@@ -672,7 +697,7 @@ async def mpage(ctx):
         if before_mint_day == "":
             before_mint_day = item['mintDay']
         if before_mint_day != item['mintDay']:
-            color = "+" 
+            color = "+"
         cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 
@@ -689,6 +714,7 @@ async def mint(ctx, *, arg="today"):
         except ValueError:
             await ctx.reply("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)", mention_author=True)
             return
+        print(target_date)
         today = target_date
         tomorrow = target_date + datetime.timedelta(days=1)
     today_string = today.strftime("%Y-%m-%d")
@@ -713,7 +739,7 @@ async def mint(ctx, *, arg="today"):
         if before_mint_day == "":
             before_mint_day = item['mintDay']
         if before_mint_day != item['mintDay']:
-            color = "+" 
+            color = "+"
         cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 
@@ -744,13 +770,13 @@ async def my(ctx):
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n**{item_date}**\n"""
+                    list_massage = list_massage + f"""\n\n"""
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
                     if before_time != "":
                         list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""{item_time}\n"""
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
                 # print(len(list_massage))
@@ -804,13 +830,13 @@ async def you(ctx, dc_id):
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
                 if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n**{item_date}**\n"""
+                    list_massage = list_massage + f"""\n\n"""
                     before_date = item_date
                     before_time = ""
                 if before_time != item_time:
                     if before_time != "":
                         list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""{item_time}\n"""
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
                 # print(len(list_massage))
@@ -847,7 +873,7 @@ async def msearch(ctx, project_name):
                 before_mint_day = item['mintDay']
             if before_mint_day != item['mintDay']:
                 if color == "+":
-                    color = "-" 
+                    color = "-"
                 else:
                     color = "+"
             cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
@@ -883,7 +909,7 @@ async def mrank(ctx):
                 link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
             field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
-            field_value = f"{item['mintDate']} (KST)  |  {link_url}"
+            field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
             embed.add_field(name=field_name, value=field_value, inline=False)
             embed.set_footer(text=f"by SearchFI Bot")
 
@@ -908,7 +934,7 @@ async def mup(ctx, twitter_handle: str):
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
@@ -939,7 +965,7 @@ async def mdown(ctx, twitter_handle: str):
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
@@ -961,6 +987,32 @@ async def mdown(ctx, twitter_handle: str):
         await ctx.reply(f"ℹ️ You have already downvoted `{twitter_handle}` project.", mention_author=True)
     else:  # previous_recommendation == "UP"
         await ctx.reply(f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!", mention_author=True)
+
+@bot.command()
+async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
+    if twitter_handle is None or wallet_checker_url is None:
+        await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)
+        return
+
+    # Validate the URL
+    parsed_url = urlparse(wallet_checker_url)
+    if not parsed_url.scheme or not parsed_url.netloc:
+        await ctx.reply(f"Please enter a `{wallet_checker_url}` valid URL format.", mention_author=True)
+        return
+
+    # Find the project ID using the Twitter handle
+    project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+
+    if project_info is None:
+        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.", mention_author=True)
+        return
+
+    project_id = project_info['id']
+
+    # Update the Wallet Checker URL
+    Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
+
+    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

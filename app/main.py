@@ -97,6 +97,14 @@ class Queries:
         else:
             pubPrice = form["pubPrice"]
 
+        check_query = f"SELECT COUNT(*) cnt FROM projects WHERE lower(twitterUrl) = lower('{twitterUrl}')"
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(check_query)
+                result = cursor.fetchone()
+                if int(result['cnt']) > 0:
+                    return {"status": "ERROR", "msg": "Twitter URL already exists"}
+
         insert_query = f"""
             insert into projects
             (
@@ -122,7 +130,6 @@ class Queries:
             conn.rollback()
             print(e)
             return {"status": "ERROR", "msg": e}
-
 
     def update_project(db, form):
         id = form["id"]
@@ -426,7 +433,9 @@ async def regist_submit(request: Request):
     if result["status"] == "OK":
         comment = "Registration completed!"
     else:
-        comment = "Registration error!"
+        msg = result['msg']
+        comment = f"Registration error: {msg}"
+        print(comment)
         
     html = f"""
     <html>
@@ -444,7 +453,8 @@ async def update_submit(request: Request):
     if result["status"] == "OK":
         comment = "Update completed!"
     else:
-        comment = "Update error!"
+        msg = result['msg']
+        comment = f"Update error: {msg}"
         
     html = f"""
     <html>

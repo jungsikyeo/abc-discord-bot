@@ -16,15 +16,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-command_flag = os.getenv("TEST_BOT_FLAG")
-bot_token = os.getenv("TEST_BOT_TOKEN")
+command_flag = os.getenv("SEARCHFI_BOT_FLAG")
+bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
 mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")
-
-discord_client_id = os.getenv("DISCORD_CLIENT_ID_DEV")
+bot_domain=os.getenv("SEARCHFI_BOT_DOMAIN")
+discord_client_id = os.getenv("DISCORD_CLIENT_ID")
 
 class UpDownView(View):
     def __init__(self, ctx, embed_message, embed, db, project_id):
@@ -95,16 +95,16 @@ class ButtonView(discord.ui.View):
             mintTime = "NoneTime"
 
         link_url = f"[Twitter]({item['twitterUrl']})"
-        if item['discordUrl'] != '-':
+        if item['discordUrl'] and item['discordUrl'] != '-':
             link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
         if item['walletCheckerUrl'] != '-':
             link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
             
         if str(self.mobile) == "online":
-            embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:star: {item['starCount']}     :thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
-            embed.set_footer(text=f"by {item['regUser']}")
+            embed.set_footer(text="Powered by 으노아부지#2642")
         else:
             embed=discord.Embed(title=item['name'], description=f"{mintTime} | {link_url}", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
@@ -112,14 +112,13 @@ class ButtonView(discord.ui.View):
             embed.add_field(name=f"""Supply       """, value=f"{item['supply']}", inline=True)
             embed.add_field(name=f"""WL Price     """, value=f"{item['wlPrice']} {item['blockchain']}", inline=True)
             embed.add_field(name=f"""Public Price """, value=f"{item['pubPrice']} {item['blockchain']}", inline=True)
-            embed.add_field(name="Star", value=f":star: {item['starCount']}", inline=True)
             embed.add_field(name="Up", value=f":thumbsup: {item['goodCount']}", inline=True)
             embed.add_field(name="Down", value=f":thumbsdown: {item['badCount']}", inline=True)
-            embed.set_footer(text=f"by {item['regUser']}")
+            embed.set_footer(text="Powered by 으노아부지#2642")
         return embed
 
     def regButton(self):
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
         view = discord.ui.View()
         view.add_item(button)
@@ -142,12 +141,12 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item['regUser']:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
         embed=discord.Embed(title=f"{self.day} AM Mint", description=f"Total {str(len(projects))}", color=0x001eff)
-        embed.set_footer(text="Developed from 으노아부지#2642")
+        embed.set_footer(text="Powered by 으노아부지#2642")
         await self.ctx.send(embed=embed)
         await self.ctx.send(view=self.regButton())
         try:
@@ -171,12 +170,12 @@ class ButtonView(discord.ui.View):
             embed_message = await self.ctx.send(embed=embed)
             view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
             if self.username == item["regUser"]:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/modify")}&response_type=code&scope=identify'
+                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
                 button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
                 view.add_item(button)
             await embed_message.edit(view=view)
         embed=discord.Embed(title=f"{self.day} PM Mint", description=f"Total {str(len(projects))}", color=0x001eff)
-        embed.set_footer(text="Developed from 으노아부지#2642")
+        embed.set_footer(text="Powered by 으노아부지#2642")
         await self.ctx.send(embed=embed)
         await self.ctx.send(view=self.regButton())
         try:
@@ -207,8 +206,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week 
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 id, 
@@ -225,8 +223,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
                 mintDate/1000 unixMintDate,
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay,
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
@@ -251,8 +248,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 id, 
@@ -269,8 +265,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,  
                 mintDate/1000 unixMintDate,
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
@@ -296,8 +291,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 id, 
@@ -314,8 +308,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
                 mintDate/1000 unixMintDate,  
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
@@ -341,8 +334,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 id, 
@@ -359,8 +351,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount,
                 mintDate/1000 unixMintDate, 
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
@@ -382,8 +373,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 id, 
@@ -400,8 +390,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
                 mintDate/1000 unixMintDate,
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
@@ -462,8 +451,7 @@ class Queries:
         select_query = f"""
         SELECT  
             A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType, 
-            SUBSTR( _UTF8'일월화수목금토', DAYOFWEEK(mintDay), 1) AS week 
+            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
         FROM ( 
              SELECT
                 AA.id, 
@@ -480,7 +468,7 @@ class Queries:
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
                 (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
                 mintDate/1000 unixMintDate,
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') mintDay, 
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
                 FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
@@ -650,7 +638,7 @@ async def m(ctx):
     await ctx.send(embed=embed)
     await ctx.send("", view=ButtonView(ctx, db, date_string))
 
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
@@ -886,7 +874,7 @@ async def msearch(ctx, project_name):
 
 @bot.command()
 async def mrank(ctx):
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("http://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
@@ -922,7 +910,7 @@ async def mrank(ctx):
 
 @bot.command()
 async def mreg(ctx):
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
@@ -937,7 +925,7 @@ async def mup(ctx, twitter_handle: str):
     if project_info is None:
         await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
 
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
         view = discord.ui.View()
         view.add_item(button)
@@ -968,7 +956,7 @@ async def mdown(ctx, twitter_handle: str):
     if project_info is None:
         await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
 
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("https://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
+        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
         view = discord.ui.View()
         view.add_item(button)

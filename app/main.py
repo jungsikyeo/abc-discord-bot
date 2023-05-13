@@ -67,12 +67,21 @@ class Queries:
         discordUrl = form["discordUrl"]
         twitterUrl = form["twitterUrl"]
         twitterProfileImage = form["twitterProfileImage"]
-        mintDate = form["mintDate"]
+        mintDateOption = form["mintDateOption"]
         supply = form["supply"]
         wlPrice = form["wlPrice"]
         pubPrice = form["pubPrice"]
         blockchain = form["blockchain"]
         regUser = form["regUser"]
+
+        # 'mintDate'가 'TBA'인 경우에 대한 처리
+        if mintDateOption == 'TBA':
+            mintDate = "'TBA'"  # or whatever placeholder you prefer
+            hasTime = 'False'
+        else:
+            mintDate = form["mintDate"]
+            mintDate = f"concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000')"
+            hasTime = 'True'
 
         insert_query = f"""
             insert into projects
@@ -83,8 +92,8 @@ class Queries:
             ) 
             values 
             (
-                '{uuid}', '{name}', '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000'), 
-                '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', 'True', 
+                '{uuid}', '{name}', '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', {mintDate}, 
+                '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', '{hasTime}', 
                 '{regUser}', 'N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
             )
         """
@@ -99,7 +108,8 @@ class Queries:
             conn.rollback()
             print(e)
             return {"status": "ERROR", "msg": e}
-    
+
+
     def update_project(db, form):
         id = form["id"]
         name = form["name"]
@@ -304,7 +314,8 @@ templates = Jinja2Templates(directory=os.getenv("TEMPLATES_FOLDER"))
 
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_REDIRECT_URI = "https://code.yjsdev.tk/discord-callback"
+SEARCHFI_BOT_DOMAIN = os.getenv("SEARCHFI_BOT_DOMAIN")
+DISCORD_REDIRECT_URI = f"{SEARCHFI_BOT_DOMAIN}/discord-callback"
 
 @app.get("/discord-callback/register")
 async def reg_discord_callback(request: Request, code: str):

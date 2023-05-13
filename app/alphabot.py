@@ -500,7 +500,7 @@ class Queries:
             name,
             twitterUrl,
             discordUrl,
-            FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') mintDate,
+            case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') end mintDate,
             mintDate/1000 unixMintDate,
             up_score,
             down_score,
@@ -898,7 +898,10 @@ async def mrank(ctx):
                 link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
 
             field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
-            field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
+            if item['mintDate'] == 'TBA':
+                field_value = f"{item['mintDate']}  |  {link_url}"
+            else:
+                field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
             embed.add_field(name=field_name, value=field_value, inline=False)
             embed.set_footer(text=f"by SearchFI Bot")
 

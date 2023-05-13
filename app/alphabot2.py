@@ -672,7 +672,7 @@ async def mint(ctx, *, arg="today"):
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
         except ValueError:
-            await ctx.reply("```Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
+            await ctx.reply("```❌ Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
             return
         print(target_date)
         today = target_date
@@ -744,7 +744,7 @@ async def my(ctx):
         else:
             # update_channel = await bot.fetch_channel(1089590412164993044)
             # mention_string = update_channel.mention
-            list_massage = list_massage + f"No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
+            list_massage = list_massage + f"❌ No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n❌ 추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
             embed=discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
             await ctx.reply(embed=embed, mention_author=True)
@@ -803,7 +803,7 @@ async def you(ctx, dc_id):
                 # print(len(list_massage))
             list_massage = list_massage + ""
         else:
-            list_massage = list_massage + f"`{regUser}` has no recommended project.\n\n`{regUser}`가 추천한 프로젝트는 없습니다."
+            list_massage = list_massage + f"❌ `{regUser}` has no recommended project.\n\n`❌ {regUser}`가 추천한 프로젝트는 없습니다."
             embed=discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
             await ctx.reply(embed=embed, mention_author=True)
@@ -844,7 +844,7 @@ async def msearch(ctx, project_name):
         await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
         embed=discord.Embed(title="", description="")
-        embed.add_field(name="", value=f"No projects have been searched as `{project_name}`.\nPlease search for another word.\n\n`{project_name}`(으)로 검색된 프로젝트가 없습니다.\n다른 단어를 검색하십시오.", inline=True)
+        embed.add_field(name="", value=f"❌ No projects have been searched as `{project_name}`.\nPlease search for another word.\n\n❌ `{project_name}`(으)로 검색된 프로젝트가 없습니다.\n다른 단어를 검색하십시오.", inline=True)
         await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
@@ -883,7 +883,7 @@ async def mrank(ctx):
 @bot.command()
 async def mreg(ctx):
     embed=discord.Embed(title="", description="")
-    embed.add_field(name="", value="Please register the project with the button below.\n\n아래 버튼으로 프로젝트를 등록해주세요.", inline=True)
+    embed.add_field(name="", value="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.", inline=True)
     await ctx.reply(embed=embed, mention_author=True)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -895,7 +895,7 @@ async def mreg(ctx):
 @bot.command()
 async def mmod(ctx):
     embed=discord.Embed(title="", description="")
-    embed.add_field(name="", value="Please correct the project with the button below.\n\n아래 버튼으로 프로젝트를 수정해주세요.", inline=True)
+    embed.add_field(name="", value="ℹ️ Please correct the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 수정해주세요.", inline=True)
     await ctx.reply(embed=embed, mention_author=True)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'

@@ -874,12 +874,6 @@ async def msearch(ctx, project_name):
 
 @bot.command()
 async def mrank(ctx):
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote("http://code.yjsdev.tk/discord-callback/register")}&response_type=code&scope=identify'
-    button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
-    view = discord.ui.View()
-    view.add_item(button)
-    await ctx.send(view=view)
-
     results = Queries.select_ranking(db, None)
 
     pages = []

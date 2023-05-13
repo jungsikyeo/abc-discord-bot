@@ -615,82 +615,53 @@ async def on_ready():
     print("connection was succesful")
     await bot.change_presence(status=discord.Status.online, activity=None)
 
-@bot.command()
-async def m(ctx):
-    bot_channel_id = 1089590412164993044
-    if ctx.channel.id != bot_channel_id:
-        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
-        return
+# @bot.command()
+# async def m(ctx):
+#     bot_channel_id = 1089590412164993044
+#     if ctx.channel.id != bot_channel_id:
+#         await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
+#         return
+#
+#     today = datetime.datetime.now().date()
+#     date_string = today.strftime("%Y-%m-%d")
+#     day = today.weekday()
+#
+#     embed=discord.Embed(title=f"**{date_string} {days[day]}**")
+#     await ctx.send(embed=embed)
+#     await ctx.send("", view=ButtonView(ctx, db, date_string))
+#
+#     tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+#     date_string = tomorrow.strftime("%Y-%m-%d")
+#     day = tomorrow.weekday()
+#
+#     embed=discord.Embed(title=f"**{date_string} {days[day]}**")
+#     await ctx.send(embed=embed)
+#     await ctx.send("", view=ButtonView(ctx, db, date_string))
+#
+#     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
+#     button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
+#     view = discord.ui.View()
+#     view.add_item(button)
+#     await ctx.send(view=view)
 
-    today = datetime.datetime.now().date()
-    date_string = today.strftime("%Y-%m-%d")
-    day = today.weekday()
-
-    embed=discord.Embed(title=f"**{date_string} {days[day]}**")
-    await ctx.send(embed=embed)
-    await ctx.send("", view=ButtonView(ctx, db, date_string))
-
-    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
-    date_string = tomorrow.strftime("%Y-%m-%d")
-    day = tomorrow.weekday()
-
-    embed=discord.Embed(title=f"**{date_string} {days[day]}**")
-    await ctx.send(embed=embed)
-    await ctx.send("", view=ButtonView(ctx, db, date_string))
-
-    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-    button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
-    view = discord.ui.View()
-    view.add_item(button)
-    await ctx.send(view=view)
-
-@bot.command()
-async def mday(ctx, date):
-    bot_channel_id = 1089590412164993044
-    if ctx.channel.id != bot_channel_id:
-        await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
-        return
-
-    try:
-        date_db = Queries.select_change_date(db, date)
-        day = date_db['date_date'].weekday()
-    except Exception as e:
-        print("Error:", e)
-        await ctx.reply("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```", mention_author=True)
-        return
-
-    embed=discord.Embed(title=f"**{date_db['date_string']} {days[day]}**")
-    await ctx.send(embed=embed)
-    await ctx.send("", view=ButtonView(ctx, db, date_db['date_string']))
-
-@bot.command()
-async def mpage(ctx):
-    today = datetime.datetime.now().date()
-    today_string = today.strftime("%Y-%m-%d")
-    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
-    tomorrow_string = tomorrow.strftime("%Y-%m-%d")
-
-    buttonView = ButtonView(ctx, db, "")
-    pages = []
-    projects = Queries.select_all_projects(db, today_string, tomorrow_string)
-    before_mint_day = ""
-    color = "-"
-    for item in projects:
-        try:
-            avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        item["avatar_url"] = avatar_url
-        embed=buttonView.makeEmbed(item)
-
-        if before_mint_day == "":
-            before_mint_day = item['mintDay']
-        if before_mint_day != item['mintDay']:
-            color = "+"
-        cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
-        pages.append(cal)
-
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+# @bot.command()
+# async def mday(ctx, date):
+#     bot_channel_id = 1089590412164993044
+#     if ctx.channel.id != bot_channel_id:
+#         await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
+#         return
+#
+#     try:
+#         date_db = Queries.select_change_date(db, date)
+#         day = date_db['date_date'].weekday()
+#     except Exception as e:
+#         print("Error:", e)
+#         await ctx.reply("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```", mention_author=True)
+#         return
+#
+#     embed=discord.Embed(title=f"**{date_db['date_string']} {days[day]}**")
+#     await ctx.send(embed=embed)
+#     await ctx.send("", view=ButtonView(ctx, db, date_db['date_string']))
 
 @bot.command()
 async def mint(ctx, *, arg="today"):
@@ -701,7 +672,7 @@ async def mint(ctx, *, arg="today"):
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
         except ValueError:
-            await ctx.reply("잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)", mention_author=True)
+            await ctx.reply("```Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
             return
         print(target_date)
         today = target_date
@@ -773,7 +744,8 @@ async def my(ctx):
         else:
             # update_channel = await bot.fetch_channel(1089590412164993044)
             # mention_string = update_channel.mention
-            list_massage = list_massage + f"No projects have been recommend.\n\nPlease press `!mup @twitter_handle` for the project you want to recommend."
+            list_massage = list_massage + f"No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
+            embed=discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
             await ctx.reply(embed=embed, mention_author=True)
             return
@@ -831,7 +803,8 @@ async def you(ctx, dc_id):
                 # print(len(list_massage))
             list_massage = list_massage + ""
         else:
-            list_massage = list_massage + f"No projects have been recommend."
+            list_massage = list_massage + f"`{regUser}` has no recommended project.\n\n`{regUser}`가 추천한 프로젝트는 없습니다."
+            embed=discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
             await ctx.reply(embed=embed, mention_author=True)
             return
@@ -870,7 +843,9 @@ async def msearch(ctx, project_name):
 
         await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
-        await ctx.reply(f"```No projects have been searched as '{project_name}'.\n\nPlease search for another word.```", mention_author=True)
+        embed=discord.Embed(title="", description="")
+        embed.add_field(name="", value=f"No projects have been searched as `{project_name}`.\nPlease search for another word.\n\n`{project_name}`(으)로 검색된 프로젝트가 없습니다.\n다른 단어를 검색하십시오.", inline=True)
+        await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def mrank(ctx):
@@ -907,20 +882,39 @@ async def mrank(ctx):
 
 @bot.command()
 async def mreg(ctx):
+    embed=discord.Embed(title="", description="")
+    embed.add_field(name="", value="Please register the project with the button below.\n\n아래 버튼으로 프로젝트를 등록해주세요.", inline=True)
+    await ctx.reply(embed=embed, mention_author=True)
+
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
     button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
     view = discord.ui.View()
     view.add_item(button)
-    await ctx.reply(view=view, mention_author=True)
+    await ctx.send(view=view)
+
+@bot.command()
+async def mmod(ctx):
+    embed=discord.Embed(title="", description="")
+    embed.add_field(name="", value="Please correct the project with the button below.\n\n아래 버튼으로 프로젝트를 수정해주세요.", inline=True)
+    await ctx.reply(embed=embed, mention_author=True)
+
+    button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
+    button = discord.ui.Button(style=discord.ButtonStyle.red, label="Go to Modify", url=button_url)
+    view = discord.ui.View()
+    view.add_item(button)
+    await ctx.send(view=view)
+
 @bot.command()
 async def mup(ctx, twitter_handle: str):
     user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
-    # Find the project ID by Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
+    embed=discord.Embed(title="", description="")
+
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
+        embed.add_field(name="", value=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", inline=True)
+        await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
@@ -932,26 +926,28 @@ async def mup(ctx, twitter_handle: str):
 
     project_id = project_info['id']
 
-    # Add recommendation to the database and get the previous recommendation type
     previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "UP")
 
-    # Send an appropriate message
     if previous_recommendation is None:
-        await ctx.reply(f"✅ Successfully recommended `{twitter_handle}` project!", mention_author=True)
+        embed.add_field(name="", value=f"✅ Successfully recommended `{twitter_handle}` project!\n\n✅ `{twitter_handle}` 프로젝트를 추천했습니다!", inline=True)
     elif previous_recommendation == "UP":
-        await ctx.reply(f"ℹ️ You have already recommended `{twitter_handle}` project.", mention_author=True)
-    else:  # previous_recommendation == "DOWN"
-        await ctx.reply(f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!", mention_author=True)
+        embed.add_field(name="", value=f"ℹ️ You have already recommended `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 추천하셨습니다.", inline=True)
+    else:
+        embed.add_field(name="", value=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!", inline=True)
+
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def mdown(ctx, twitter_handle: str):
     user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
-    # Find the project ID by Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
+    embed=discord.Embed(title="", description="")
+
     if project_info is None:
-        await ctx.reply(f"❌ Could not find a project for `{twitter_handle}`.\nPlease register the project.", mention_author=True)
+        embed.add_field(name="", value=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", inline=True)
+        await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
         button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
@@ -963,16 +959,16 @@ async def mdown(ctx, twitter_handle: str):
 
     project_id = project_info['id']
 
-    # Add downvote to the database and get the previous recommendation type
     previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "DOWN")
 
-    # Send an appropriate message
     if previous_recommendation is None:
-        await ctx.reply(f"❌ Successfully downvoted `{twitter_handle}` project!", mention_author=True)
+        embed.add_field(name="", value=f"❌ Successfully downvoted `{twitter_handle}` project!\n\n❌ `{twitter_handle}` 프로젝트를 비추천했습니다!", inline=True)
     elif previous_recommendation == "DOWN":
-        await ctx.reply(f"ℹ️ You have already downvoted `{twitter_handle}` project.", mention_author=True)
-    else:  # previous_recommendation == "UP"
-        await ctx.reply(f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!", mention_author=True)
+        embed.add_field(name="", value=f"ℹ️ You have already downvoted `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 비추천하셨습니다.", inline=True)
+    else:
+        embed.add_field(name="", value=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!", inline=True)
+
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):

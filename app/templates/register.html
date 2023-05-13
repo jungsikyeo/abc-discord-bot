@@ -27,37 +27,37 @@
             <div class="group">
                 <div class="group_item mr5">
                     <label for="mintDate">Mint Date</label>
-                    <select id="mintDateOption" name="mintDateOption" onchange="handleMintDateOptionChange(this)">
+                    <select id="mintDateOption" name="mintDateOption" onchange="handleOptionChange(this, 'mintDate')">
                         <option value="specificDate">Specific Date</option>
-                        <option value="TBA">TBA</option>
+                        <option value="TBA" selected>TBA</option>
                     </select>
-                    <input type="datetime-local" id="mintDate" name="mintDate" value="{{ today }}T00:00" required>
+                    <input type="datetime-local" id="mintDate" name="mintDate" value="" required disabled>
                 </div>
                 <div class="group_item mr5">
                     <label for="supplyOption">Supply Option</label>
-                    <select id="supplyOption" name="supplyOption" onchange="handleSupplyOptionChange(this)">
+                    <select id="supplyOption" name="supplyOption" onchange="handleOptionChange(this, 'supply')">
                         <option value="specificSupply">Specific Supply</option>
-                        <option value="TBA">TBA</option>
+                        <option value="TBA" selected>TBA</option>
                     </select>
-                    <input type="number" id="supply" name="supply" required>
+                    <input type="number" id="supply" name="supply" required disabled>
                 </div>
             </div>
             <div class="group">
                 <div class="group_item mr5">
                     <label for="wlPriceOption">WL Price Option</label>
-                    <select id="wlPriceOption" name="wlPriceOption" onchange="handlePriceOptionChange(this, 'wlPrice')">
+                    <select id="wlPriceOption" name="wlPriceOption" onchange="handleOptionChange(this, 'wlPrice')">
                         <option value="specificPrice">Specific Price</option>
-                        <option value="TBA">TBA</option>
+                        <option value="TBA" selected>TBA</option>
                     </select>
-                    <input type="number" id="wlPrice" name="wlPrice" step="0.00001" pattern="[0-9\.]+" required>
+                    <input type="number" id="wlPrice" name="wlPrice" step="0.00001" pattern="[0-9\.]+" required disabled>
                 </div>
                 <div class="group_item">
                     <label for="pubPriceOption">Public Price Option</label>
-                    <select id="pubPriceOption" name="pubPriceOption" onchange="handlePriceOptionChange(this, 'pubPrice')">
+                    <select id="pubPriceOption" name="pubPriceOption" onchange="handleOptionChange(this, 'pubPrice')">
                         <option value="specificPrice">Specific Price</option>
-                        <option value="TBA">TBA</option>
+                        <option value="TBA" selected>TBA</option>
                     </select>
-                    <input type="number" id="pubPrice" name="pubPrice" step="0.00001" pattern="[0-9\.]+" required>
+                    <input type="number" id="pubPrice" name="pubPrice" step="0.00001" pattern="[0-9\.]+" required disabled>
                 </div>
             </div>
             <div>
@@ -83,36 +83,16 @@
                     window.open("about:blank","_self").close()
                 }
 
-                function handleMintDateOptionChange(select) {
-                    const mintDateInput = document.getElementById('mintDate');
-                    if (select.value === 'TBA') {
-                        mintDateInput.disabled = true;
-                        mintDateInput.value = 'TBA';
+                function handleOptionChange(element, relatedInputId) {
+                    const relatedInput = document.getElementById(relatedInputId);
+                    if (element.value === 'TBA') {
+                        relatedInput.disabled = true;
+                        relatedInput.readOnly = true;
+                        relatedInput.value = 'TBA';
                     } else {
-                        mintDateInput.disabled = false;
-                        mintDateInput.value = '{{ today }}T00:00';
-                    }
-                }
-
-                function handleSupplyOptionChange(select) {
-                    const supplyInput = document.getElementById('supply');
-                    if (select.value === 'TBA') {
-                        supplyInput.readOnly = true;
-                        supplyInput.value = 'TBA';
-                    } else {
-                        supplyInput.readOnly = false;
-                        supplyInput.value = '';
-                    }
-                }
-
-                function handlePriceOptionChange(select, inputId) {
-                    const priceInput = document.getElementById(inputId);
-                    if (select.value === 'TBA') {
-                        priceInput.readOnly = true;
-                        priceInput.value = 'TBA';
-                    } else {
-                        priceInput.readOnly = false;
-                        priceInput.value = '';
+                        relatedInput.disabled = false;
+                        relatedInput.readOnly = false;
+                        relatedInput.value = '';
                     }
                 }
             </script>

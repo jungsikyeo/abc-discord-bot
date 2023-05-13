@@ -4,59 +4,112 @@
     <title>SearchFI Calendar Modify</title>
     <link rel="stylesheet" href="/static/styles.css?ver=1.7">
     <script type="text/javascript">
-		const project_list = {{ projects | tojson | safe }};
-        
+        const project_list = {{ projects | tojson | safe }};
+
         function setProject(index) {
             const id = document.getElementById("id");
             const discordUrl = document.getElementById("discordUrl");
             const twitterUrl = document.getElementById("twitterUrl");
             const twitterProfileImage = document.getElementById("twitterProfileImage");
             const mintDate = document.getElementById("mintDate");
+            const mintDateOption = document.getElementById("mintDateOption");
             const supply = document.getElementById("supply");
+            const supplyOption = document.getElementById("supplyOption");
             const wlPrice = document.getElementById("wlPrice");
+            const wlPriceOption = document.getElementById("wlPriceOption");
             const pubPrice = document.getElementById("pubPrice");
+            const pubPriceOption = document.getElementById("pubPriceOption");
             const blockchain = document.getElementById("blockchain");
             if(index > 0) {
                 id.value = project_list[index-1].id;
                 discordUrl.value = project_list[index-1].discordUrl;
                 twitterUrl.value = project_list[index-1].twitterUrl;
                 twitterProfileImage.value = project_list[index-1].twitterProfileImage;
-                mintDate.value = project_list[index-1].mintDate;
-                supply.value = project_list[index-1].supply;
-                wlPrice.value = project_list[index-1].wlPrice;
-                pubPrice.value = project_list[index-1].pubPrice;
                 blockchain.value = project_list[index-1].blockchain;
 
                 discordUrl.readOnly = false;
                 twitterUrl.readOnly = false;
                 twitterProfileImage.readOnly = false;
-                mintDate.readOnly = false;
-                supply.readOnly = false;
-                wlPrice.readOnly = false;
-                pubPrice.readOnly = false;
                 blockchain.readOnly = false;
+
+                if(project_list[index-1].mintDate == 'TBA') {
+                    mintDateOption.value = 'TBA';
+                    mintDate.value = '';
+                    mintDate.disabled = true;
+                } else {
+                    mintDateOption.value = 'specificDate';
+                    mintDate.value = project_list[index-1].mintDate;
+                    mintDate.disabled = false;
+                }
+
+                if(project_list[index-1].supply == 'TBA') {
+                    supplyOption.value = 'TBA';
+                    supply.value = '';
+                    supply.disabled = true;
+                } else {
+                    supplyOption.value = 'specificNumber';
+                    supply.value = project_list[index-1].supply;
+                    supply.disabled = false;
+                }
+
+                if(project_list[index-1].wlPrice == 'TBA') {
+                    wlPriceOption.value = 'TBA';
+                    wlPrice.value = '';
+                    wlPrice.disabled = true;
+                } else {
+                    wlPriceOption.value = 'specificNumber';
+                    wlPrice.value = project_list[index-1].wlPrice;
+                    wlPrice.disabled = false;
+                }
+
+                if(project_list[index-1].pubPrice == 'TBA') {
+                    pubPriceOption.value = 'TBA';
+                    pubPrice.value = '';
+                    pubPrice.disabled = true;
+                } else {
+                    pubPriceOption.value = 'specificNumber';
+                    pubPrice.value = project_list[index-1].pubPrice;
+                    pubPrice.disabled = false;
+                }
             } else {
                 id.value = "";
                 discordUrl.value = "";
                 twitterUrl.value = "";
                 twitterProfileImage.value = "";
+                mintDateOption.value = 'specificDate';
                 mintDate.value = "{{ today }}T00:00";
+                mintDate.disabled = false;
+                supplyOption.value = 'specificNumber';
                 supply.value = "";
+                supply.disabled = false;
+                wlPriceOption.value = 'specificNumber';
                 wlPrice.value = "";
+                wlPrice.disabled = false;
+                pubPriceOption.value = 'specificNumber';
                 pubPrice.value = "";
+                pubPrice.disabled = false;
                 blockchain.value = "ETH";
 
                 discordUrl.readOnly = true;
                 twitterUrl.readOnly = true;
                 twitterProfileImage.readOnly = true;
-                mintDate.readOnly = true;
-                supply.readOnly = true;
-                wlPrice.readOnly = true;
-                pubPrice.readOnly = true;
                 blockchain.readOnly = true;
             }
         }
-	</script>
+
+        function handleOptionChange(element, relatedInputId) {
+            const relatedInput = document.getElementById(relatedInputId);
+            if (element.value === 'TBA') {
+                relatedInput.disabled = true;
+                relatedInput.readOnly = true;
+                relatedInput.value = 'TBA';
+            } else {
+                relatedInput.disabled = false;
+                relatedInput.readOnly = false;
+                relatedInput.value = '';
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -92,20 +145,36 @@
             <div class="group">
                 <div class="group_item mr5">
                     <label for="mintDate">Mint Date</label>
+                    <select id="mintDateOption" name="mintDateOption" onchange="handleOptionChange(this, 'mintDate')">
+                        <option value="specificDate">Specific Date</option>
+                        <option value="TBA">TBA</option>
+                    </select>
                     <input type="datetime-local" id="mintDate" name="mintDate" value="" required readonly>
                 </div>
                 <div class="group_item ml5">
                     <label for="supply">Supply</label>
+                    <select id="supplyOption" name="supplyOption" onchange="handleOptionChange(this, 'supply')">
+                        <option value="specificNumber">Specific Number</option>
+                        <option value="TBA">TBA</option>
+                    </select>
                     <input type="number" id="supply" name="supply" required readonly>
                 </div>
             </div>
             <div class="group">
                 <div class="group_item mr5">
                     <label for="wlPrice">WL Price</label>
+                    <select id="wlPriceOption" name="wlPriceOption" onchange="handleOptionChange(this, 'wlPrice')">
+                        <option value="specificNumber">Specific Number</option>
+                        <option value="TBA">TBA</option>
+                    </select>
                     <input type="number" id="wlPrice" name="wlPrice" step="0.00001" pattern="[0-9\.]+" required readonly>
                 </div>
                 <div class="group_item ml5">
-                    <label for="pubPrice">Pubic Price</label>
+                    <label for="pubPrice">Public Price</label>
+                    <select id="pubPriceOption" name="pubPriceOption" onchange="handleOptionChange(this, 'pubPrice')">
+                        <option value="specificNumber">Specific Number</option>
+                        <option value="TBA">TBA</option>
+                    </select>
                     <input type="number" id="pubPrice" name="pubPrice" step="0.00001" pattern="[0-9\.]+" required readonly>
                 </div>
             </div>

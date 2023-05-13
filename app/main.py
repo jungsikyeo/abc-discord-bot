@@ -68,20 +68,34 @@ class Queries:
         twitterUrl = form["twitterUrl"]
         twitterProfileImage = form["twitterProfileImage"]
         mintDateOption = form["mintDateOption"]
-        supply = form["supply"]
-        wlPrice = form["wlPrice"]
-        pubPrice = form["pubPrice"]
+        supplyOption = form["supplyOption"]
+        wlPriceOption = form["wlPriceOption"]
+        pubPriceOption = form["pubPriceOption"]
         blockchain = form["blockchain"]
         regUser = form["regUser"]
 
-        # 'mintDate'가 'TBA'인 경우에 대한 처리
         if mintDateOption == 'TBA':
-            mintDate = "'TBA'"  # or whatever placeholder you prefer
+            mintDate = "'TBA'"
             hasTime = 'False'
         else:
             mintDate = form["mintDate"]
             mintDate = f"concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000')"
             hasTime = 'True'
+
+        if supplyOption == 'TBA':
+            supply = "TBA"
+        else:
+            supply = form["supply"]
+
+        if wlPriceOption == 'TBA':
+            wlPrice = "TBA"
+        else:
+            wlPrice = form["wlPrice"]
+
+        if pubPriceOption == 'TBA':
+            pubPrice = "TBA"
+        else:
+            pubPrice = form["pubPrice"]
 
         insert_query = f"""
             insert into projects
@@ -115,16 +129,39 @@ class Queries:
         name = form["name"]
         twitterUrl = form["twitterUrl"]
         twitterProfileImage = form["twitterProfileImage"]
-        mintDate = form["mintDate"]
-        supply = form["supply"]
-        wlPrice = form["wlPrice"]
-        pubPrice = form["pubPrice"]
+        mintDateOption = form["mintDateOption"]
+        supplyOption = form["supplyOption"]
+        wlPriceOption = form["wlPriceOption"]
+        pubPriceOption = form["pubPriceOption"]
         blockchain = form["blockchain"]
-        regUser = form["regUser"]
+
+        if mintDateOption == 'TBA':
+            mintDate = "'TBA'"
+            hasTime = 'False'
+        else:
+            mintDate = form["mintDate"]
+            mintDate = f"concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000')"
+            hasTime = 'True'
+
+        if supplyOption == 'TBA':
+            supply = "TBA"
+        else:
+            supply = form["supply"]
+
+        if wlPriceOption == 'TBA':
+            wlPrice = "TBA"
+        else:
+            wlPrice = form["wlPrice"]
+
+        if pubPriceOption == 'TBA':
+            pubPrice = "TBA"
+        else:
+            pubPrice = form["pubPrice"]
 
         update_query = f"""
             update projects set
-                name = '{name}', twitterUrl = '{twitterUrl}', twitterProfileImage = '{twitterProfileImage}', mintDate = concat(cast(UNIX_TIMESTAMP('{mintDate}') as char),'000'), 
+                name = '{name}', twitterUrl = '{twitterUrl}', twitterProfileImage = '{twitterProfileImage}', hasTime = '{hasTime}',
+                mintDate = {mintDate}, 
                 supply = '{supply}', wlPrice = '{wlPrice}', pubPrice = '{pubPrice}', blockchain = '{blockchain}',  
                 lastUpdated = concat(cast(UNIX_TIMESTAMP() as char),'000')
             where id = '{id}'
@@ -170,7 +207,7 @@ class Queries:
                 wlPrice,  
                 pubPrice,  
                 blockchain,  
-                FROM_UNIXTIME(mintDate/1000, '%Y-%m-%dT%H:%i') mintDate,
+                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%dT%H:%i') end mintDate,
                 regUser  
              FROM projects 
              WHERE 1=1 
@@ -181,7 +218,7 @@ class Queries:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
-                return 
+                return result
                 
     # def merge_recommend(db, project_id, regUser, recommend_type):
     #     insert_query = f"""

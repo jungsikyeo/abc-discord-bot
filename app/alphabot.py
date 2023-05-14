@@ -674,9 +674,9 @@ async def mint(ctx, *, arg="today"):
         except ValueError:
             await ctx.reply("```❌ Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
             return
-        print(target_date)
-        today = target_date
-        tomorrow = target_date + datetime.timedelta(days=1)
+
+    today = target_date
+    tomorrow = target_date + datetime.timedelta(days=1)
     today_string = today.strftime("%Y-%m-%d")
     tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 

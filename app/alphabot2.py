@@ -666,8 +666,7 @@ async def on_ready():
 @bot.command()
 async def mint(ctx, *, arg="today"):
     if arg == "today":
-        today = datetime.datetime.now().date()
-        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+        target_date = datetime.datetime.now().date()
     else:
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
@@ -682,10 +681,7 @@ async def mint(ctx, *, arg="today"):
 
     buttonView = ButtonView(ctx, db, "")
     pages = []
-    if arg == "today":
-        projects = Queries.select_today_projects(db, today_string, tomorrow_string)
-    else:
-        projects = Queries.select_all_projects(db, today_string, tomorrow_string)
+    projects = Queries.select_all_projects(db, today_string, tomorrow_string) # removed the if-else statement and only use select_all_projects method
     before_mint_day = ""
     color = "-"
     for item in projects:
@@ -699,7 +695,7 @@ async def mint(ctx, *, arg="today"):
         if before_mint_day == "":
             before_mint_day = item['mintDay']
         if before_mint_day != item['mintDay']:
-            color = "+" 
+            color = "+"
         cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 

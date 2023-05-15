@@ -80,7 +80,7 @@ class ButtonView(discord.ui.View):
         self.username = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
         self.desktop = ctx.message.author.desktop_status
         self.mobile = ctx.message.author.mobile_status
-    
+
     async def get_member_avatar(self, member_name: str, member_discriminator: str):
         member = discord.utils.get(self.ctx.message.guild.members, name=member_name, discriminator=member_discriminator)
         if member is None:
@@ -88,7 +88,7 @@ class ButtonView(discord.ui.View):
         else:
             return member.avatar
 
-    def makeEmbed(self, item):        
+    def makeEmbed(self, item):
         if item['hasTime'] == "True":
             mintTime = f"<t:{int(item['unixMintDate'])}>"
         else:
@@ -99,7 +99,7 @@ class ButtonView(discord.ui.View):
             link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
         if item['walletCheckerUrl'] != '-':
             link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
-            
+
         if str(self.mobile) == "online":
             embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
@@ -125,7 +125,7 @@ class ButtonView(discord.ui.View):
         return view
 
     @discord.ui.button(label="AM", row=0, style=discord.ButtonStyle.success)
-    async def am_button_callback(self, button, interaction):        
+    async def am_button_callback(self, button, interaction):
         await interaction.response.defer()
         await self.ctx.send(f"```* {self.day} AM *\n\nSearching...```")
 
@@ -181,7 +181,7 @@ class ButtonView(discord.ui.View):
         try:
             await interaction.response.send_message("")
         except:
-            pass        
+            pass
 
 class Database:
     def __init__(self, host, port, user, password, db):
@@ -197,7 +197,7 @@ class Database:
             charset='utf8mb4',
             cursorclass=DictCursor
         )
-    
+
     def get_connection(self):
         return self.pool.connection()
 
@@ -243,7 +243,7 @@ class Queries:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
-    
+
     def select_all_projects(db, today, tomorrow):
         select_query = f"""
         SELECT  
@@ -286,7 +286,7 @@ class Queries:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
-            
+
     def select_today_projects(db, today, tomorrow):
         select_query = f"""
         SELECT  
@@ -831,7 +831,7 @@ async def msearch(ctx, project_name):
                 before_mint_day = item['mintDay']
             if before_mint_day != item['mintDay']:
                 if color == "+":
-                    color = "-" 
+                    color = "-"
                 else:
                     color = "+"
             cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
@@ -967,7 +967,7 @@ async def mdown(ctx, twitter_handle: str):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
     if twitter_handle is None or wallet_checker_url is None:
         await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)
@@ -983,7 +983,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.\n\n`{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", mention_author=True)
         return
 
     project_id = project_info['id']
@@ -991,7 +991,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     # Update the Wallet Checker URL
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
 
-    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!", mention_author=True)
+    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n`{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

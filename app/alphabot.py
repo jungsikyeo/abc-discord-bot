@@ -967,7 +967,7 @@ async def mdown(ctx, twitter_handle: str):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
     if twitter_handle is None or wallet_checker_url is None:
         await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)
@@ -983,7 +983,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.", mention_author=True)
+        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.\n\n`{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", mention_author=True)
         return
 
     project_id = project_info['id']
@@ -991,7 +991,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     # Update the Wallet Checker URL
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
 
-    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!", mention_author=True)
+    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n`{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

@@ -967,6 +967,7 @@ async def mdown(ctx, twitter_handle: str):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Super')
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
     if twitter_handle is None or wallet_checker_url is None:
         await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)

@@ -183,9 +183,19 @@ class Queries:
             conn.rollback()
             print(e)
             return {"status": "ERROR", "msg": e}
-    
+
     def delete_project(db, form):
         id = form["id"]
+
+        check_query = f"""
+            SELECT COUNT(*) cnt FROM recommends WHERE projectId = '{id}'
+        """
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(check_query)
+                results = cursor.fetchall()
+                if any(result['cnt'] > 0 for result in results):
+                    return {"status": "ERROR", "msg": "Cannot delete project with existing recommends"}
 
         delete_query = f"""
             delete from projects
@@ -473,7 +483,8 @@ async def delete_submit(request: Request):
     if result["status"] == "OK":
         comment = "Delete completed!"
     else:
-        comment = "Delete error!"
+        msg = result['msg']
+        comment = f"Delete error: {msg}"
         
     html = f"""
     <html>

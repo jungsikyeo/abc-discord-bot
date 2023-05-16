@@ -666,18 +666,23 @@ async def on_ready():
 @bot.command()
 async def mint(ctx, *, arg="today"):
     if arg == "today":
-        target_date = datetime.datetime.now().date()
+        target_date = datetime.datetime.now()
+
+        today = target_date
+        tomorrow = target_date + datetime.timedelta(days=1)
+        today_string = today.strftime("%Y-%m-%d %H:%M")
+        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
     else:
         try:
             target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
+
+            today = target_date
+            tomorrow = target_date + datetime.timedelta(days=1)
+            today_string = today.strftime("%Y-%m-%d")
+            tomorrow_string = tomorrow.strftime("%Y-%m-%d")
         except ValueError:
             await ctx.reply("```❌ Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
             return
-
-    today = target_date
-    tomorrow = target_date + datetime.timedelta(days=1)
-    today_string = today.strftime("%Y-%m-%d")
-    tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 
     buttonView = ButtonView(ctx, db, "")
     pages = []

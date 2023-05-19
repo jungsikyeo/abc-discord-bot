@@ -114,7 +114,7 @@ class Queries:
             ) 
             values 
             (
-                '{uuid}', '{name}', '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', {mintDate}, 
+                '{uuid}', %s, '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', {mintDate}, 
                 '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', '{hasTime}', 
                 '{regUser}', 'N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
             )
@@ -123,7 +123,7 @@ class Queries:
         try:
             with db.get_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(insert_query)
+                    cursor.execute(insert_query, (name,))
                     conn.commit()
             return {"status":"OK"}
         except Exception as e:

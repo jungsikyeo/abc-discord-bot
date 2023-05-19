@@ -397,7 +397,10 @@ class Queries:
                 hasTime  
              FROM projects AA
              WHERE 1=1 
-             AND upper(replace(name,' ', '')) like upper(replace('%{project_name}%', ' ', ''))
+             AND (
+                 upper(replace(name,' ', '')) like upper(replace('%{project_name}%', ' ', '')) 
+                 or upper(replace(twitterUrl,'https://twitter.com/', '')) like upper(replace('%{project_name}%', ' ', ''))
+             )
         ) A 
         WHERE 1=1 
         """

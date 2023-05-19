@@ -649,7 +649,7 @@ class Queries:
         select_query = f"""
         SELECT id
         FROM projects
-        WHERE twitterUrl LIKE replace(%s, '@', '');
+        WHERE twitterUrl LIKE replace(replace(%s, '@', ''), ' ', '');
         """
 
         with db.get_connection() as conn:
@@ -976,7 +976,7 @@ async def mmod(ctx):
     await ctx.send(view=view)
 
 @bot.command()
-async def mup(ctx, twitter_handle: str):
+async def mup(ctx, *, twitter_handle: str):
     user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
@@ -1009,7 +1009,7 @@ async def mup(ctx, twitter_handle: str):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-async def mdown(ctx, twitter_handle: str):
+async def mdown(ctx, *, twitter_handle: str):
     user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)

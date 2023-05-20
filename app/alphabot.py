@@ -885,7 +885,7 @@ async def you(ctx, dc_id):
     await ctx.send(embed=embed)
 
 @bot.command()
-async def msearch(ctx, project_name):
+async def msearch(ctx, *, project_name):
     buttonView = ButtonView(ctx, db, "")
     pages = []
     projects = Queries.select_search_project(db, project_name)

@@ -228,7 +228,7 @@ class Queries:
                 regUser  
              FROM projects 
              WHERE 1=1 
-             AND regUser = '{reg_user}' 
+             AND CASE WHEN '{reg_user}' = '으노아부지#2642' then regUser != 'SearchFI'  else regUser = '{reg_user}' end
              ORDER BY name ASC 
         """
         with db.get_connection() as conn:

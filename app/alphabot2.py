@@ -504,6 +504,7 @@ class Queries:
             name,
             twitterUrl,
             discordUrl,
+            walletCheckerUrl,
             case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') end mintDate,
             mintDate/1000 unixMintDate,
             up_score,
@@ -516,6 +517,7 @@ class Queries:
                      c.mintDate,
                      c.twitterUrl,
                      c.discordUrl,
+                     c.walletCheckerUrl,
                      SUM(c.up_score) AS up_score,
                      SUM(c.down_score) AS down_score,
                      MAX(c.star_score) AS star_score
@@ -526,6 +528,7 @@ class Queries:
                               a.mintDate,
                               a.twitterUrl,
                               a.discordUrl,
+                              a.walletCheckerUrl,
                               CASE WHEN b.recommendType = 'UP' THEN 1
                                    ELSE 0
                                   END up_score,
@@ -539,7 +542,7 @@ class Queries:
                                    LEFT OUTER JOIN recommends b ON a.id = b.projectId
                            WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
                       ) c
-                 GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl
+                 GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl
                  having (up_score + down_score) > 0
              ) d
         ORDER BY (up_score - down_score) DESC
@@ -563,6 +566,7 @@ class Queries:
                      name,
                      twitterUrl,
                      discordUrl,
+                     walletCheckerUrl,
                      case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') end mintDate,
                      mintDate/1000 unixMintDate,
                      up_score,
@@ -576,6 +580,7 @@ class Queries:
                               c.mintDate,
                               c.twitterUrl,
                               c.discordUrl,
+                              c.walletCheckerUrl,
                               SUM(c.up_score) AS up_score,
                               SUM(c.down_score) AS down_score,
                               MAX(c.star_score) AS star_score
@@ -586,6 +591,7 @@ class Queries:
                                        a.mintDate,
                                        a.twitterUrl,
                                        a.discordUrl,
+                                       a.walletCheckerUrl,
                                        CASE WHEN b.recommendType = 'UP' THEN 1
                                             ELSE 0
                                            END up_score,
@@ -600,7 +606,7 @@ class Queries:
                                             LEFT OUTER JOIN recommends b ON a.id = b.projectId
                                    WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
                                ) c
-                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.regUser
+                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.regUser
                           having (up_score + down_score) > 0
                       ) d
                  ORDER BY (up_score - down_score) DESC
@@ -627,6 +633,7 @@ class Queries:
                      name,
                      twitterUrl,
                      discordUrl,
+                     walletCheckerUrl,
                      case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') end mintDate,
                      mintDate/1000 unixMintDate,
                      up_score,
@@ -640,6 +647,7 @@ class Queries:
                               c.mintDate,
                               c.twitterUrl,
                               c.discordUrl,
+                              c.walletCheckerUrl,
                               SUM(c.up_score) AS up_score,
                               SUM(c.down_score) AS down_score,
                               MAX(c.star_score) AS star_score
@@ -650,6 +658,7 @@ class Queries:
                                        a.mintDate,
                                        a.twitterUrl,
                                        a.discordUrl,
+                                       a.walletCheckerUrl,
                                        CASE WHEN b.recommendType = 'UP' THEN 1
                                             ELSE 0
                                            END up_score,
@@ -664,7 +673,7 @@ class Queries:
                                             LEFT OUTER JOIN recommends b ON a.id = b.projectId
                                    WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
                                ) c
-                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.regUser
+                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.regUser
                           having (up_score + down_score) > 0
                       ) d
                  ORDER BY (up_score - down_score) DESC
@@ -1001,6 +1010,8 @@ async def mrank(ctx):
             link_url = f"[Twitter]({item['twitterUrl']})"
             if item['discordUrl']:
                 link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+            if item['walletCheckerUrl']:
+                link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
             field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
             if item['mintDate'] == 'TBA':
@@ -1141,6 +1152,8 @@ async def myrank(ctx, *, dc_id=None):
                 link_url = f"[Twitter]({item['twitterUrl']})"
                 if item['discordUrl']:
                     link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+                if item['walletCheckerUrl']:
+                    link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
                 field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':
@@ -1214,6 +1227,8 @@ async def myup(ctx, *, dc_id=None):
                 link_url = f"[Twitter]({item['twitterUrl']})"
                 if item['discordUrl']:
                     link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+                if item['walletCheckerUrl']:
+                    link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
                 field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':
@@ -1287,6 +1302,8 @@ async def mydown(ctx, *, dc_id=None):
                 link_url = f"[Twitter]({item['twitterUrl']})"
                 if item['discordUrl']:
                     link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+                if item['walletCheckerUrl']:
+                    link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
                 field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':

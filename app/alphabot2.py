@@ -616,6 +616,71 @@ class Queries:
                 result = cursor.fetchall()
                 return result
 
+    def select_my_updown(db, regUser, type):
+        select_query = f"""
+        SELECT f.*
+        FROM (
+                 SELECT
+                     DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
+                     regUser,
+                     id,
+                     name,
+                     twitterUrl,
+                     discordUrl,
+                     case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%%Y-%%m-%%d %%H:%%i') end mintDate,
+                     mintDate/1000 unixMintDate,
+                     up_score,
+                     down_score,
+                     star_score
+                 FROM (
+                          SELECT
+                              c.regUser,
+                              c.id,
+                              c.name,
+                              c.mintDate,
+                              c.twitterUrl,
+                              c.discordUrl,
+                              SUM(c.up_score) AS up_score,
+                              SUM(c.down_score) AS down_score,
+                              MAX(c.star_score) AS star_score
+                          FROM (
+                                   SELECT
+                                       a.id,
+                                       a.name,
+                                       a.mintDate,
+                                       a.twitterUrl,
+                                       a.discordUrl,
+                                       CASE WHEN b.recommendType = 'UP' THEN 1
+                                            ELSE 0
+                                           END up_score,
+                                       CASE WHEN b.recommendType = 'DOWN' THEN 1
+                                            ELSE 0
+                                           END down_score,
+                                       CASE WHEN COALESCE(a.starCount, 0) = '' THEN 0
+                                            ELSE COALESCE(a.starCount, 0)
+                                           END star_score,
+                                       a.regUser
+                                   FROM projects a
+                                            LEFT OUTER JOIN recommends b ON a.id = b.projectId
+                                   WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
+                               ) c
+                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.regUser
+                          having (up_score + down_score) > 0
+                      ) d
+                 ORDER BY (up_score - down_score) DESC
+             ) f
+            INNER JOIN recommends r ON f.id = r.projectId
+        WHERE r.regUser = %s
+        AND r.recommendType = %s
+        ORDER BY ranking ASC
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (regUser, type))
+                result = cursor.fetchall()
+                return result
+
     def add_recommendation(db, project_id, reg_user, recommend_type):
         insert_query = f"""
         INSERT INTO recommends (projectId, regUser, recommendType)
@@ -1105,6 +1170,152 @@ async def myrank(ctx, *, dc_id=None):
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+        embed.set_thumbnail(url=avatar_url)
+        embed.set_footer(text=f"by SearchFI Bot")
+
+        cal = Page(content=f"", embed=embed)
+        pages.append(cal)
+
+    paginator = Paginator(bot)
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+
+@bot.command()
+async def myup(ctx, *, dc_id=None):
+    if dc_id == None:
+        user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    else:
+        print(dc_id[2:-1])
+        user = await bot.fetch_user(dc_id[2:-1])
+        print(user)
+        if user is not None:
+            print(f"이름: {user.name}")
+            print(f"디스크리미네이터: {user.discriminator}")
+            user_id = user.name + "#" + user.discriminator
+        else:
+            user_id = dc_id
+
+    buttonView = ButtonView(ctx, db, "")
+    results = Queries.select_my_updown(db, user_id, 'UP')
+
+    num_pages = (len(results) + 9) // 10
+
+    pages = []
+
+    if num_pages > 0:
+        for page in range(num_pages):
+            embed = Embed(title="", color=0x0061ff)
+
+            for i in range(10):
+                index = page * 10 + i
+                if index >= len(results):
+                    break
+
+                item = results[index]
+                link_url = f"[Twitter]({item['twitterUrl']})"
+                if item['discordUrl']:
+                    link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+
+                field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+                if item['mintDate'] == 'TBA':
+                    field_value = f"{item['mintDate']}  |  {link_url}"
+                else:
+                    field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
+                embed.add_field(name=field_name, value=field_value, inline=False)
+
+            try:
+                avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+                if avatar_url == None:
+                    avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+            except Exception as e:
+                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+            embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            embed.set_thumbnail(url=avatar_url)
+            embed.set_footer(text=f"by SearchFI Bot")
+
+            cal = Page(content=f"", embed=embed)
+            pages.append(cal)
+    else:
+        embed = Embed(title="", color=0x0061ff)
+        try:
+            avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+            if avatar_url == None:
+                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        except Exception as e:
+            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        embed.set_author(name=f"{user_id}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
+        embed.set_thumbnail(url=avatar_url)
+        embed.set_footer(text=f"by SearchFI Bot")
+
+        cal = Page(content=f"", embed=embed)
+        pages.append(cal)
+
+    paginator = Paginator(bot)
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+
+@bot.command()
+async def mydown(ctx, *, dc_id=None):
+    if dc_id == None:
+        user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    else:
+        print(dc_id[2:-1])
+        user = await bot.fetch_user(dc_id[2:-1])
+        print(user)
+        if user is not None:
+            print(f"이름: {user.name}")
+            print(f"디스크리미네이터: {user.discriminator}")
+            user_id = user.name + "#" + user.discriminator
+        else:
+            user_id = dc_id
+
+    buttonView = ButtonView(ctx, db, "")
+    results = Queries.select_my_updown(db, user_id, 'DOWN')
+
+    num_pages = (len(results) + 9) // 10
+
+    pages = []
+
+    if num_pages > 0:
+        for page in range(num_pages):
+            embed = Embed(title="", color=0x0061ff)
+
+            for i in range(10):
+                index = page * 10 + i
+                if index >= len(results):
+                    break
+
+                item = results[index]
+                link_url = f"[Twitter]({item['twitterUrl']})"
+                if item['discordUrl']:
+                    link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
+
+                field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+                if item['mintDate'] == 'TBA':
+                    field_value = f"{item['mintDate']}  |  {link_url}"
+                else:
+                    field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
+                embed.add_field(name=field_name, value=field_value, inline=False)
+
+            try:
+                avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+                if avatar_url == None:
+                    avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+            except Exception as e:
+                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+            embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            embed.set_thumbnail(url=avatar_url)
+            embed.set_footer(text=f"by SearchFI Bot")
+
+            cal = Page(content=f"", embed=embed)
+            pages.append(cal)
+    else:
+        embed = Embed(title="", color=0x0061ff)
+        try:
+            avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+            if avatar_url == None:
+                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        except Exception as e:
+            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        embed.set_author(name=f"{user_id}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 

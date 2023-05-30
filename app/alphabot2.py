@@ -744,6 +744,35 @@ class Queries:
                 cursor.execute(update_query, (wallet_checker_url, project_id))
                 conn.commit()
 
+    def get_tier_by_blockchain(db, blockchain):
+        select_query = f"""
+        SELECT imageUrl
+        FROM tiers
+        WHERE blockchain = case when upper(%s) = null then 'ETH' else upper(%s) end;
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (blockchain, blockchain,))
+                result = cursor.fetchone()
+
+        if result is None:
+            return None
+
+        return result
+
+    def update_tier_url(db, blockchain, image_url, reg_user):
+        update_query = """
+        INSERT INTO tiers (blockchain, imageUrl, regUser)
+        VALUES (upper(%s), %s, %s)
+        ON DUPLICATE KEY UPDATE imageUrl = %s, regUser = %s
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (blockchain, image_url, reg_user, image_url, reg_user,))
+                conn.commit()
+
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
@@ -1368,6 +1397,16 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
 
     await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n`{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", mention_author=True)
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Super')
+async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
+    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+    if tier_url:
+        Queries.update_tier_url(db, blockchain, tier_url, user_id)
+    result = Queries.get_tier_by_blockchain(db, blockchain)
+    await ctx.reply(f"{result['imageUrl']}", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

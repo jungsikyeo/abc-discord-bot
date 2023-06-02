@@ -1487,7 +1487,7 @@ async def me(ctx, symbol):
     projectSupply = data['supply']
     projectOwners = data['owners']
 
-    embed = Embed(title=f"{projectName}", color=0x3498db, url=f"https://magiceden.io/ordinals/marketplace/{symbol}")
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ordinals/marketplace/{symbol}")
     embed.set_thumbnail(url=f"{projectImg}")
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)

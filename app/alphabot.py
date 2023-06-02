@@ -1490,6 +1490,7 @@ async def me_btc(ctx, symbol):
 async def me_sol(ctx, symbol):
     scraper = cloudscraper.create_scraper()
     response = scraper.get(f"https://api-mainnet.magiceden.io/collections/{symbol}?edge_cache=true").text
+    print(response)
     data = json.loads(response)
 
     projectName = data["name"]
@@ -1507,11 +1508,13 @@ async def me_sol(ctx, symbol):
         projectLinks += f" | [Twitter]({projectTwitter})"
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true").text
+    print(response)
     results = json.loads(response)
     data = results['results']
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}?edge_cache=true&agg=2").text
+    print(response)
     results = json.loads(response)
     data = results['results']
     projectSupply = data['totalSupply']

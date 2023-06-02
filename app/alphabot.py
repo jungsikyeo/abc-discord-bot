@@ -774,6 +774,35 @@ class Queries:
                 cursor.execute(update_query, (blockchain, image_url, reg_user, image_url, reg_user,))
                 conn.commit()
 
+    def select_keyword(db, keyword):
+        select_query = f"""
+        SELECT *
+        FROM keywords
+        WHERE keyword = %s;
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (keyword,))
+                result = cursor.fetchone()
+
+        if result is None:
+            return None
+
+        return result
+
+    def update_keyword(db, blockchain, keyword, symbol, reg_user):
+        update_query = """
+        INSERT INTO keywords (blockchain, keyword, symbol, regUser)
+        VALUES (upper(%s), %s, %s, %s)
+        ON DUPLICATE KEY UPDATE blockchain = upper(%s), symbol = %s, regUser = %s
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (blockchain, keyword, symbol, reg_user, blockchain, symbol, reg_user,))
+                conn.commit()
+
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
@@ -786,54 +815,6 @@ async def on_ready():
     print(bot.user.name)
     print("connection was succesful")
     await bot.change_presence(status=discord.Status.online, activity=None)
-
-# @bot.command()
-# async def m(ctx):
-#     bot_channel_id = 1089590412164993044
-#     if ctx.channel.id != bot_channel_id:
-#         await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
-#         return
-#
-#     today = datetime.datetime.now().date()
-#     date_string = today.strftime("%Y-%m-%d")
-#     day = today.weekday()
-#
-#     embed=discord.Embed(title=f"**{date_string} {days[day]}**")
-#     await ctx.send(embed=embed)
-#     await ctx.send("", view=ButtonView(ctx, db, date_string))
-#
-#     tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
-#     date_string = tomorrow.strftime("%Y-%m-%d")
-#     day = tomorrow.weekday()
-#
-#     embed=discord.Embed(title=f"**{date_string} {days[day]}**")
-#     await ctx.send(embed=embed)
-#     await ctx.send("", view=ButtonView(ctx, db, date_string))
-#
-#     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-#     button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
-#     view = discord.ui.View()
-#     view.add_item(button)
-#     await ctx.send(view=view)
-
-# @bot.command()
-# async def mday(ctx, date):
-#     bot_channel_id = 1089590412164993044
-#     if ctx.channel.id != bot_channel_id:
-#         await ctx.reply(f"This command only works in <#{bot_channel_id}> channel.", mention_author=True)
-#         return
-#
-#     try:
-#         date_db = Queries.select_change_date(db, date)
-#         day = date_db['date_date'].weekday()
-#     except Exception as e:
-#         print("Error:", e)
-#         await ctx.reply("```Please enter 'yyyymmdd' or 'yyyy-mm-dd' date format.```", mention_author=True)
-#         return
-#
-#     embed=discord.Embed(title=f"**{date_db['date_string']} {days[day]}**")
-#     await ctx.send(embed=embed)
-#     await ctx.send("", view=ButtonView(ctx, db, date_db['date_string']))
 
 @bot.command()
 async def mint(ctx, *, arg="today"):
@@ -1471,8 +1452,7 @@ async def bnb(ctx, amount: float = 1):
     else:
         await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
-@bot.command()
-async def me(ctx, symbol):
+async def me_btc(ctx, symbol):
     scraper = cloudscraper.create_scraper()
     response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/collections/{symbol}").text
     data = json.loads(response)
@@ -1480,6 +1460,16 @@ async def me(ctx, symbol):
     projectName = data["name"]
     projectImg = data['imageURI']
     projectChain = data['chain'].upper()
+    projectTwitter = data['twitterLink']
+    projectDiscord = data['discordLink']
+    projectWebsite = data['websiteLink']
+    projectLinks = f"[MegicEden](https://magiceden.io/ordinals/marketplace/{symbol})"
+    if projectWebsite:
+        projectLinks += f" | [Website]({projectWebsite})"
+    if projectDiscord:
+        projectLinks += f" | [Discord]({projectDiscord})"
+    if projectTwitter:
+        projectLinks += f" | [Twitter]({projectTwitter})"
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}").text
     data = json.loads(response)
@@ -1492,14 +1482,107 @@ async def me(ctx, symbol):
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.set_footer(text="Powered by 으노아부지#2642")
 
+    await ctx.reply(embed=embed, mention_author=True)
+
+async def me_sol(ctx, symbol):
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(f"https://api-mainnet.magiceden.io/collections/{symbol}?edge_cache=true").text
+    data = json.loads(response)
+
+    projectName = data["name"]
+    projectImg = data['image']
+    projectChain = 'SOL'
+    projectTwitter = data['twitter']
+    projectDiscord = data['discord']
+    projectWebsite = data['website']
+    projectLinks = f"[MegicEden](https://magiceden.io/ko/marketplace/{symbol})"
+    if projectWebsite:
+        projectLinks += f" | [Website]({projectWebsite})"
+    if projectDiscord:
+        projectLinks += f" | [Discord]({projectDiscord})"
+    if projectTwitter:
+        projectLinks += f" | [Twitter]({projectTwitter})"
+
+    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true").text
+    results = json.loads(response)
+    data = results['results']
+    projectFloorPrice = float(data['floorPrice']) / 1000000000
+
+    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}?edge_cache=true&agg=2").text
+    results = json.loads(response)
+    data = results['results']
+    projectSupply = data['totalSupply']
+    projectOwners = data['uniqueHolders']
+
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ko/marketplace/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+
+    await ctx.reply(embed=embed, mention_author=True)
+
+async def me_matic(ctx, symbol):
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}").text
+    data = json.loads(response)
+
+    projectName = data["name"]
+    projectImg = data['media']
+    projectChain = 'MATIC'
+    projectTwitter = data['twitterLink']
+    projectDiscord = data['discordLink']
+    projectWebsite = data['websiteLink']
+    projectLinks = f"[MegicEden](https://magiceden.io/ko/collections/polygon/{symbol})"
+    if projectWebsite:
+        projectLinks += f" | [Website]({projectWebsite})"
+    if projectDiscord:
+        projectLinks += f" | [Discord]({projectDiscord})"
+    if projectTwitter:
+        projectLinks += f" | [Twitter]({projectTwitter})"
+
+    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats").text
+    data = json.loads(response)
+    projectFloorPrice = float(data['floorPrice']) / 1000000000000000000
+    projectSupply = data['totalSupply']
+    projectOwners = data['ownerCount']
+
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ko/collections/polygon/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
 
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-async def 메(ctx, symbol):
-    await me(ctx, symbol)
+async def 메(ctx, keyword):
+    await me(ctx, keyword)
+
+@bot.command()
+async def me(ctx, keyword):
+    result = Queries.select_keyword(db, keyword)
+    print(result['blockchain'], result['symbol'])
+
+    if result['blockchain'] == "BTC":
+        await me_btc(ctx, result['symbol'])
+    elif result['blockchain'] == "SOL":
+        await me_sol(ctx, result['symbol'])
+    elif result['blockchain'] == "MATIC":
+        await me_matic(ctx, result['symbol'])
+
+@bot.command()
+async def msave(ctx, blockchain, keyword, symbol):
+    reg_user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    Queries.update_keyword(db, blockchain, keyword, symbol, reg_user)
+    await ctx.reply(f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", mention_author=True)
 
 bot.run(bot_token)
 

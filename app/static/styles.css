@@ -190,3 +190,13 @@ input[type="submit"] {
 input:invalid {
   border: 2px solid red;
 }
+
+.checkbox-group {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.checkbox-group label {
+	margin: 0 0 0 10px;
+}

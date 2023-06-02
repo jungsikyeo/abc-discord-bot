@@ -74,6 +74,14 @@ class Queries:
         blockchain = form["blockchain"]
         regUser = form["regUser"]
 
+        try:
+            if form["noUpdate"]:
+                noUpdate = 1
+            else:
+                noUpdate = 0
+        except Exception as e:
+            noUpdate = 0
+
         if mintDateOption == 'TBA':
             mintDate = "'TBA'"
             hasTime = 'False'
@@ -110,13 +118,13 @@ class Queries:
             (
                 id, name, discordUrl, twitterUrl, twitterProfileImage, mintDate, 
                 supply, wlPrice, pubPrice, blockchain, hasTime, 
-                regUser, isAlphabot, lastUpdated, dateCreated
+                regUser, noUpdate, isAlphabot, lastUpdated, dateCreated
             ) 
             values 
             (
                 '{uuid}', %s, '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', {mintDate}, 
                 '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', '{hasTime}', 
-                '{regUser}', 'N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
+                '{regUser}', '{noUpdate}','N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
             )
         """
         print(insert_query)
@@ -141,6 +149,14 @@ class Queries:
         wlPriceOption = form["wlPriceOption"]
         pubPriceOption = form["pubPriceOption"]
         blockchain = form["blockchain"]
+
+        try:
+            if form["noUpdate"]:
+                noUpdate = 1
+            else:
+                noUpdate = 0
+        except Exception as e:
+            noUpdate = 0
 
         if mintDateOption == 'TBA':
             mintDate = "'TBA'"
@@ -170,6 +186,7 @@ class Queries:
                 name = '{name}', twitterUrl = '{twitterUrl}', twitterProfileImage = '{twitterProfileImage}', hasTime = '{hasTime}',
                 mintDate = {mintDate}, 
                 supply = '{supply}', wlPrice = '{wlPrice}', pubPrice = '{pubPrice}', blockchain = '{blockchain}',  
+                noUpdate = '{noUpdate}',
                 lastUpdated = concat(cast(UNIX_TIMESTAMP() as char),'000')
             where id = '{id}'
         """
@@ -225,7 +242,8 @@ class Queries:
                 pubPrice,  
                 blockchain,  
                 case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%dT%H:%i') end mintDate,
-                regUser  
+                regUser,
+                noUpdate  
              FROM projects 
              WHERE 1=1 
              AND CASE WHEN '{reg_user}' = '으노아부지#2642' then regUser != 'SearchFI'  else regUser = '{reg_user}' end

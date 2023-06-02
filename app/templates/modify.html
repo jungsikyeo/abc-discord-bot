@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>SearchFI Calendar Modify</title>
-    <link rel="stylesheet" href="/static/styles.css?ver=1.7">
+    <link rel="stylesheet" href="/static/styles.css?ver=1.8">
     <script type="text/javascript">
         const project_list = {{ projects | tojson | safe }};
 
@@ -20,6 +20,7 @@
             const pubPrice = document.getElementById("pubPrice");
             const pubPriceOption = document.getElementById("pubPriceOption");
             const blockchain = document.getElementById("blockchain");
+            const noUpdate = document.getElementById("noUpdate")
             if(index > 0) {
                 id.value = project_list[index-1].id;
                 discordUrl.value = project_list[index-1].discordUrl;
@@ -38,8 +39,9 @@
                     mintDate.disabled = true;
                 } else {
                     mintDateOption.value = 'specificDate';
-                    mintDate.value = project_list[index-1].mintDate;
                     mintDate.disabled = false;
+                    mintDate.readOnly = false;
+                    mintDate.value = project_list[index-1].mintDate;
                 }
 
                 if(project_list[index-1].supply == 'TBA') {
@@ -48,8 +50,9 @@
                     supply.disabled = true;
                 } else {
                     supplyOption.value = 'specificNumber';
-                    supply.value = project_list[index-1].supply;
                     supply.disabled = false;
+                    supply.readOnly = false;
+                    supply.value = project_list[index-1].supply;
                 }
 
                 if(project_list[index-1].wlPrice == 'TBA') {
@@ -58,8 +61,9 @@
                     wlPrice.disabled = true;
                 } else {
                     wlPriceOption.value = 'specificNumber';
-                    wlPrice.value = project_list[index-1].wlPrice;
                     wlPrice.disabled = false;
+                    wlPrice.readOnly = false;
+                    wlPrice.value = project_list[index-1].wlPrice;
                 }
 
                 if(project_list[index-1].pubPrice == 'TBA') {
@@ -68,8 +72,15 @@
                     pubPrice.disabled = true;
                 } else {
                     pubPriceOption.value = 'specificNumber';
-                    pubPrice.value = project_list[index-1].pubPrice;
                     pubPrice.disabled = false;
+                    pubPrice.readOnly = false;
+                    pubPrice.value = project_list[index-1].pubPrice;
+                }
+
+                if(project_list[index-1].noUpdate == 1) {
+                    noUpdate.checked = true;
+                } else {
+                    noUpdate.checked = false;
                 }
             } else {
                 id.value = "";
@@ -89,6 +100,7 @@
                 pubPrice.value = "";
                 pubPrice.disabled = false;
                 blockchain.value = "ETH";
+                noUpdate.checked = false;
 
                 discordUrl.readOnly = true;
                 twitterUrl.readOnly = true;
@@ -188,6 +200,10 @@
                     <option value="APT">APT</option>
                     <option value="USDC">USDC</option>
                 </select>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="noUpdate" name="noUpdate">
+                <label for="noUpdate">Don`t Alphabot Update</label>
             </div>
             <div>
                 <label for="regUser">Creator by {{user.username}}#{{user.discriminator}}</label>

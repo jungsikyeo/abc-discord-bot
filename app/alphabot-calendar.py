@@ -2,10 +2,19 @@
 import requests
 import datetime
 import pymysql
+import os
 
 import cloudscraper
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
+
+mysql_ip = os.getenv("MYSQL_IP_DOCKER")
+mysql_port = os.getenv("MYSQL_PORT_DOCKER")
+mysql_id = os.getenv("MYSQL_ID")
+mysql_passwd = os.getenv("MYSQL_PASSWD")
+mysql_db = os.getenv("MYSQL_DB")
 
 def today_date():
     today = datetime.datetime.now().date()
@@ -63,10 +72,11 @@ print("")
 data = get_project_data(today_timestamp, month_timestamp)
 
 connection = pymysql.connect(
-    host="172.27.0.2",
-    user="bot",
-    password="y20431",
-    database="alphabot",
+    host=mysql_ip,
+    port=int(mysql_port),
+    user=mysql_id,
+    password=mysql_passwd,
+    database=mysql_db,
     charset="utf8mb4",
     cursorclass=pymysql.cursors.DictCursor,
 )
@@ -81,9 +91,12 @@ try:
             cursor.execute(select_query)
             existing_project = cursor.fetchone()
 
-            # If there is an existing project, delete it
+            noUpdate = 0
             if existing_project:
                 id = existing_project['id']
+                noUpdate = existing_project['noUpdate']
+                if noUpdate == None:
+                    noUpdate = 0
             else:
                 id = is_json_key_present(project, "_id")
 
@@ -141,7 +154,10 @@ try:
                 batch_timestamp,
             )
 
-            cursor.execute(insert_sql, insert_values)
+            if int(noUpdate) < 1:
+                cursor.execute(insert_sql, insert_values)
+            else:
+                print(id, is_json_key_present(project, "name"), " : no update")
 
 
             is_winner = is_json_key_present(project, "isWinner")

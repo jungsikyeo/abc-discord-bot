@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>SearchFI Calendar Register</title>
-    <link rel="stylesheet" href="/static/styles.css?ver=1.7">
+    <link rel="stylesheet" href="/static/styles.css?ver=1.8">
 </head>
 <body>
     <div class="container">
@@ -70,6 +70,10 @@
                     <option value="APT">APT</option>
                     <option value="USDC">USDC</option>
                 </select>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="noUpdate" name="noUpdate">
+                <label for="noUpdate">Don`t Alphabot Update</label>
             </div>
             <div>
                 <label for="regUser">Creator by {{user.username}}#{{user.discriminator}}</label>

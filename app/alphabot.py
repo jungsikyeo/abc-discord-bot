@@ -1,9 +1,11 @@
 import datetime
 import time
-
 import pymysql
 import discord
 import requests
+import os
+import cloudscraper
+import json
 from discord.ui import Button, View
 from discord.ext import commands
 from discord import Embed
@@ -11,7 +13,6 @@ from paginator import Paginator, Page, NavigationType
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from urllib.parse import quote, urlparse
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -1469,6 +1470,36 @@ async def bnb(ctx, amount: float = 1):
         await ctx.reply(embed=embed, mention_author=True)
     else:
         await ctx.reply("Error: Could not fetch the price.", mention_author=True)
+
+@bot.command()
+async def me(ctx, symbol):
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/collections/{symbol}").text
+    data = json.loads(response)
+
+    projectName = data["name"]
+    projectImg = data['imageURI']
+    projectChain = data['chain'].upper()
+
+    response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}").text
+    data = json.loads(response)
+    projectFloorPrice = float(data['floorPrice']) / 100000000
+    projectSupply = data['supply']
+    projectOwners = data['owners']
+
+    embed = Embed(title=f"{projectName}", color=0x3498db, url=f"https://magiceden.io/ordinals/marketplace/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+
+    embed.set_footer(text="Powered by 으노아부지#2642")
+
+    await ctx.reply(embed=embed, mention_author=True)
+
+@bot.command()
+async def 메(ctx, symbol):
+    await me(ctx, symbol)
 
 bot.run(bot_token)
 

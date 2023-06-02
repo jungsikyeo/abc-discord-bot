@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-mysql_ip = os.getenv("MYSQL_IP_DOCKER")
-mysql_port = os.getenv("MYSQL_PORT_DOCKER")
+mysql_ip = os.getenv("MYSQL_IP")
+mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
 mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")

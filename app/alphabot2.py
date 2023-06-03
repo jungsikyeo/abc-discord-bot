@@ -6,6 +6,9 @@ import requests
 import os
 import cloudscraper
 import json
+import pytz
+from pytz import all_timezones, timezone
+from datetime import datetime
 from discord.ui import Button, View
 from discord.ext import commands
 from discord import Embed
@@ -1591,6 +1594,62 @@ async def msave(ctx, blockchain, keyword, symbol):
     reg_user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
     Queries.update_keyword(db, blockchain, keyword, symbol, reg_user)
     await ctx.reply(f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", mention_author=True)
+
+timezone_mapping = {tz: tz for tz in all_timezones}
+# Common abbreviations
+timezone_mapping.update({
+    'UTC': 'UTC',
+    'EST': 'US/Eastern',
+    'EDT': 'US/Eastern',
+    'CST': 'US/Central',
+    'CDT': 'US/Central',
+    'MST': 'US/Mountain',
+    'MDT': 'US/Mountain',
+    'PST': 'US/Pacific',
+    'PDT': 'US/Pacific',
+    'HST': 'US/Hawaii',
+    'AKST': 'US/Alaska',
+    'AKDT': 'US/Alaska',
+    'AEST': 'Australia/Eastern',
+    'AEDT': 'Australia/Eastern',
+    'ACST': 'Australia/Central',
+    'ACDT': 'Australia/Central',
+    'AWST': 'Australia/West',
+    'KST': 'Asia/Seoul',
+    'JST': 'Asia/Tokyo',
+    'CET': 'Europe/Central',
+    'CEST': 'Europe/Central',
+    'EET': 'Europe/Eastern',
+    'EEST': 'Europe/Eastern',
+    'WET': 'Europe/Western',
+    'WEST': 'Europe/Western',
+    # Add more if needed
+})
+
+@bot.command()
+async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
+    from_tz_str = timezone_mapping.get(from_tz_param.upper())
+    to_tz_str = timezone_mapping.get(to_tz_str_param.upper())
+
+    if not from_tz_str or not to_tz_str:
+        await ctx.send("Invalid timezone provided")
+        return
+
+    from_tz = pytz.timezone(from_tz_str)
+    to_tz = pytz.timezone(to_tz_str)
+
+    datetime_str = date_str + ' ' + time_str
+
+    try:
+        datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+    except ValueError:
+        await ctx.send("Invalid datetime format. Please use 'YYYY-MM-DD HH:MM'")
+        return
+
+    datetime_obj = from_tz.localize(datetime_obj)
+    datetime_in_to_tz = datetime_obj.astimezone(to_tz)
+
+    await ctx.reply(f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```", mention_author=True)
 
 bot.run(bot_token)
 

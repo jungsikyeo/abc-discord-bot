@@ -1469,6 +1469,7 @@ async def me_btc(ctx, symbol):
     proxy = "http://90e9688e60f29cb50bbf9d87e34c1856f3185f59:antibot=true&autoparse=true@proxy.zenrows.com:8001"
     proxies = {"http": proxy, "https": proxy}
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     data = json.loads(response.text)
 
     projectName = data["name"]
@@ -1488,6 +1489,7 @@ async def me_btc(ctx, symbol):
     # response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}", headers=headers).text
     url = f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}"
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     data = json.loads(response.text)
     projectFloorPrice = float(data['floorPrice']) / 100000000
     projectSupply = data['supply']
@@ -1515,6 +1517,7 @@ async def me_sol(ctx, symbol):
     proxy = "http://90e9688e60f29cb50bbf9d87e34c1856f3185f59:antibot=true&autoparse=true@proxy.zenrows.com:8001"
     proxies = {"http": proxy, "https": proxy}
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     data = json.loads(response.text)
 
     projectName = data["name"]
@@ -1534,6 +1537,7 @@ async def me_sol(ctx, symbol):
     # response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true", headers=headers).text
     url = f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true"
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     results = json.loads(response.text)
     data = results['results']
     projectFloorPrice = float(data['floorPrice']) / 1000000000
@@ -1567,6 +1571,7 @@ async def me_matic(ctx, symbol):
     proxy = "http://90e9688e60f29cb50bbf9d87e34c1856f3185f59:antibot=true&autoparse=true@proxy.zenrows.com:8001"
     proxies = {"http": proxy, "https": proxy}
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     data = json.loads(response.text)
 
     projectName = data["name"]
@@ -1586,6 +1591,7 @@ async def me_matic(ctx, symbol):
     # response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats", headers=headers).text
     url = f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats"
     response = requests.get(url, proxies=proxies, verify=False)
+    print(response.text)
     data = json.loads(response.text)
     projectFloorPrice = float(data['floorPrice']) / 1000000000000000000
     projectSupply = data['totalSupply']

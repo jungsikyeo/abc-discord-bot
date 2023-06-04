@@ -1668,6 +1668,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
     datetime_str = date_str + ' ' + time_str
 
     try:
+        from datetime import datetime
         datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
     except ValueError:
         await ctx.send("Invalid datetime format. Please use 'YYYY-MM-DD HH:MM'")

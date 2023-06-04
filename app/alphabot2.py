@@ -1456,7 +1456,7 @@ async def bnb(ctx, amount: float = 1):
         await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
 async def me_btc(ctx, symbol):
-    scraper = cloudscraper.create_scraper()
+    scraper = cloudscraper.create_scraper(delay=10, browser="chrome")
     response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/collections/{symbol}").text
     data = json.loads(response)
 
@@ -1491,14 +1491,13 @@ async def me_btc(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 async def me_sol(ctx, symbol):
-    scraper = cloudscraper.create_scraper()
+    scraper = cloudscraper.create_scraper(delay=10, browser="chrome")
     headers = {
         "Cookie":"rl_page_init_referrer=RudderEncrypt%3AU2FsdGVkX19SmdvYXC8KilD32raXT2vP87SmiQKFg5Y%3D; rl_page_init_referring_domain=RudderEncrypt%3AU2FsdGVkX1%2Bkn8NEloAGklP49YLEO4H60rYZihLETF8%3D; _gcl_au=1.1.229430566.1681143900; rs_ga=GA1.1.0eb551a7-c5a9-42c1-9e56-f348cc105645; intercom-id-htawnd0o=b1c10552-c81c-4245-9b1e-1c43fabbef15; intercom-device-id-htawnd0o=74e588ef-f3b0-4736-afe0-a85dc01acf02; _ga=GA1.2.236944940.1681143904; _ga_ED223BN325=GS1.1.1681144184.1.1.1681144223.21.0.0; __stripe_mid=4dafe4a9-0000-491b-884c-1b9852e4ba41375aca; session_ids=%7B%22ids%22%3A%5B%7B%22signature%22%3A%22k3v7UCKisdgoSfLLcko1hrzR_NIaT8A0h80vHuoFGbs%22%2C%22walletAddress%22%3A%220xa1B1ec6eaD8CEfa028Df12609F38EEDAc356a697%22%7D%2C%7B%22signature%22%3A%22apnsUJJbccuhKvDQlgjHmh7nlVLeRe19jsA8iOj_dyU%22%2C%22walletAddress%22%3A%220x21a79af2e2f0b8310AAE1865F301746F39E93f1e%22%7D%2C%7B%22signature%22%3A%22BmObApHtyKvxjNQwUVYjAKs1YsQ1u9Ja13_C77WQarw%22%2C%22walletAddress%22%3A%220x9936a60E3883889aF8f2Bc4EA9A0436548E8f57C%22%7D%5D%7D; session_id=BmObApHtyKvxjNQwUVYjAKs1YsQ1u9Ja13_C77WQarw; intercom-session-htawnd0o=; _gid=GA1.2.212248876.1685652374; _cfuvid=SAxej90x8eRcQOO4qy_hUhwcnGfwmquwjfrq4kooSXY-1685705944312-0-604800000; rl_group_id=RudderEncrypt%3AU2FsdGVkX1%2FM%2BPRqsGdil54MSzbSifD1llRjViuC1y8%3D; rl_group_trait=RudderEncrypt%3AU2FsdGVkX19F0TEblRrmeO3asO%2FADly5lDgr1cUqQrQ%3D; rl_anonymous_id=RudderEncrypt%3AU2FsdGVkX1%2FBw41TW%2B36K4h9yhPpXsN%2BmsG2W2zZv%2BYBVQI9IZd1NMAraCyIvLN5juRIM71cCvh%2BgLwN990wiw%3D%3D; rs_ga_8BCG117VGT=GS1.1.1685740263222.55.1.1685742625.58.0.0; rl_user_id=RudderEncrypt%3AU2FsdGVkX19aw%2BhVu4EeNA01tWeq4VSGFPjXvuAONXrMsy4oIPwKA9TL9aydLL0mYsIija0cSLwu7PdjLKXLJw%3D%3D; rl_trait=RudderEncrypt%3AU2FsdGVkX1%2FBdtUkP5J1nWEMCEVEDTlbW4f1VV70gnxm0oYxHN7KL25fmsuoUmKXL7lzS3jXpNwVa7IOWAEz%2FPfzCqFg%2B1ZSU29TW8Uxlw6cKF5F0f7DeJOXGXIo4ZP3Pt06z2Qow%2B0O%2FD95Aqft81tpXsnPx6fbSBCBLV9oV0B6T9o%2FjU4Rx%2FLe4AoG8Gr%2F9d%2Fh1KeAcQJkAsDHkFXG5VRctROK4wLSgkd90pXIiBlcJHsSJIl4CIv77WPF6Xf4op%2F94rlpvOWvAwW3GknDrQ%3D%3D; rl_session=RudderEncrypt%3AU2FsdGVkX1%2BT%2F0uvs%2B5IOYIdJP7IOg3HKd9xR0qDjsliV2QvP%2BwCrp9Paciy0EO6oKFAD%2FvmzdOT%2BRy8Ttez0fP2Er6fk05BclAGh240PrpHCr8yTWwHVmOuFtvJHMbyFWwDaO%2FB%2FGvyKVS06e9P%2BQ%3D%3D; datadome=42FXdKetE3WqM1ZCRKPbjI9N8NLTI4~ud1cM0onKpIgjgEtCavL3zJfh-rX6yFquKpEftEOMFb~D2CjSbVROmGIWGW50pKMqXkygkgW21a6sMJvG07T~3BYRiIhV~bnK; __cf_bm=b7xaTzxkAyHtkoGcTNEj5B5GARCxq2_ZnCb77h72Bm4-1685744647-0-AfBFIvVtHFijJGQYEjv/n8RTWhW716qI0zRVkYGAkV79zQuz3mGhkPQTrmS80EFFcf8lFixw3RQz+c5TXE4gtOLbZHe69bNkPgR+S/s/Nm0E6x5LD138pdGoy/EV8vofyqoPEKVhyZ7odLUXZBi6zS8=; mp_e07f9907b6792861d8448bc4004fb2b4_mixpanel=%7B%22distinct_id%22%3A%20%221876bfc289b1bd8-0a3c2363de8f04-1d525634-1d03d0-1876bfc289c2b17%22%2C%22%24device_id%22%3A%20%221876bfc289b1bd8-0a3c2363de8f04-1d525634-1d03d0-1876bfc289c2b17%22%2C%22%24initial_referrer%22%3A%20%22https%3A%2F%2Ft.co%2F%22%2C%22%24initial_referring_domain%22%3A%20%22t.co%22%7D",
         "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
     }
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/collections/{symbol}?edge_cache=true", headers=headers).text
-    print(response)
     data = json.loads(response)
 
     projectName = data["name"]
@@ -1516,13 +1515,11 @@ async def me_sol(ctx, symbol):
         projectLinks += f" | [Twitter]({projectTwitter})"
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true", headers=headers).text
-    print(response)
     results = json.loads(response)
     data = results['results']
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
     response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}?edge_cache=true&agg=2", headers=headers).text
-    print(response)
     results = json.loads(response)
     data = results['results']
     projectSupply = data['totalSupply']
@@ -1539,7 +1536,7 @@ async def me_sol(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 async def me_matic(ctx, symbol):
-    scraper = cloudscraper.create_scraper()
+    scraper = cloudscraper.create_scraper(delay=10, browser="chrome")
     response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}").text
     data = json.loads(response)
 

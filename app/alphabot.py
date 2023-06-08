@@ -1736,5 +1736,92 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
 
     await ctx.reply(f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```", mention_author=True)
 
+
+@bot.command()
+async def mstock(ctx, stock_symbol: str):
+    import matplotlib.pyplot as plt
+    import mplfinance as mpf
+    import pandas as pd
+    from datetime import datetime
+    from io import BytesIO
+
+    # stock_key = os.getenv("STOCK_KEY")
+    # url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey=demo'
+    # response = requests.get(url)
+    # data = response.json()
+    #
+    # time_series = data.get('Time Series (Daily)')
+    # if not time_series:
+    #     await ctx.send("ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분에 최대 5회까지 사용 가능합니다.")
+    #     return
+    #
+    # dates = []
+    # closing_prices = []
+    # for date, values in time_series.items():
+    #     dates.append(datetime.strptime(date, '%Y-%m-%d'))
+    #     closing_prices.append(float(values['4. close']))
+    #
+    # df = pd.DataFrame(data={'dates':dates, 'closing_prices':closing_prices})
+    # df = df.sort_values(by='dates')
+    #
+    # fig, ax = plt.subplots(figsize=(14,7))
+    # ax.tick_params(axis='x', labelsize=14)
+    # ax.tick_params(axis='y', labelsize=14)
+    # # Iterate over the data and create a line segment for each day
+    # for i in range(1, len(df['dates'])):
+    #     # If the price has increased, use red, else use blue
+    #     if df['closing_prices'].iloc[i] >= df['closing_prices'].iloc[i-1]:
+    #         ax.plot([df['dates'].iloc[i-1], df['dates'].iloc[i]],
+    #                 [df['closing_prices'].iloc[i-1], df['closing_prices'].iloc[i]], color='red', linewidth=2)
+    #     else:
+    #         ax.plot([df['dates'].iloc[i-1], df['dates'].iloc[i]],
+    #                 [df['closing_prices'].iloc[i-1], df['closing_prices'].iloc[i]], color='blue', linewidth=2)
+    #
+    # plt.title(f'{symbol} Stock Closing Prices', fontsize=30, fontweight='bold')
+    # plt.xlabel('Date', fontsize=20, fontweight='bold')
+    # plt.ylabel('Adjusted Closing Price (USD)', fontsize=20, fontweight='bold')
+    #
+    # ax.grid(axis='y')
+    # plt.tight_layout()
+    #
+    # buffer = BytesIO()
+    # plt.savefig(buffer, format='png')
+    # buffer.seek(0)
+    #
+    # await ctx.send(file=discord.File(buffer, f'{symbol}_stock.png'))
+
+    stock_key = os.getenv("STOCK_KEY")
+    BASE_URL = "https://www.alphavantage.co/query"
+    params = {
+        "function": "TIME_SERIES_DAILY_ADJUSTED",
+        "symbol": stock_symbol,
+        "apikey": {stock_key}  # replace with your own API key
+    }
+
+    response = requests.get(BASE_URL, params=params)
+    data = response.json()
+
+    if 'Time Series (Daily)' not in data:
+        await ctx.reply("Could not fetch the stock data. Please check the stock symbol. Remember, you can make up to 5 API requests per minute and 500 API requests per day.", mention_author=True)
+        return
+
+    # Convert the time series data into a pandas DataFrame
+    df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index', dtype=float)
+    df.index = pd.to_datetime(df.index)  # convert index to datetime
+    df = df.rename(columns={'1. open': 'Open', '2. high': 'High', '3. low': 'Low', '4. close': 'Close', '6. volume': 'Volume'})  # rename columns
+    df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
+
+    # Create the plot with the desired style and save it as an image file
+    mc = mpf.make_marketcolors(up='g', down='r', volume='in', inherit=True)
+    s  = mpf.make_mpf_style(base_mpf_style='charles', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
+    fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True)
+    axes[0].xaxis_date()
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    fig.savefig('stock_chart.png')
+    plt.close(fig)
+
+    await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
+
 bot.run(bot_token)
 

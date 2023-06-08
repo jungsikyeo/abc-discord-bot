@@ -1739,6 +1739,12 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
 
 @bot.command()
 async def mstock(ctx, stock_symbol: str):
+    user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+    if not(user == "일론마스크#1576" or user == "으노아부지#2642"):
+        await ctx.reply("❌ Only for 일론마스크#1576\n\n❌ 오직 일론 형님만 조회 가능합니다!", mention_author=True)
+        return
+
     import matplotlib.pyplot as plt
     import mplfinance as mpf
     import pandas as pd

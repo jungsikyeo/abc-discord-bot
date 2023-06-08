@@ -1738,7 +1738,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
 
 
 @bot.command()
-async def 주식(ctx, stock_symbol: str):
+async def 해외주식(ctx, stock_symbol: str):
     user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
     if not(user == "일론마스크#1576" or user == "으노아부지#2642"):
@@ -1751,51 +1751,6 @@ async def 주식(ctx, stock_symbol: str):
     from datetime import datetime
     from io import BytesIO
     from matplotlib.dates import DateFormatter
-
-    # stock_key = os.getenv("STOCK_KEY")
-    # url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey=demo'
-    # response = requests.get(url)
-    # data = response.json()
-    #
-    # time_series = data.get('Time Series (Daily)')
-    # if not time_series:
-    #     await ctx.send("ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분에 최대 5회까지 사용 가능합니다.")
-    #     return
-    #
-    # dates = []
-    # closing_prices = []
-    # for date, values in time_series.items():
-    #     dates.append(datetime.strptime(date, '%Y-%m-%d'))
-    #     closing_prices.append(float(values['4. close']))
-    #
-    # df = pd.DataFrame(data={'dates':dates, 'closing_prices':closing_prices})
-    # df = df.sort_values(by='dates')
-    #
-    # fig, ax = plt.subplots(figsize=(14,7))
-    # ax.tick_params(axis='x', labelsize=14)
-    # ax.tick_params(axis='y', labelsize=14)
-    # # Iterate over the data and create a line segment for each day
-    # for i in range(1, len(df['dates'])):
-    #     # If the price has increased, use red, else use blue
-    #     if df['closing_prices'].iloc[i] >= df['closing_prices'].iloc[i-1]:
-    #         ax.plot([df['dates'].iloc[i-1], df['dates'].iloc[i]],
-    #                 [df['closing_prices'].iloc[i-1], df['closing_prices'].iloc[i]], color='red', linewidth=2)
-    #     else:
-    #         ax.plot([df['dates'].iloc[i-1], df['dates'].iloc[i]],
-    #                 [df['closing_prices'].iloc[i-1], df['closing_prices'].iloc[i]], color='blue', linewidth=2)
-    #
-    # plt.title(f'{symbol} Stock Closing Prices', fontsize=30, fontweight='bold')
-    # plt.xlabel('Date', fontsize=20, fontweight='bold')
-    # plt.ylabel('Adjusted Closing Price (USD)', fontsize=20, fontweight='bold')
-    #
-    # ax.grid(axis='y')
-    # plt.tight_layout()
-    #
-    # buffer = BytesIO()
-    # plt.savefig(buffer, format='png')
-    # buffer.seek(0)
-    #
-    # await ctx.send(file=discord.File(buffer, f'{symbol}_stock.png'))
 
     stock_key = os.getenv("STOCK_KEY")
     BASE_URL = "https://www.alphavantage.co/query"

@@ -1738,7 +1738,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
 
 
 @bot.command()
-async def mstock(ctx, stock_symbol: str):
+async def 주식(ctx, stock_symbol: str):
     user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
     if not(user == "일론마스크#1576" or user == "으노아부지#2642"):
@@ -1750,6 +1750,7 @@ async def mstock(ctx, stock_symbol: str):
     import pandas as pd
     from datetime import datetime
     from io import BytesIO
+    from matplotlib.dates import DateFormatter
 
     # stock_key = os.getenv("STOCK_KEY")
     # url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey=demo'
@@ -1801,7 +1802,7 @@ async def mstock(ctx, stock_symbol: str):
     params = {
         "function": "TIME_SERIES_DAILY_ADJUSTED",
         "symbol": stock_symbol,
-        "apikey": {stock_key}  # replace with your own API key
+        "apikey": stock_key  # replace with your own API key
     }
 
     response = requests.get(BASE_URL, params=params)
@@ -1818,11 +1819,13 @@ async def mstock(ctx, stock_symbol: str):
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
 
     # Create the plot with the desired style and save it as an image file
-    mc = mpf.make_marketcolors(up='g', down='r', volume='in', inherit=True)
-    s  = mpf.make_mpf_style(base_mpf_style='charles', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
-    fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True)
+    mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
+    s  = mpf.make_mpf_style(base_mpf_style='kenan', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
+    fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True, show_nontrading=True)
+    axes[0].yaxis.tick_right()
+    axes[0].yaxis.set_label_position("right")
     axes[0].xaxis_date()
-    fig.autofmt_xdate()
+    axes[0].xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))  # New line to format date
     fig.tight_layout()
     fig.savefig('stock_chart.png')
     plt.close(fig)

@@ -1802,7 +1802,7 @@ async def mstock(ctx, stock_symbol: str):
     data = response.json()
 
     if 'Time Series (Daily)' not in data:
-        await ctx.reply("Could not fetch the stock data. Please check the stock symbol. Remember, you can make up to 5 API requests per minute and 500 API requests per day.", mention_author=True)
+        await ctx.reply("ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", mention_author=True)
         return
 
     # Convert the time series data into a pandas DataFrame

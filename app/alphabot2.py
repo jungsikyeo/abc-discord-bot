@@ -1495,7 +1495,7 @@ async def me_btc(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.io/v2/ord/btc/stat?collectionSymbol={symbol}?v=1", headers=headers).text
     data = json.loads(response)
     # response = requests.get(
     #     url = "https://proxy.scrapeops.io/v1/",
@@ -1559,7 +1559,7 @@ async def me_sol(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?edge_cache=true", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionEscrowStats/{symbol}?v=1&edge_cache=true", headers=headers).text
     results = json.loads(response)
     # response = requests.get(
     #     url = "https://proxy.scrapeops.io/v1/",
@@ -1574,7 +1574,7 @@ async def me_sol(ctx, symbol):
     data = results['results']
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
-    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}?edge_cache=true&agg=2", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}?v=1&edge_cache=true&agg=2", headers=headers).text
     results = json.loads(response)
     # response = requests.get(
     #     url = "https://proxy.scrapeops.io/v1/",

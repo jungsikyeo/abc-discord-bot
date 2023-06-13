@@ -782,12 +782,13 @@ class Queries:
         select_query = f"""
         SELECT *
         FROM keywords
-        WHERE keyword = %s;
+        WHERE keyword = %s or symbol = %s
+        limit 1
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(select_query, (keyword,))
+                cursor.execute(select_query, (keyword, keyword,))
                 result = cursor.fetchone()
 
         if result is None:
@@ -1731,6 +1732,64 @@ async def 해외주식(ctx, stock_symbol: str):
     plt.close(fig)
 
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def addrole(ctx, sheet_name, role_name):
+    import gspread
+    from oauth2client.service_account import ServiceAccountCredentials
+
+    # 결과를 저장할 문자열을 초기화합니다.
+    result_str = ""
+
+    try:
+        # 구글 시트 접근 설정
+        scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets',
+                 "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('searchfi.json', scope)
+        client = gspread.authorize(creds)
+
+        # 시트 열기
+        sheet = client.open(sheet_name).sheet1  # 시트 이름을 파라미터로 받아옵니다.
+        user_list = sheet.get_all_records()  # 시트에서 모든 레코드를 가져옵니다.
+
+        guild = ctx.guild  # 현재 채팅창의 길드를 가져옵니다.
+        role = discord.utils.get(guild.roles, name=role_name)  # 특정 역할을 가져옵니다.
+
+        # 시트에서 가져온 모든 사용자를 반복합니다.
+        for user_info in user_list:
+            if 'discord_username' in user_info:
+                # 사용자 이름에 태그가 있는지 확인합니다.
+                if '#' in user_info['discord_username']:
+                    # 태그가 있으면 사용자 이름과 태그를 분리합니다.
+                    username, tag = user_info['discord_username'].split('#')
+                else:
+                    # 태그가 없으면 사용자 이름을 그대로 사용하고, 태그를 None으로 설정합니다.
+                    username, tag = user_info['discord_username'], None
+
+                # 길드의 모든 멤버를 반복하면서 사용자 이름과 태그가 일치하는 멤버를 찾습니다.
+                for member in guild.members:
+                    if member.name == username and (tag is None or member.discriminator == tag):
+                        result_str += f"{member.name}#{member.discriminator} 님이 서버에 있습니다.\n"
+                        await member.add_roles(role)
+                        break
+                else:
+                    result_str += f"{username}#{tag} 님은 서버에 없습니다.\n"
+
+        # 결과를 txt 파일로 저장합니다.
+        with open('result.txt', 'w') as f:
+            f.write(result_str)
+
+        # 파일을 메시지로 첨부하여 보냅니다.
+        await ctx.send(file=discord.File('result.txt'))
+
+    except Exception as e:
+        # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
+        print(e)
+        await ctx.send(f"오류가 발생했습니다: {str(e)}")
+
+    # 완료 메시지를 보냅니다.
+    await ctx.send("사용자 확인을 완료했습니다.")
 
 bot.run(bot_token)
 

@@ -782,12 +782,13 @@ class Queries:
         select_query = f"""
         SELECT *
         FROM keywords
-        WHERE keyword = %s;
+        WHERE keyword = %s or symbol = %s
+        limit 1
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(select_query, (keyword,))
+                cursor.execute(select_query, (keyword, keyword,))
                 result = cursor.fetchone()
 
         if result is None:

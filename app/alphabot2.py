@@ -1458,6 +1458,64 @@ async def bnb(ctx, amount: float = 1):
     else:
         await ctx.reply("Error: Could not fetch the price.", mention_author=True)
 
+def format_time_difference(sale_time):
+    # 현재 시간과 판매 시간의 차이를 계산
+    elapsed_time = datetime.datetime.now(datetime.timezone.utc) - sale_time
+
+    # 시간 차이를 초 단위로 계산
+    total_seconds = int(elapsed_time.total_seconds())
+
+    # 시간 차이를 문자열로 포맷팅
+    if total_seconds < 60:  # less than a minute
+        return f"{total_seconds}초 전"
+    elif total_seconds < 3600:  # less than an hour
+        return f"{total_seconds // 60}분 전"
+    else:  # show in hours
+        return f"{total_seconds // 3600}시간 전"
+
+def fetch_and_format_sales(activities):
+    from datetime import datetime, timedelta, timezone
+
+    sales = []
+    for sale in activities:
+        name = sale['token']['meta']['name']
+        price = float(sale['listedPrice']) / 100000000
+        sale_time = datetime.strptime(sale['createdAt'], "%a, %d %b %Y %H:%M:%S GMT")
+        sale_time = sale_time.replace(tzinfo=timezone.utc)
+        elapsed_time = datetime.now(tz=timezone.utc) - sale_time
+
+        if elapsed_time < timedelta(minutes=1):
+            time_string = f"{elapsed_time.seconds} sec ago"
+        elif elapsed_time < timedelta(hours=1):
+            time_string = f"{elapsed_time.seconds // 60} min ago"
+        elif elapsed_time < timedelta(days=1):
+            time_string = f"{elapsed_time.seconds // 3600} hrs ago"
+        elif elapsed_time < timedelta(days=30):
+            time_string = f"{elapsed_time.days} days ago"
+        else:
+            months_elapsed = elapsed_time.days // 30
+            time_string = f"{months_elapsed} months ago"
+
+        sales.append({
+            "Name": name,
+            "Price": price,
+            "Time": time_string
+        })
+    return sales
+
+def create_table(formatted_sales):
+    output = "```\n"
+    output += "{:<24s}{:<10s}{:<10s}\n".format("Name", "Price", "Time")
+    output += "-"*44 + "\n"  # 24 characters + 10 characters + 10 characters
+
+    for row in formatted_sales:
+        print(row, len(row.values()))  # 각 행과 그에 해당하는 값의 개수를 출력
+        output += "{:<24s}{:<10.5f}{:<10s}\n".format(*row.values())
+
+    output += "```"
+
+    return output
+
 async def me_btc(ctx, symbol):
     api_key = os.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
@@ -1500,7 +1558,21 @@ async def me_btc(ctx, symbol):
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+
+    time.sleep(0.1)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=5", headers=headers).text
+    data = json.loads(response)
+
+    # 판매 데이터를 포맷팅합니다.
+    formatted_sales = fetch_and_format_sales(data['activities'])
+
+    # 포맷된 판매 데이터를 이용해 테이블을 만듭니다.
+    sales_list = create_table(formatted_sales)
+
+    embed.add_field(name="Activity Info", value=sales_list, inline=False)  # 판매 목록 추가
+
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+
     embed.set_footer(text="Powered by 으노아부지#2642")
 
     await ctx.reply(embed=embed, mention_author=True)

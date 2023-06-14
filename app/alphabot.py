@@ -1476,8 +1476,11 @@ def format_time_difference(sale_time):
 def fetch_and_format_sales(activities):
     from datetime import datetime, timedelta, timezone
 
+    index = 1
     sales = []
     for sale in activities:
+        if index > 5:
+            break
         name = sale['token']['meta']['name']
         price = float(sale['listedPrice']) / 100000000
         sale_time = datetime.strptime(sale['createdAt'], "%a, %d %b %Y %H:%M:%S GMT")
@@ -1501,6 +1504,7 @@ def fetch_and_format_sales(activities):
             "Price": price,
             "Time": time_string
         })
+        index += 1
     return sales
 
 def create_table(formatted_sales):
@@ -1560,7 +1564,7 @@ async def me_btc(ctx, symbol):
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
     time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=5", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=20", headers=headers).text
     data = json.loads(response)
 
     # 판매 데이터를 포맷팅합니다.

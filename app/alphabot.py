@@ -1481,7 +1481,10 @@ def fetch_and_format_sales(activities):
     for sale in activities:
         if index > 5:
             break
-        name = sale['token']['meta']['name']
+        try:
+            name = sale['token']['meta']['name']
+        except:
+            name = f"Inscription #{sale['token']['inscriptionNumber']}"
         price = float(sale['listedPrice']) / 100000000
         sale_time = datetime.strptime(sale['createdAt'], "%a, %d %b %Y %H:%M:%S GMT")
         sale_time = sale_time.replace(tzinfo=timezone.utc)

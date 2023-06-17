@@ -792,7 +792,7 @@ class Queries:
                 result = cursor.fetchone()
 
         if result is None:
-            return None
+            return {"symbol": keyword}
 
         return result
 
@@ -1698,6 +1698,70 @@ async def me(ctx, keyword):
         await me_sol(ctx, result['symbol'])
     elif result['blockchain'] == "MATIC":
         await me_matic(ctx, result['symbol'])
+
+@bot.command()
+async def bl(ctx, keyword):
+    result = Queries.select_keyword(db, keyword)
+    symbol = result['symbol']
+
+    api_key = ""
+    scraper = cloudscraper.create_scraper(delay=10, browser={
+        'browser': 'chrome',
+        'platform': 'android',
+        'desktop': False,
+    })
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+        # "Authorization": f"Bearer {api_key}",
+        "Cookie": "rl_page_init_referrer=RudderEncrypt%3AU2FsdGVkX1%2B%2FwSyImLqUKE0KigZPJi0iuzw5LxMqUoM%3D; rl_page_init_referring_domain=RudderEncrypt%3AU2FsdGVkX187%2FZQPTbilxCAYy7IK31vNOw%2Bwe9J5z7M%3D; authToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3YWxsZXRBZGRyZXNzIjoiMHhhMWIxZWM2ZWFkOGNlZmEwMjhkZjEyNjA5ZjM4ZWVkYWMzNTZhNjk3Iiwic2lnbmF0dXJlIjoiMHgwNDNkZThlMWM0MDhmODkzOGY1ZjdlOTIzZmE3YTFiZWMyNjE3ZWI4NzAyNWZjMzU5NDE2YzNiMjA1MmY5OWUyM2JlMmZiN2IzM2I5MzUwMWE4MjEzMzA2NDhlNWYyYTBmN2U0ZjI5NDY3YzIxMjdkZjk5YjI0MmVkN2ZmYTEwOTFiIiwiaWF0IjoxNjg0NjY5MTM5LCJleHAiOjE2ODcyNjExMzl9.OtS_qO2qwVrtJwrxUsAT5LFrW1ecJMalz0cK9HE15lI; walletAddress=0xa1b1ec6ead8cefa028df12609f38eedac356a697; _ga=GA1.1.361735973.1686888245; _ga_C09NSBBFNH=GS1.1.1687010858.3.0.1687010858.0.0.0; fs_uid=#o-19FFTT-na1#5957567928848384:5801947529752576:::#7a7d64e3#/1715938712; __cf_bm=z_oxRhwB7IoZQWFPcsR_vKCBm7ej.JPmfX68wEh.5sU-1687010861-0-Ac6ZNRYr8NmzUqyGRkgxsSCvMRQtXsoM30mPRoCb6621djKdDUEactuLoiIkfzJ+3+8YVFaJEbDmYHtDF8WnUso=; rl_trait=RudderEncrypt%3AU2FsdGVkX19GBdKWtlNPzT6z1FKPycK%2BGvVT7DuCrS0%3D; rl_group_id=RudderEncrypt%3AU2FsdGVkX1%2B68s55TXHvCzTn68TS1FDNd6eeUTzs9x8%3D; rl_group_trait=RudderEncrypt%3AU2FsdGVkX1%2BRYtk9mJGwYvQAqQOVkWfMsbgldQ7jmqk%3D; rl_anonymous_id=RudderEncrypt%3AU2FsdGVkX19aOnwxlZZt7jxb6tAzTkgLHU1ehtJIa%2BghTaekb3W67hkfYM1hBDlnikHBf9MAPzy52SuIB9mOQQ%3D%3D; rl_user_id=RudderEncrypt%3AU2FsdGVkX1%2Bpe%2FzyMv19Mm%2BzU3qAo9L0%2FE4AMvifFT8h3B7qf9VEVTrpE7XNXCz1ZCEUBU%2FQB4iJ0pAoMpvu8Q%3D%3D; mp_e07f9907b6792861d8448bc4004fb2b4_mixpanel=%7B%22distinct_id%22%3A%20%221876c60e7211687-00086c2f87ed45-1d525634-1d03d0-1876c60e7221fe6%22%2C%22%24device_id%22%3A%20%221876c60e7211687-00086c2f87ed45-1d525634-1d03d0-1876c60e7221fe6%22%2C%22%24initial_referrer%22%3A%20%22%24direct%22%2C%22%24initial_referring_domain%22%3A%20%22%24direct%22%7D; rl_session=RudderEncrypt%3AU2FsdGVkX1%2BsnjgyOLPNdhU7Nsq40HBOKF1%2Fw4mVtIsCRBg5lfwGvvV4DsWQwK9eAnO%2Bcr6YulfVtjKgJeE9jRTsVbgbGUmwFgyzn3T4EksvlXLMu6sn7RSizc7g1PYIeEzlU3hySxGRKQ43EPNLPA%3D%3D"
+    }
+    response = scraper.get(f"https://core-api.prod.blur.io/v1/collections/{symbol}", headers=headers).text
+    results = json.loads(response)
+    print(results)
+
+    data = results['collection']
+
+    projectName = data["name"]
+    projectImg = data['imageUrl']
+    projectChain = data['floorPrice']['unit']
+    projectLinks = f"[Blur](https://blur.io/collection/{symbol})"
+
+    projectFloorPrice = float(data['floorPrice']['amount'])
+    projectSupply = data['totalSupply']
+    projectOwners = data['numberOwners']
+
+    volumeFifteenMinutes = data['volumeFifteenMinutes']
+    if volumeFifteenMinutes:
+        volumeFifteenMinutes = f"{data['volumeFifteenMinutes']['amount']} {data['volumeFifteenMinutes']['unit']}"
+    else:
+        volumeFifteenMinutes = "0 ETH"
+
+    volumeOneDay = data['volumeOneDay']
+    if volumeOneDay:
+        volumeOneDay = f"{data['volumeOneDay']['amount']} {data['volumeOneDay']['unit']}"
+    else:
+        volumeOneDay = "0 ETH"
+
+    volumeOneWeek = data['volumeOneWeek']
+    if volumeOneWeek:
+        volumeOneWeek = f"{data['volumeOneWeek']['amount']} {data['volumeOneWeek']['unit']}"
+    else:
+        volumeOneWeek = "0 ETH"
+
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://blur.io/collection/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+
+    embed.add_field(name="15Min Volume", value=f"```{volumeFifteenMinutes}```", inline=False)
+    embed.add_field(name="1Day Volume", value=f"```{volumeOneDay}```", inline=False)
+    embed.add_field(name="7Day Volume", value=f"```{volumeOneWeek}```", inline=False)
+
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def msave(ctx, blockchain, keyword, symbol):

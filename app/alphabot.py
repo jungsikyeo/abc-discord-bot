@@ -3,7 +3,7 @@ import time
 import pymysql
 import discord
 import requests
-import os
+import os as operating_system
 import cloudscraper
 import cfscrape
 import json
@@ -21,15 +21,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-command_flag = os.getenv("SEARCHFI_BOT_FLAG")
-bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
-mysql_ip = os.getenv("MYSQL_IP")
-mysql_port = os.getenv("MYSQL_PORT")
-mysql_id = os.getenv("MYSQL_ID")
-mysql_passwd = os.getenv("MYSQL_PASSWD")
-mysql_db = os.getenv("MYSQL_DB")
-bot_domain=os.getenv("SEARCHFI_BOT_DOMAIN")
-discord_client_id = os.getenv("DISCORD_CLIENT_ID")
+command_flag = operating_system.getenv("SEARCHFI_BOT_FLAG")
+bot_token = operating_system.getenv("SEARCHFI_BOT_TOKEN")
+mysql_ip = operating_system.getenv("MYSQL_IP")
+mysql_port = operating_system.getenv("MYSQL_PORT")
+mysql_id = operating_system.getenv("MYSQL_ID")
+mysql_passwd = operating_system.getenv("MYSQL_PASSWD")
+mysql_db = operating_system.getenv("MYSQL_DB")
+bot_domain=operating_system.getenv("SEARCHFI_BOT_DOMAIN")
+discord_client_id = operating_system.getenv("DISCORD_CLIENT_ID")
 
 class UpDownView(View):
     def __init__(self, ctx, embed_message, embed, db, project_id):
@@ -1046,8 +1046,8 @@ async def mrank(ctx):
 
 @bot.command()
 async def mreg(ctx):
-    embed=discord.Embed(title="", description="")
-    embed.add_field(name="", value="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.", inline=True)
+    embed = Embed(title="Warning", description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.", color=0xFFFFFF)
+    embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -1058,8 +1058,8 @@ async def mreg(ctx):
 
 @bot.command()
 async def mmod(ctx):
-    embed=discord.Embed(title="", description="")
-    embed.add_field(name="", value="ℹ️ Please correct the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 수정해주세요.", inline=True)
+    embed = Embed(title="Warning", description="ℹ️ Please correct the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 수정해주세요.", color=0xFFFFFF)
+    embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
@@ -1074,10 +1074,9 @@ async def mup(ctx, *, twitter_handle: str):
 
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
-    embed=discord.Embed(title="", description="")
-
     if project_info is None:
-        embed.add_field(name="", value=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", inline=True)
+        embed = Embed(title="Error", description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
         await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -1093,12 +1092,12 @@ async def mup(ctx, *, twitter_handle: str):
     previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "UP")
 
     if previous_recommendation is None:
-        embed.add_field(name="", value=f"✅ Successfully recommended `{twitter_handle}` project!\n\n✅ `{twitter_handle}` 프로젝트를 추천했습니다!", inline=True)
+        embed = Embed(title="Success", description=f":thumbup: Successfully recommended `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트를 추천했습니다!", color=0x37E37B)
     elif previous_recommendation == "UP":
-        embed.add_field(name="", value=f"ℹ️ You have already recommended `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 추천하셨습니다.", inline=True)
+        embed = Embed(title="Warning", description=f"ℹ️ You have already recommended `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 추천하셨습니다.", color=0xffffff)
     else:
-        embed.add_field(name="", value=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!", inline=True)
-
+        embed = Embed(title="Changed", description=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!", color=0x37E37B)
+    embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
@@ -1110,7 +1109,8 @@ async def mdown(ctx, *, twitter_handle: str):
     embed=discord.Embed(title="", description="")
 
     if project_info is None:
-        embed.add_field(name="", value=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", inline=True)
+        embed = Embed(title="Error", description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
         await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -1126,12 +1126,12 @@ async def mdown(ctx, *, twitter_handle: str):
     previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "DOWN")
 
     if previous_recommendation is None:
-        embed.add_field(name="", value=f"❌ Successfully downvoted `{twitter_handle}` project!\n\n❌ `{twitter_handle}` 프로젝트를 비추천했습니다!", inline=True)
+        embed = Embed(title="Success", description=f":thumbdown: Successfully downvoted `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트를 비추천했습니다!", color=0x37E37B)
     elif previous_recommendation == "DOWN":
-        embed.add_field(name="", value=f"ℹ️ You have already downvoted `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 비추천하셨습니다.", inline=True)
+        embed = Embed(title="Warning", description=f"ℹ️ You have already downvoted `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 비추천하셨습니다.", color=0xffffff)
     else:
-        embed.add_field(name="", value=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!", inline=True)
-
+        embed = Embed(title="Changed", description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!", color=0x37E37B)
+    embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
@@ -1363,20 +1363,26 @@ async def mydown(ctx, *, dc_id=None):
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
     if twitter_handle is None or wallet_checker_url is None:
-        await ctx.reply("Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`", mention_author=True)
+        embed = Embed(title="Error", description="❌ Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`\n\n❌ 사용방법: `!mchecker <트위터 핸들> <지갑체크 URL>`", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     # Validate the URL
     parsed_url = urlparse(wallet_checker_url)
     if not parsed_url.scheme or not parsed_url.netloc:
-        await ctx.reply(f"Please enter a `{wallet_checker_url}` valid URL format.", mention_author=True)
+        embed = Embed(title="Error", description=f"❌ Please enter a `{wallet_checker_url}` valid URL format.\n\n❌ `{wallet_checker_url}`은 유효한 URL형식이 아닙니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     # Find the project ID using the Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        await ctx.reply(f"Cannot find a project corresponding to `{twitter_handle}`.\n\n`{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", mention_author=True)
+        embed = Embed(title="Error", description="❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     project_id = project_info['id']
@@ -1384,7 +1390,9 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     # Update the Wallet Checker URL
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
 
-    await ctx.reply(f"Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n`{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", mention_author=True)
+    embed = Embed(title="Success", description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", color=0x37e37b)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Super')
@@ -1422,7 +1430,9 @@ async def lm(ctx, amount: float = 1):
 
         await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
+        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def sui(ctx, amount: float = 1):
@@ -1439,7 +1449,9 @@ async def sui(ctx, amount: float = 1):
 
         await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
+        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def bnb(ctx, amount: float = 1):
@@ -1456,7 +1468,9 @@ async def bnb(ctx, amount: float = 1):
 
         await ctx.reply(embed=embed, mention_author=True)
     else:
-        await ctx.reply("Error: Could not fetch the price.", mention_author=True)
+        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
 
 def format_time_difference(sale_time):
     # 현재 시간과 판매 시간의 차이를 계산
@@ -1524,7 +1538,7 @@ def create_table(formatted_sales):
     return output
 
 async def me_btc(ctx, symbol):
-    api_key = os.getenv("MAGICEDEN_API_KEY")
+    api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
         'platform': 'android',
@@ -1536,6 +1550,16 @@ async def me_btc(ctx, symbol):
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
     # print(response)
     data = json.loads(response)
+    # print(data)
+
+    try:
+        if not data:
+            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except:
+        pass
 
     projectName = data["name"]
     projectImg = data['imageURI']
@@ -1585,7 +1609,7 @@ async def me_btc(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 async def me_sol(ctx, symbol):
-    api_key = os.getenv("MAGICEDEN_API_KEY")
+    api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
         'platform': 'android',
@@ -1597,6 +1621,16 @@ async def me_sol(ctx, symbol):
     response = scraper.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}", headers=headers).text
     # print(response)
     data = json.loads(response)
+    # print(data)
+
+    try:
+        if data['msg'] == "Invalid collection name.":
+            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except:
+        pass
 
     projectName = data["name"]
     projectImg = data['image']
@@ -1639,7 +1673,7 @@ async def me_sol(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 async def me_matic(ctx, symbol):
-    api_key = os.getenv("MAGICEDEN_API_KEY")
+    api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
         'platform': 'android',
@@ -1650,6 +1684,16 @@ async def me_matic(ctx, symbol):
     }
     response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}", headers=headers).text
     data = json.loads(response)
+    # print(data)
+
+    try:
+        if data['detail'] == "Collection not found":
+            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except:
+        pass
 
     projectName = data["name"]
     projectImg = data['media']
@@ -1700,18 +1744,17 @@ async def me(ctx, keyword):
         await me_matic(ctx, result['symbol'])
 
 @bot.command()
-async def 옾(ctx, keyword):
-    await os(ctx, keyword)
+async def 옾(ctx, keyword, count:int = 0):
+    await os(ctx, keyword, count)
 
 @bot.command()
-async def os(ctx, keyword):
+async def os(ctx, keyword, count:int = 0):
     time.sleep(2)
 
-    import os
     result = Queries.select_keyword(db, keyword)
     symbol = result['symbol']
 
-    api_key = os.getenv("OPENSEA_API_KEY")
+    api_key = operating_system.getenv("OPENSEA_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
         'platform': 'android',
@@ -1720,10 +1763,22 @@ async def os(ctx, keyword):
     headers = {"X-API-KEY": api_key}
     response = requests.get(f"https://api.opensea.io/api/v1/collection/{symbol}", headers=headers)
     results = json.loads(response.text)
+    # print(results)
 
     try:
-        if results['detail']:
-            await 옾(ctx, keyword)
+        if not results['success']:
+            embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except:
+        pass
+
+    try:
+        if results['detail'] == "Request was throttled. Expected available in 1 second.":
+            print(f"retry {count + 1}")
+            await 옾(ctx, keyword, count + 1)
+            return
     except:
         pass
 
@@ -1793,7 +1848,10 @@ async def os(ctx, keyword):
 async def msave(ctx, blockchain, keyword, symbol):
     reg_user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
     Queries.update_keyword(db, blockchain, keyword, symbol, reg_user)
-    await ctx.reply(f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", mention_author=True)
+
+    embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", color=0x37E37B)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    await ctx.reply(embed=embed, mention_author=True)
 
 timezone_mapping = {tz: tz for tz in all_timezones}
 # Common abbreviations
@@ -1832,7 +1890,9 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
     to_tz_str = timezone_mapping.get(to_tz_str_param.upper())
 
     if not from_tz_str or not to_tz_str:
-        await ctx.send("Invalid timezone provided")
+        embed = Embed(title="Error", description=f"❌ Invalid timezone provided.\n\n❌ 시간대가 올바르지 않습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     from_tz = pytz.timezone(from_tz_str)
@@ -1844,20 +1904,26 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
         from datetime import datetime
         datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
     except ValueError:
-        await ctx.send("Invalid datetime format. Please use 'YYYY-MM-DD HH:MM'")
+        embed = Embed(title="Error", description="❌ Invalid datetime format. Please use `YYYY-MM-DD HH:MM`\n\n❌ 날짜형식이 올바르지 않습니다. `YYYY-MM-DD HH:MM` 형식으로 입력해주세요.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     datetime_obj = from_tz.localize(datetime_obj)
     datetime_in_to_tz = datetime_obj.astimezone(to_tz)
 
-    await ctx.reply(f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```", mention_author=True)
+    embed = Embed(title="Date Conversion", description=f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```", color=0xFEE501)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def 해외주식(ctx, stock_symbol: str):
     user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
     if not(user == "일론마스크#1576" or user == "으노아부지#2642"):
-        await ctx.reply("❌ Only for 일론마스크#1576\n\n❌ 오직 일론 형님만 조회 가능합니다!", mention_author=True)
+        embed = Embed(title="NO NO NO!", description="❌ Only for 일론마스크#1576\n\n❌ 오직 일론 형님만 조회 가능합니다!", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     import matplotlib.pyplot as plt
@@ -1867,7 +1933,7 @@ async def 해외주식(ctx, stock_symbol: str):
     from io import BytesIO
     from matplotlib.dates import DateFormatter
 
-    stock_key = os.getenv("STOCK_KEY")
+    stock_key = operating_system.getenv("STOCK_KEY")
     BASE_URL = "https://www.alphavantage.co/query"
     params = {
         "function": "TIME_SERIES_DAILY_ADJUSTED",
@@ -1879,7 +1945,9 @@ async def 해외주식(ctx, stock_symbol: str):
     data = response.json()
 
     if 'Time Series (Daily)' not in data:
-        await ctx.reply("ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", mention_author=True)
+        embed = Embed(title="Warning", description="ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xFFFFFF)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     # Convert the time series data into a pandas DataFrame

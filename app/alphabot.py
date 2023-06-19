@@ -792,7 +792,7 @@ class Queries:
                 result = cursor.fetchone()
 
         if result is None:
-            return {"symbol": keyword}
+            return {"symbol": keyword, "blockchain": "ETH"}
 
         return result
 
@@ -1732,18 +1732,10 @@ async def os(ctx, keyword):
 
     projectName = data["name"]
     projectImg = data['image_url']
-    chainIdentifier = data['primary_asset_contracts'][0]['chain_identifier']
     projectTwitter = f"https://twitter.com/{data['twitter_username']}"
     projectDiscord = data['discord_url']
     projectWebsite = data['external_url']
-    if chainIdentifier == "ethereum":
-        projectChain = "ETH"
-    elif chainIdentifier == "bsc":
-        projectChain = "BNB"
-    elif chainIdentifier == "matic":
-        projectChain = "MATIC"
-    else:
-        projectChain = "ETH"
+    projectChain = result['blockchain']
     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
     if projectWebsite:
         projectLinks += f" | [Website]({projectWebsite})"
@@ -1752,11 +1744,9 @@ async def os(ctx, keyword):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-
-    projectFloorPrice = float(data['stats']['floor_price'])
-    projectSupply = data['stats']['total_supply']
-    projectOwners = data['stats']['num_owners']
-
+    projectFloorPrice = round(float(data['stats']['floor_price']),3)
+    projectSupply = int(data['stats']['total_supply'])
+    projectOwners = int(data['stats']['num_owners'])
 
     sales_list = "```\n"
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")

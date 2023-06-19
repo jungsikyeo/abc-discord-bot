@@ -1808,25 +1808,25 @@ async def os(ctx, keyword, count:int = 0):
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Hour",
         f"{round(float(data['stats']['one_hour_volume']),3)}",
-        f"{data['stats']['one_hour_sales']}",
+        f"{int(data['stats']['one_hour_sales'])}",
         f"{round(float(data['stats']['one_hour_average_price']),3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Day",
         f"{round(float(data['stats']['one_day_volume']),3)}",
-        f"{data['stats']['one_day_sales']}",
+        f"{int(data['stats']['one_day_sales'])}",
         f"{round(float(data['stats']['one_day_average_price']),3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Week",
         f"{round(float(data['stats']['seven_day_volume']),3)}",
-        f"{data['stats']['seven_day_sales']}",
+        f"{int(data['stats']['seven_day_sales'])}",
         f"{round(float(data['stats']['seven_day_average_price']),3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "All Time",
         f"{round(float(data['stats']['total_volume']),3)}",
-        f"{data['stats']['total_sales']}",
+        f"{int(data['stats']['total_sales'])}",
         f"{round(float(data['stats']['average_price']),3)} {projectChain}",
     )
     sales_list += "```"

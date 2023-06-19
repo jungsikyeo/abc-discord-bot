@@ -1516,7 +1516,7 @@ def create_table(formatted_sales):
     output += "-"*44 + "\n"  # 24 characters + 10 characters + 10 characters
 
     for row in formatted_sales:
-        print(row, len(row.values()))  # 각 행과 그에 해당하는 값의 개수를 출력
+        # print(row, len(row.values()))  # 각 행과 그에 해당하는 값의 개수를 출력
         output += "{:<24s}{:<10.5f}{:<10s}\n".format(*row.values())
 
     output += "```"
@@ -1595,7 +1595,7 @@ async def me_sol(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}", headers=headers).text
-    print(response)
+    # print(response)
     data = json.loads(response)
 
     projectName = data["name"]
@@ -1614,7 +1614,7 @@ async def me_sol(ctx, symbol):
 
     time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/rpc/getCollectionEscrowStats/{symbol}", headers=headers).text
-    print(response)
+    # print(response)
     results = json.loads(response)
 
     data = results['results']
@@ -1622,7 +1622,7 @@ async def me_sol(ctx, symbol):
 
     time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats", headers=headers).text
-    print(response)
+    # print(response)
     data = json.loads(response)
 
     projectSupply = data['totalSupply']
@@ -1720,7 +1720,6 @@ async def os(ctx, keyword):
     headers = {"X-API-KEY": api_key}
     response = requests.get(f"https://api.opensea.io/api/v1/collection/{symbol}", headers=headers)
     results = json.loads(response.text)
-    print(results)
 
     try:
         if results['detail']:

@@ -1971,7 +1971,7 @@ async def 해외주식(ctx, stock_symbol: str):
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Super')
 async def addrole(ctx, sheet_name, role_name):
     import gspread
     from oauth2client.service_account import ServiceAccountCredentials

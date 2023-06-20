@@ -1995,23 +1995,21 @@ async def addrole(ctx, sheet_name, role_name):
 
         # 시트에서 가져온 모든 사용자를 반복합니다.
         for user_info in user_list:
-            if 'discord_username' in user_info:
-                # 사용자 이름에 태그가 있는지 확인합니다.
-                if '#' in user_info['discord_username']:
-                    # 태그가 있으면 사용자 이름과 태그를 분리합니다.
-                    username, tag = user_info['discord_username'].split('#')
-                else:
-                    # 태그가 없으면 사용자 이름을 그대로 사용하고, 태그를 None으로 설정합니다.
-                    username, tag = user_info['discord_username'], None
+            if 'discord_uid' in user_info:  # 'discord_username' 대신 'discord_uid'를 찾습니다.
+                try:
+                    uid = int(user_info['discord_uid'])  # UID를 정수로 변환합니다.
+                except ValueError:
+                    # UID가 숫자 형식이 아닐 때 처리합니다.
+                    result_str += f"UID {user_info['discord_uid']}은(는) 유효한 숫자 형식이 아닙니다.\n"
+                    continue
 
-                # 길드의 모든 멤버를 반복하면서 사용자 이름과 태그가 일치하는 멤버를 찾습니다.
-                for member in guild.members:
-                    if member.name == username and (tag is None or member.discriminator == tag):
-                        result_str += f"{member.name}#{member.discriminator} 님이 서버에 있습니다.\n"
-                        await member.add_roles(role)
-                        break
-                else:
-                    result_str += f"{username}#{tag} 님은 서버에 없습니다.\n"
+                member = guild.get_member(uid)  # UID를 이용하여 멤버를 찾습니다.
+
+                if member is not None:  # 멤버를 찾았다면
+                    result_str += f"{member.name}#{member.discriminator} (UID: {member.id}) 님에게 {role_name} 롤을 부여했습니다.\n"
+                    await member.add_roles(role)
+                else:  # 멤버를 찾지 못했다면
+                    result_str += f"UID {uid}의 사용자는 서버에 없습니다.\n"
 
         # 결과를 txt 파일로 저장합니다.
         with open('result.txt', 'w') as f:
@@ -2027,6 +2025,7 @@ async def addrole(ctx, sheet_name, role_name):
 
     # 완료 메시지를 보냅니다.
     await ctx.send("사용자 확인을 완료했습니다.")
+
 
 bot.run(bot_token)
 

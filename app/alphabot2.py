@@ -2028,7 +2028,7 @@ async def addrole(ctx, sheet_name, role_name):
 
 @bot.command()
 async def 나무(ctx):
-    embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/history/SearchFi", color=0xFFFFFF)
+    embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/w/SearchFi", color=0xFFFFFF)
     await ctx.reply(embed=embed, mention_author=True)
 
 bot.run(bot_token)

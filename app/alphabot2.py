@@ -2026,6 +2026,10 @@ async def addrole(ctx, sheet_name, role_name):
     # 완료 메시지를 보냅니다.
     await ctx.send("사용자 확인을 완료했습니다.")
 
+@bot.command()
+async def 나무(ctx):
+    embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/history/SearchFi", color=0xFFFFFF)
+    await ctx.reply(embed=embed, mention_author=True)
 
 bot.run(bot_token)
 

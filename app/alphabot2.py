@@ -1970,22 +1970,23 @@ async def 해외주식(ctx, stock_symbol: str):
 
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
 
-from dateutil.relativedelta import relativedelta
-import matplotlib.pyplot as plt
-import mplfinance as mpf
-import pandas as pd
-from datetime import datetime
-from io import BytesIO
-from matplotlib.dates import DateFormatter
-
 @bot.command()
-async def 코인(ctx, coin_symbol: str, period: str = None):
+async def 코인(ctx, coin_symbol: str, period: str = None):  # default period is set to "3mon"
+    from dateutil.relativedelta import relativedelta
+    import matplotlib.pyplot as plt
+    import mplfinance as mpf
+    import pandas as pd
+    from datetime import datetime
+    from io import BytesIO
+    from matplotlib.dates import DateFormatter
+
     coin_key = operating_system.getenv("ALPHAVANTAGE_API_KEY")  # Use your API key
     BASE_URL = "https://www.alphavantage.co/query"
+    coin_symbol = coin_symbol.upper()
     params = {
         "function": "DIGITAL_CURRENCY_DAILY",
         "symbol": coin_symbol,
-        "market": "KRW",  # Change to your preferred market
+        "market": "USD",  # Change to your preferred market (now set to USD)
         "apikey": coin_key
     }
 
@@ -1993,17 +1994,15 @@ async def 코인(ctx, coin_symbol: str, period: str = None):
     data = response.json()
 
     if 'Time Series (Digital Currency Daily)' not in data:
-        embed = Embed(title="Error", description="ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.reply("ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", mention_author=True)
         return
 
     # Convert the time series data into a pandas DataFrame
     df = pd.DataFrame.from_dict(data['Time Series (Digital Currency Daily)'], orient='index', dtype=float)
     df.index = pd.to_datetime(df.index)  # convert index to datetime
 
+    end_date = df.index.max()  # end date is the latest date in the dataframe
     if period is not None:
-        end_date = df.index.max()  # end date is the latest date in the dataframe
         if period == "3year":
             start_date = end_date - relativedelta(years=3)
         elif period == "1year":
@@ -2018,22 +2017,26 @@ async def 코인(ctx, coin_symbol: str, period: str = None):
             await ctx.reply(embed=embed, mention_author=True)
             return
     else:
-        end_date = df.index.max()
         start_date = end_date - relativedelta(months=3)
 
-        # filter dataframe
-        df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
+    # filter dataframe
+    df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
 
-    df = df.rename(columns={'1a. open (KRW)': 'Open', '2a. high (KRW)': 'High', '3a. low (KRW)': 'Low', '4a. close (KRW)': 'Close', '5. volume': 'Volume'})  # rename columns
+    df = df.rename(columns={'1a. open (USD)': 'Open', '2a. high (USD)': 'High', '3a. low (USD)': 'Low', '4a. close (USD)': 'Close', '5. volume': 'Volume'})  # rename columns
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
 
     # Create the plot with the desired style and save it as an image file
     mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
-    fig, axes = mpf.plot(df, style='yahoo', figratio=(14,6), type='candle', volume=True, title=f"{coin_symbol} Coin Chart", returnfig=True, show_nontrading=True)
+    fig, axes = mpf.plot(df, style='yahoo', figratio=(14,6), type='candle', volume=True, returnfig=True, show_nontrading=True)
+
+    # Add title with larger font size
+    fig.suptitle(f"{coin_symbol} Coin Chart", fontsize=20)
+
     axes[0].yaxis.tick_right()
     axes[0].yaxis.set_label_position("right")
     axes[0].xaxis_date()
-    axes[0].xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))  # New line to format date
+    axes[0].xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))
+    axes[0].set_ylabel('PRICE (USD)')
     fig.tight_layout()
     fig.savefig('coin_chart.png')
     plt.close(fig)

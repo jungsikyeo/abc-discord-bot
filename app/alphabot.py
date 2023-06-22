@@ -1994,7 +1994,9 @@ async def 코인(ctx, coin_symbol: str, period: str = None):  # default period i
     data = response.json()
 
     if 'Time Series (Digital Currency Daily)' not in data:
-        await ctx.reply("ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", mention_author=True)
+        embed = Embed(title="Error", description="ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
         return
 
     # Convert the time series data into a pandas DataFrame

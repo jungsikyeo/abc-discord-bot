@@ -1970,6 +1970,76 @@ async def 해외주식(ctx, stock_symbol: str):
 
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
 
+from dateutil.relativedelta import relativedelta
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import pandas as pd
+from datetime import datetime
+from io import BytesIO
+from matplotlib.dates import DateFormatter
+
+@bot.command()
+async def 코인(ctx, coin_symbol: str, period: str = None):
+    coin_key = operating_system.getenv("ALPHAVANTAGE_API_KEY")  # Use your API key
+    BASE_URL = "https://www.alphavantage.co/query"
+    params = {
+        "function": "DIGITAL_CURRENCY_DAILY",
+        "symbol": coin_symbol,
+        "market": "KRW",  # Change to your preferred market
+        "apikey": coin_key
+    }
+
+    response = requests.get(BASE_URL, params=params)
+    data = response.json()
+
+    if 'Time Series (Digital Currency Daily)' not in data:
+        embed = Embed(title="Error", description="ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # Convert the time series data into a pandas DataFrame
+    df = pd.DataFrame.from_dict(data['Time Series (Digital Currency Daily)'], orient='index', dtype=float)
+    df.index = pd.to_datetime(df.index)  # convert index to datetime
+
+    if period is not None:
+        end_date = df.index.max()  # end date is the latest date in the dataframe
+        if period == "3year":
+            start_date = end_date - relativedelta(years=3)
+        elif period == "1year":
+            start_date = end_date - relativedelta(years=1)
+        elif period == "1mon":
+            start_date = end_date - relativedelta(months=1)
+        elif period == "1week":
+            start_date = end_date - relativedelta(weeks=1)
+        else:
+            embed = Embed(title="Error", description="ℹ️ Please enter a valid period: '3year', '1year', '1mon', '1week' or leave it blank for full data.\n\nℹ️ 유효한 기간을 입력해주세요: '3year', '1year', '1mon', '1week' 또는 전체 데이터를 위해 공백으로 두세요.", color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    else:
+        end_date = df.index.max()
+        start_date = end_date - relativedelta(months=3)
+
+        # filter dataframe
+        df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
+
+    df = df.rename(columns={'1a. open (KRW)': 'Open', '2a. high (KRW)': 'High', '3a. low (KRW)': 'Low', '4a. close (KRW)': 'Close', '5. volume': 'Volume'})  # rename columns
+    df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
+
+    # Create the plot with the desired style and save it as an image file
+    mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
+    fig, axes = mpf.plot(df, style='yahoo', figratio=(14,6), type='candle', volume=True, title=f"{coin_symbol} Coin Chart", returnfig=True, show_nontrading=True)
+    axes[0].yaxis.tick_right()
+    axes[0].yaxis.set_label_position("right")
+    axes[0].xaxis_date()
+    axes[0].xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))  # New line to format date
+    fig.tight_layout()
+    fig.savefig('coin_chart.png')
+    plt.close(fig)
+
+    await ctx.reply(file=discord.File('coin_chart.png'), mention_author=True)
+
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Super')
 async def addrole(ctx, sheet_name, role_name):

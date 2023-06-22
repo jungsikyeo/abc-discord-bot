@@ -1971,6 +1971,10 @@ async def 해외주식(ctx, stock_symbol: str):
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
 
 @bot.command()
+async def coin(ctx, coin_symbol: str, period: str = None):
+    await 코인(ctx, coin_symbol, period)
+
+@bot.command()
 async def 코인(ctx, coin_symbol: str, period: str = None):  # default period is set to "3mon"
     from dateutil.relativedelta import relativedelta
     import matplotlib.pyplot as plt

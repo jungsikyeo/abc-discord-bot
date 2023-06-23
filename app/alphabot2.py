@@ -2092,7 +2092,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     embed.add_field(name="24h Low", value=f"{low_24h:,.2f}")
     embed.add_field(name=f"24h Volume ({base_coin})", value=f"{volume_24h_volume:,.2f}")
     embed.add_field(name="24h Volume (USDT)", value=f"{volume_24h_usdt:,.2f}")
-    embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png")  # Set the image in the embed using the image URL
+    embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={end_date}")  # Set the image in the embed using the image URL
     embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 

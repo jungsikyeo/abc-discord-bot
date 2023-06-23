@@ -1971,7 +1971,7 @@ async def 해외주식(ctx, stock_symbol: str):
     await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
 
 @bot.command()
-async def coin(ctx, coin_symbol: str, period: str = None):
+async def coin(ctx, coin_symbol: str, period: str = "1day"):
     await 코인(ctx, coin_symbol, period)
 
 @bot.command()

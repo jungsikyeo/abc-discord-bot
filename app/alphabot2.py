@@ -1992,15 +1992,6 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     base_coin = base_coin.upper()
     quote_coin = 'USDT'
 
-    # # 바이낸스 API에서 거래 페어 정보 가져오기
-    # response = requests.get('https://api.binance.com/api/v3/exchangeInfo')
-    # data = response.json()
-    #
-    # # 모든 거래 페어를 출력
-    # for pair in data['symbols']:
-    #     print(pair['symbol'])
-
-    # Combine base and quote coin to form the symbol for Binance API
     symbol = base_coin + quote_coin
 
     if not re.match('^[A-Z0-9-_.]{1,20}$', symbol):
@@ -2013,13 +2004,12 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     binance_secret_key = operating_system.getenv("BINANCE_SECRET_KEY")
     binance_client = Client(binance_api_key, binance_secret_key)
 
-    # Set interval according to the period
     if period == "5min" or period == "1day":
         interval = Client.KLINE_INTERVAL_5MINUTE
     else:
         interval = Client.KLINE_INTERVAL_1DAY
 
-    limit = 1000  # get maximum of 1000 data points
+    limit = 1000
 
     try:
         candles = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
@@ -2029,16 +2019,14 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    # Transform the data into a pandas DataFrame
     df = pd.DataFrame(candles, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
     df['Date'] = pd.to_datetime(df['Date'], unit='ms')
     df.set_index('Date', inplace=True)
-    df = df[['Open', 'High', 'Low', 'Close', 'Volume']].astype(float)  # select required columns and change their types to float
+    df = df[['Open', 'High', 'Low', 'Close', 'Volume']].astype(float)
 
     df.index = df.index.to_pydatetime()
     df.index = df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
 
-    # Determine the time frame according to the provided period
     end_date = df.index.max()
     if period is not None:
         if period == "3year":
@@ -2054,25 +2042,22 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
         elif period == "1day":
             start_date = end_date - timedelta(days=1)
         elif period == "5min":
-            start_date = end_date - timedelta(minutes=120)  # adjust the duration as per your requirement for 5min period
+            start_date = end_date - timedelta(minutes=120)
         else:
             embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
             embed.set_footer(text="Powered by 으노아부지#2642")
             await ctx.reply(embed=embed, mention_author=True)
             return
     else:
-        start_date = end_date - timedelta(days=90)  # default to 3 months
+        start_date = end_date - timedelta(days=90)
 
-    # Filter the data according to the start_date
     df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
     df.index = df.index.to_pydatetime()
 
-    # Create the plot with the desired style
     mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
     s = mpf.make_mpf_style(marketcolors=mc)
     fig, axes = mpf.plot(df, type='candle', style=s, volume=True, returnfig=True)
 
-    # Add title with larger font size
     fig.suptitle(f"{base_coin} Coin Chart", fontsize=20)
 
     axes[0].yaxis.tick_right()
@@ -2081,11 +2066,35 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     axes[0].set_ylabel('PRICE (USDT)')
     fig.tight_layout()
 
-    # Save the plot as an image file and send it
-    fig.savefig('coin_chart.png')
+    fig.savefig('./static/coin_chart.png')
     plt.close(fig)
 
-    await ctx.reply(file=discord.File('coin_chart.png'), mention_author=True)
+    response = requests.get('https://api.coingecko.com/api/v3/coins/list')
+    coins = response.json()
+
+    coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
+
+    # Get the latest ticker information
+    ticker = binance_client.get_ticker(symbol=symbol)
+
+    # Extract the necessary information
+    last_price = float(ticker['lastPrice'])
+    change_24h = float(ticker['priceChange'])
+    high_24h = float(ticker['highPrice'])
+    low_24h = float(ticker['lowPrice'])
+    volume_24h_volume = float(ticker['volume'])
+    volume_24h_usdt = float(ticker['quoteVolume'])
+
+    # Now you can use these values in your code or embed message
+    embed = discord.Embed(title=f"{coin_name}", description="", color=0xEFB90A)
+    embed.add_field(name="24h Change", value=f"{change_24h:,.2f}")
+    embed.add_field(name="24h High", value=f"{high_24h:,.2f}")
+    embed.add_field(name="24h Low", value=f"{low_24h:,.2f}")
+    embed.add_field(name=f"24h Volume ({base_coin})", value=f"{volume_24h_volume:,.2f}")
+    embed.add_field(name="24h Volume (USDT)", value=f"{volume_24h_usdt:,.2f}")
+    embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png")  # Set the image in the embed using the image URL
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Super')

@@ -1975,75 +1975,103 @@ async def coin(ctx, coin_symbol: str, period: str = None):
     await 코인(ctx, coin_symbol, period)
 
 @bot.command()
-async def 코인(ctx, coin_symbol: str, period: str = None):  # default period is set to "3mon"
-    from dateutil.relativedelta import relativedelta
+async def 코인(ctx, base_coin: str, period: str = "3mon"):
+    import os
+    import discord
+    from discord.ext import commands
+    from binance.client import Client
+    import pandas as pd
     import matplotlib.pyplot as plt
     import mplfinance as mpf
-    import pandas as pd
-    from datetime import datetime
-    from io import BytesIO
     from matplotlib.dates import DateFormatter
+    from datetime import datetime, timedelta
+    import re
+    from matplotlib.ticker import FuncFormatter
+    import pytz
 
-    coin_key = operating_system.getenv("ALPHAVANTAGE_API_KEY")  # Use your API key
-    BASE_URL = "https://www.alphavantage.co/query"
-    coin_symbol = coin_symbol.upper()
-    params = {
-        "function": "DIGITAL_CURRENCY_DAILY",
-        "symbol": coin_symbol,
-        "market": "USD",  # Change to your preferred market (now set to USD)
-        "apikey": coin_key
-    }
+    base_coin = base_coin.upper()
+    quote_coin = 'USDC'
 
-    response = requests.get(BASE_URL, params=params)
-    data = response.json()
+    # Combine base and quote coin to form the symbol for Binance API
+    symbol = base_coin + quote_coin
 
-    if 'Time Series (Digital Currency Daily)' not in data:
-        embed = Embed(title="Error", description="ℹ️ Could not fetch the coin data. Please check the coin symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 코인 데이터를 가져올 수 없습니다. 코인 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xff0000)
+    if not re.match('^[A-Z0-9-_.]{1,20}$', symbol):
+        embed = Embed(title="Warning", description=f"❌ '{symbol}' is not a valid coin symbol. \n\n❌ '{symbol}'은(는) 유효한 코인 심볼이 아닙니다.", color=0xFFFFFF)
         embed.set_footer(text="Powered by 으노아부지#2642")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    # Convert the time series data into a pandas DataFrame
-    df = pd.DataFrame.from_dict(data['Time Series (Digital Currency Daily)'], orient='index', dtype=float)
-    df.index = pd.to_datetime(df.index)  # convert index to datetime
+    binance_api_key = operating_system.getenv("BINANCE_API_KEY")
+    binance_secret_key = operating_system.getenv("BINANCE_SECRET_KEY")
+    binance_client = Client(binance_api_key, binance_secret_key)
 
-    end_date = df.index.max()  # end date is the latest date in the dataframe
+    # Set interval according to the period
+    if period == "5min":
+        interval = Client.KLINE_INTERVAL_5MINUTE
+    else:
+        interval = Client.KLINE_INTERVAL_1DAY
+
+    limit = 1000  # get maximum of 1000 data points
+
+    try:
+        candles = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+    except:
+        embed = Embed(title="Warning", description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.", color=0xFFFFFF)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # Transform the data into a pandas DataFrame
+    df = pd.DataFrame(candles, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
+    df['Date'] = pd.to_datetime(df['Date'], unit='ms')
+    df.set_index('Date', inplace=True)
+    df = df[['Open', 'High', 'Low', 'Close', 'Volume']].astype(float)  # select required columns and change their types to float
+
+    df.index = df.index.to_pydatetime()
+    df.index = df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
+
+    # Determine the time frame according to the provided period
+    end_date = df.index.max()
     if period is not None:
         if period == "3year":
-            start_date = end_date - relativedelta(years=3)
+            start_date = end_date - timedelta(days=3*365)
         elif period == "1year":
-            start_date = end_date - relativedelta(years=1)
+            start_date = end_date - timedelta(days=365)
         elif period == "1mon":
-            start_date = end_date - relativedelta(months=1)
+            start_date = end_date - timedelta(days=30)
+        elif period == "3mon":
+            start_date = end_date - timedelta(days=90)
         elif period == "1week":
-            start_date = end_date - relativedelta(weeks=1)
+            start_date = end_date - timedelta(days=7)
+        elif period == "5min":
+            start_date = end_date - timedelta(minutes=120)  # adjust the duration as per your requirement for 5min period
         else:
-            embed = Embed(title="Error", description="ℹ️ Please enter a valid period: '3year', '1year', '1mon', '1week' or leave it blank for full data.\n\nℹ️ 유효한 기간을 입력해주세요: '3year', '1year', '1mon', '1week' 또는 전체 데이터를 위해 공백으로 두세요.", color=0xff0000)
+            embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '1mon', '1week', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '1mon', '1week', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
             embed.set_footer(text="Powered by 으노아부지#2642")
             await ctx.reply(embed=embed, mention_author=True)
             return
     else:
-        start_date = end_date - relativedelta(months=3)
+        start_date = end_date - timedelta(days=90)  # default to 3 months
 
-    # filter dataframe
+    # Filter the data according to the start_date
     df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
+    df.index = df.index.to_pydatetime()
 
-    df = df.rename(columns={'1a. open (USD)': 'Open', '2a. high (USD)': 'High', '3a. low (USD)': 'Low', '4a. close (USD)': 'Close', '5. volume': 'Volume'})  # rename columns
-    df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
-
-    # Create the plot with the desired style and save it as an image file
+    # Create the plot with the desired style
     mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
-    fig, axes = mpf.plot(df, style='yahoo', figratio=(14,6), type='candle', volume=True, returnfig=True, show_nontrading=True)
+    s = mpf.make_mpf_style(marketcolors=mc)
+    fig, axes = mpf.plot(df, type='candle', style=s, volume=True, returnfig=True)
 
     # Add title with larger font size
-    fig.suptitle(f"{coin_symbol} Coin Chart", fontsize=20)
+    fig.suptitle(f"{base_coin} Coin Chart", fontsize=20)
 
     axes[0].yaxis.tick_right()
     axes[0].yaxis.set_label_position("right")
     axes[0].xaxis_date()
-    axes[0].xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))
     axes[0].set_ylabel('PRICE (USD)')
     fig.tight_layout()
+
+    # Save the plot as an image file and send it
     fig.savefig('coin_chart.png')
     plt.close(fig)
 

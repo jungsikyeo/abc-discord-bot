@@ -1990,7 +1990,15 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
     import pytz
 
     base_coin = base_coin.upper()
-    quote_coin = 'USDC'
+    quote_coin = 'USDT'
+
+    # 바이낸스 API에서 거래 페어 정보 가져오기
+    response = requests.get('https://api.binance.com/api/v3/exchangeInfo')
+    data = response.json()
+
+    # 모든 거래 페어를 출력
+    for pair in data['symbols']:
+        print(pair['symbol'])
 
     # Combine base and quote coin to form the symbol for Binance API
     symbol = base_coin + quote_coin
@@ -2068,7 +2076,7 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
     axes[0].yaxis.tick_right()
     axes[0].yaxis.set_label_position("right")
     axes[0].xaxis_date()
-    axes[0].set_ylabel('PRICE (USD)')
+    axes[0].set_ylabel('PRICE (USDT)')
     fig.tight_layout()
 
     # Save the plot as an image file and send it

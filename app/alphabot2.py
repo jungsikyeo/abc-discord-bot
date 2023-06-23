@@ -1992,13 +1992,13 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
     base_coin = base_coin.upper()
     quote_coin = 'USDT'
 
-    # 바이낸스 API에서 거래 페어 정보 가져오기
-    response = requests.get('https://api.binance.com/api/v3/exchangeInfo')
-    data = response.json()
-
-    # 모든 거래 페어를 출력
-    for pair in data['symbols']:
-        print(pair['symbol'])
+    # # 바이낸스 API에서 거래 페어 정보 가져오기
+    # response = requests.get('https://api.binance.com/api/v3/exchangeInfo')
+    # data = response.json()
+    #
+    # # 모든 거래 페어를 출력
+    # for pair in data['symbols']:
+    #     print(pair['symbol'])
 
     # Combine base and quote coin to form the symbol for Binance API
     symbol = base_coin + quote_coin
@@ -2014,7 +2014,7 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
     binance_client = Client(binance_api_key, binance_secret_key)
 
     # Set interval according to the period
-    if period == "5min":
+    if period == "5min" or period == "1day":
         interval = Client.KLINE_INTERVAL_5MINUTE
     else:
         interval = Client.KLINE_INTERVAL_1DAY
@@ -2051,6 +2051,8 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
             start_date = end_date - timedelta(days=90)
         elif period == "1week":
             start_date = end_date - timedelta(days=7)
+        elif period == "1day":
+            start_date = end_date - timedelta(days=1)
         elif period == "5min":
             start_date = end_date - timedelta(minutes=120)  # adjust the duration as per your requirement for 5min period
         else:

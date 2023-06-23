@@ -1975,7 +1975,7 @@ async def coin(ctx, coin_symbol: str, period: str = None):
     await 코인(ctx, coin_symbol, period)
 
 @bot.command()
-async def 코인(ctx, base_coin: str, period: str = "3mon"):
+async def 코인(ctx, base_coin: str, period: str = "1day"):
     import os
     import discord
     from discord.ext import commands
@@ -2056,7 +2056,7 @@ async def 코인(ctx, base_coin: str, period: str = "3mon"):
         elif period == "5min":
             start_date = end_date - timedelta(minutes=120)  # adjust the duration as per your requirement for 5min period
         else:
-            embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
+            embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
             embed.set_footer(text="Powered by 으노아부지#2642")
             await ctx.reply(embed=embed, mention_author=True)
             return

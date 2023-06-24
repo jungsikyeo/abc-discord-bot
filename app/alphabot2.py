@@ -2031,18 +2031,25 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     if period is not None:
         if period == "3year":
             start_date = end_date - timedelta(days=3*365)
+            period_str = "3-Year"
         elif period == "1year":
             start_date = end_date - timedelta(days=365)
+            period_str = "1-Year"
         elif period == "1mon":
             start_date = end_date - timedelta(days=30)
+            period_str = "1-Month"
         elif period == "3mon":
             start_date = end_date - timedelta(days=90)
+            period_str = "3-Month"
         elif period == "1week":
             start_date = end_date - timedelta(days=7)
+            period_str = "1-Week"
         elif period == "1day":
             start_date = end_date - timedelta(days=1)
+            period_str = "1-Day (5min interval)"
         elif period == "5min":
             start_date = end_date - timedelta(minutes=120)
+            period_str = "2-Hour (5min interval)"
         else:
             embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
             embed.set_footer(text="Powered by 으노아부지#2642")
@@ -2050,6 +2057,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
             return
     else:
         start_date = end_date - timedelta(days=90)
+        period_str = "3-Monthly"
 
     df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
     df.index = df.index.to_pydatetime()
@@ -2091,7 +2099,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     now_in_milliseconds = int(now_in_seconds * 1000)
 
     # Now you can use these values in your code or embed message
-    embed = discord.Embed(title=f"{coin_name}", description="", color=0xEFB90A)
+    embed = discord.Embed(title=f"{coin_name}", description=f"{coin_name} {period_str} Chart Based on Binance", color=0xEFB90A)
     embed.add_field(name="24h Change", value=f"{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)")
     embed.add_field(name="24h High", value=f"{high_24h:,.2f}")
     embed.add_field(name="24h Low", value=f"{low_24h:,.2f}")

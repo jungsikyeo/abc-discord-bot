@@ -2100,11 +2100,11 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
 
     # Now you can use these values in your code or embed message
     embed = discord.Embed(title=f"{coin_name}", description=f"{coin_name} {period_str} Chart Based on Binance", color=0xEFB90A)
-    embed.add_field(name="24h Change", value=f"{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)")
-    embed.add_field(name="24h High", value=f"{high_24h:,.2f}")
-    embed.add_field(name="24h Low", value=f"{low_24h:,.2f}")
-    embed.add_field(name=f"24h Volume ({base_coin})", value=f"{volume_24h_volume:,.2f}")
-    embed.add_field(name="24h Volume (USDT)", value=f"{volume_24h_usdt:,.2f}")
+    embed.add_field(name="24h Change", value=f"```{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)```")
+    embed.add_field(name="24h High", value=f"```{high_24h:,.2f}```")
+    embed.add_field(name="24h Low", value=f"```{low_24h:,.2f}```")
+    embed.add_field(name=f"24h Volume ({base_coin})", value=f"```{volume_24h_volume:,.2f}```")
+    embed.add_field(name="24h Volume (USDT)", value=f"```{volume_24h_usdt:,.2f}```")
     embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
     embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)

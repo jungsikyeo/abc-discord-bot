@@ -2100,7 +2100,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
 
     # Now you can use these values in your code or embed message
     embed = discord.Embed(title=f"{coin_name}", description=f"{coin_name} {period_str} Chart Based on Binance", color=0xEFB90A)
-    embed.add_field(name="24h Change", value=f"```{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)```")
+    embed.add_field(name="24h Change", value=f"```diff\n{change_prefix}{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)```")
     embed.add_field(name="24h High", value=f"```{high_24h:,.2f}```")
     embed.add_field(name="24h Low", value=f"```{low_24h:,.2f}```")
     embed.add_field(name=f"24h Volume ({base_coin})", value=f"```{volume_24h_volume:,.2f}```")

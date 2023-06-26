@@ -2077,10 +2077,11 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     fig.savefig('./static/coin_chart.png')
     plt.close(fig)
 
-    response = requests.get('https://api.coingecko.com/api/v3/coins/list')
-    coins = response.json()
-
-    coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
+    # response = requests.get('https://api.coingecko.com/api/v3/coins/list')
+    # coins = response.json()
+    #
+    # coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
+    coin_name = f"{base_coin}/{quote_coin}"
 
     # Get the latest ticker information
     ticker = binance_client.get_ticker(symbol=symbol)

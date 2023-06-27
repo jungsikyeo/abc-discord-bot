@@ -4,6 +4,8 @@ import pymysql
 import discord
 import requests
 import os as operating_system
+import openai
+import random
 import cloudscraper
 import cfscrape
 import json
@@ -2169,6 +2171,46 @@ async def addrole(ctx, sheet_name, role_name):
 @bot.command()
 async def 나무(ctx):
     embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/w/SearchFi", color=0xFFFFFF)
+    await ctx.reply(embed=embed, mention_author=True)
+
+openai.organization = "org-xZ19FcsARsvTdq3flptdn56l"
+openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
+@bot.command()
+async def draw(ctx, count: int, *prompts):
+    random_color = random.randint(0, 0xFFFFFF)
+
+    if count > 4:
+        error_embed = Embed(title="Error", description="Image count cannot exceed 4.\n\n이미지 개수는 4개를 초과할 수 없습니다.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    if len(prompts) == 0:
+        error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
+    embed.set_footer(text="Generating images...")
+
+    prompt_text = " ".join(prompts)
+    await ctx.send(embed=embed)
+
+    response = openai.Image.create(
+        prompt=prompt_text,
+        n=count,
+        size="1024x1024"
+    )
+    image_urls = [img["url"] for img in response["data"]]
+
+    index = 0
+    for image_url in image_urls:
+        index += 1
+        embed = Embed(title=f"Image {index}", color=random_color)
+        embed.set_image(url=image_url)
+        embed.set_footer(text=f"Image {index} generation complete")
+        await ctx.send(embed=embed)
+
+    embed = Embed(title="All Image generation complete", color=random_color)
     await ctx.reply(embed=embed, mention_author=True)
 
 bot.run(bot_token)

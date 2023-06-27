@@ -1657,7 +1657,7 @@ async def me_sol(ctx, symbol):
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
     time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.io/rpc/getCollectionHolderStats/{symbol}", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/rpc/getCollectionHolderStats/{symbol}", headers=headers).text
     # print(response)
     results = json.loads(response)
     data = results['results']

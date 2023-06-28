@@ -2175,19 +2175,26 @@ async def 나무(ctx):
 openai.organization = "org-xZ19FcsARsvTdq3flptdn56l"
 openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
 @bot.command()
-async def draw(ctx, count: int, *prompts):
-    user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-    if user != "으노아부지#2642":
-        if ctx.channel.id != 1072435483466014730:
-            if ctx.channel.id != 1088659865397903391:
-                error_embed = Embed(title="Error", description="Channel unable to create image.\n\n이미지를 생성할 수 없는 채널입니다.", color=0xFF0000)
-                await ctx.reply(embed=error_embed, mention_author=True)
-                return
+async def draw(ctx, count = "0", *prompts):
+    # user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    # if user != "으노아부지#2642":
+    #     if ctx.channel.id != 1072435483466014730:
+    #         if ctx.channel.id != 1088659865397903391:
+    #             error_embed = Embed(title="Error", description="Channel unable to create image.\n\n이미지를 생성할 수 없는 채널입니다.", color=0xFF0000)
+    #             await ctx.reply(embed=error_embed, mention_author=True)
+    #             return
 
     random_color = random.randint(0, 0xFFFFFF)
 
-    if count > 4:
-        error_embed = Embed(title="Error", description="Image count cannot exceed 4.\n\n이미지 개수는 4개를 초과할 수 없습니다.", color=0xFF0000)
+    try:
+        count = int(count)
+    except:
+        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    if count == 0 or count > 4:
+        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
         return
 
@@ -2202,12 +2209,21 @@ async def draw(ctx, count: int, *prompts):
     prompt_text = " ".join(prompts)
     await ctx.send(embed=embed)
 
-    response = openai.Image.create(
-        prompt=prompt_text,
-        n=count,
-        size="1024x1024"
-    )
-    image_urls = [img["url"] for img in response["data"]]
+    try:
+        response = openai.Image.create(
+            prompt=prompt_text,
+            n=count,
+            size="512x512"
+        )
+        image_urls = [img["url"] for img in response["data"]]
+    except Exception as e:
+        print(str(e))
+        if str(e) == "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.":
+            error_embed = Embed(title="Error", description="Contains text that is not allowed.\n\n허용하지 않는 텍스트가 포함되어 있습니다.", color=0xFF0000)
+        else:
+            error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
 
     index = 0
     for image_url in image_urls:

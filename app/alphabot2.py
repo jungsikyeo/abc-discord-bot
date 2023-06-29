@@ -2174,10 +2174,14 @@ async def 나무(ctx):
 
 openai.organization = "org-xZ19FcsARsvTdq3flptdn56l"
 openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
+
+@bot.command()
+async def ai(ctx, count = "0", *prompts):
+    await draw(ctx, count, *prompts)
 @bot.command()
 async def draw(ctx, count = "0", *prompts):
     # user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-    # if user != "으노아부지#2642":
+    # if user != "으노아부지#2642"./:
     #     if ctx.channel.id != 1072435483466014730:
     #         if ctx.channel.id != 1088659865397903391:
     #             error_embed = Embed(title="Error", description="Channel unable to create image.\n\n이미지를 생성할 수 없는 채널입니다.", color=0xFF0000)

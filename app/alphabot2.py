@@ -2180,14 +2180,6 @@ async def ai(ctx, count = "0", *prompts):
     await draw(ctx, count, *prompts)
 @bot.command()
 async def draw(ctx, count = "0", *prompts):
-    # user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-    # if user != "으노아부지#2642"./:
-    #     if ctx.channel.id != 1072435483466014730:
-    #         if ctx.channel.id != 1088659865397903391:
-    #             error_embed = Embed(title="Error", description="Channel unable to create image.\n\n이미지를 생성할 수 없는 채널입니다.", color=0xFF0000)
-    #             await ctx.reply(embed=error_embed, mention_author=True)
-    #             return
-
     random_color = random.randint(0, 0xFFFFFF)
 
     try:
@@ -2212,10 +2204,87 @@ async def draw(ctx, count = "0", *prompts):
     await ctx.send(embed=embed)
 
     prompt_text = " ".join(prompts)
+    model = "gpt-3.5-turbo"
+
+    # 메시지 설정하기
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant who is good at detailing."
+        },
+        {
+            "role": "user",
+            "content": f"Imagine the question '{prompt_text}' and describe it in appearance.\nAnswer in a english."
+        }
+    ]
+
+    # ChatGPT API 호출하기
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages
+    )
+    answer = response['choices'][0]['message']['content']
+    print(f"'{answer}'")
+
+    messages.append(
+        {
+            "role": "assistant",
+            "content": answer
+        },
+    )
+
+    # 사용자 메시지 추가
+    messages.append(
+        {
+            "role": "user",
+            "content": "Based on the above, please imagine and describe the appearance in more detail."
+        }
+    )
+
+    # ChatGPT API 호출하기
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages
+    )
+    answer2 = response['choices'][0]['message']['content']
+    print(f"'{answer2}'")
+
+    # 새 메시지 구성
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an assistant who is good at creating prompts for image creation."
+        },
+        {
+            "role": "assistant",
+            "content": answer2
+        }
+    ]
+
+    # 사용자 메시지 추가
+    messages.append(
+        {
+            "role": "user",
+            "content": "Please summarize the main content of the previous sentence in one line"
+        }
+    )
+
+    # ChatGPT API 호출하기
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages
+    )
+    answer3 = response['choices'][0]['message']['content']
+    print(f"'{answer3}'")
+
+
+
+
+
 
     try:
         response = openai.Image.create(
-            prompt=prompt_text,
+            prompt=answer3,
             n=count,
             size="512x512"
         )

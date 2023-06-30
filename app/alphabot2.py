@@ -2281,6 +2281,53 @@ async def draw(ctx, count = "0", *prompts):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
+async def ai2(ctx):
+    import uuid
+    from PIL import Image
+
+    if len(ctx.message.attachments) == 0:
+        await ctx.reply("No image provided. Please attach an image.")
+        return
+
+    random_color = random.randint(0, 0xFFFFFF)
+
+    embed = Embed(title="SearchFi AI Image Edit Bot", color=random_color)
+    embed.set_footer(text="Editing images...")
+    await ctx.send(embed=embed)
+
+    # Download the image from the attachment
+    attachment = ctx.message.attachments[0]
+    temp_uuid = uuid.uuid4()  # Generate a random UUID for the temporary image file
+    image_path = f"./{temp_uuid}.png"  # Use the UUID as the file name to prevent duplication
+    await attachment.save(image_path)
+
+    # Open the image file and convert it to 'RGBA'
+    image = Image.open(image_path).convert('RGBA')
+    image.save(image_path)
+
+    # Use the image to create a new image
+    try:
+        with open(image_path, "rb") as image_file:
+            response = openai.Image.create_variation(
+                image=image_file.read(),
+                n=1,
+                size="1024x1024"
+            )
+
+        image_url = response['data'][0]['url']
+
+        embed = Embed(title="Image Edit", color=random_color)
+        embed.set_image(url=image_url)
+        await ctx.reply(embed=embed, mention_author=True)
+
+    finally:
+        # Remove the temporary image file after the new image has been created
+        if operating_system.path.exists(image_path):
+            operating_system.remove(image_path)
+
+
+
+@bot.command()
 async def 챗(ctx, *prompts):
     await gpt(ctx, *prompts)
 

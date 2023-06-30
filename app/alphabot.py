@@ -2206,15 +2206,14 @@ async def draw(ctx, count = "0", *prompts):
     prompt_text = " ".join(prompts)
     model = "gpt-3.5-turbo"
 
-    # 메시지 설정하기
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful assistant who is good at detailing."
+            "content": "You are a helpful assistant who is good at translating."
         },
         {
             "role": "user",
-            "content": f"Imagine the question '{prompt_text}' and describe it in appearance.\nAnswer in a english."
+            "content": f"Please translate {prompt_text} into English."
         }
     ]
 
@@ -2224,7 +2223,7 @@ async def draw(ctx, count = "0", *prompts):
         messages=messages
     )
     answer = response['choices'][0]['message']['content']
-    print(f"'{answer}'")
+    print(answer)
 
     messages.append(
         {
@@ -2237,7 +2236,7 @@ async def draw(ctx, count = "0", *prompts):
     messages.append(
         {
             "role": "user",
-            "content": "Based on the above, please imagine and describe the appearance in more detail."
+            "content": "Based on the above, please imagine the appearance in more detail and describe it in one line."
         }
     )
 
@@ -2247,35 +2246,7 @@ async def draw(ctx, count = "0", *prompts):
         messages=messages
     )
     answer2 = response['choices'][0]['message']['content']
-    print(f"'{answer2}'")
-
-    # 새 메시지 구성
-    messages = [
-        {
-            "role": "system",
-            "content": "You are an assistant who is good at creating prompts for image creation."
-        },
-        {
-            "role": "assistant",
-            "content": answer2
-        }
-    ]
-
-    # 사용자 메시지 추가
-    messages.append(
-        {
-            "role": "user",
-            "content": "Please summarize the main content of the previous sentence in one line"
-        }
-    )
-
-    # ChatGPT API 호출하기
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages
-    )
-    answer3 = response['choices'][0]['message']['content']
-    print(f"'{answer3}'")
+    print(answer2)
 
 
 
@@ -2284,9 +2255,9 @@ async def draw(ctx, count = "0", *prompts):
 
     try:
         response = openai.Image.create(
-            prompt=answer3,
+            prompt=answer2,
             n=count,
-            size="512x512"
+            size="1024x1024"
         )
         image_urls = [img["url"] for img in response["data"]]
     except Exception as e:

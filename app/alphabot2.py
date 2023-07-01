@@ -810,6 +810,32 @@ class Queries:
                 cursor.execute(update_query, (blockchain, keyword, symbol, reg_user, blockchain, symbol, reg_user,))
                 conn.commit()
 
+    def insert_message(db, user_id, role, content):
+        update_query = """
+        INSERT INTO messages (user_id, role, content) VALUES (%s, %s, %s)
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (user_id, role, content,))
+                conn.commit()
+
+    def select_message(db, user_id):
+        select_query = """
+        SELECT role, content, timestamp FROM messages WHERE user_id = %s ORDER BY timestamp ASC
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (user_id,))
+                results = cursor.fetchall()
+
+        if results is None:
+            return []
+
+        return [{"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]} for r in results]
+
+
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 paginator = Paginator(bot)
 paginator_search = Paginator(bot)
@@ -2333,6 +2359,8 @@ async def 챗(ctx, *prompts):
 
 @bot.command()
 async def gpt(ctx, *prompts):
+    user_id = ctx.message.author.id
+
     if len(prompts) == 0:
         error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
@@ -2346,15 +2374,48 @@ async def gpt(ctx, *prompts):
 
     prompt_text = " ".join(prompts)
 
+    # Load previous context for the current user
+    previous_context = Queries.select_message(db, user_id)
+
+    # If the user has sent messages before
+    if previous_context:
+        # Get the timestamp of the last message
+        last_message_time = previous_context[-1]['timestamp']
+
+        # Check if the user is sending a query within 5 seconds
+        if datetime.datetime.now() - last_message_time < datetime.timedelta(seconds=10):
+            error_embed = Embed(title="Error", description="You are sending queries too fast. Please wait a few seconds.\n\n질문을 너무 빠르게 보내고 있습니다. 몇 초 기다려 주세요.", color=0xFF0000)
+            await ctx.reply(embed=error_embed, mention_author=True)
+            return
+
     try:
+        messages_with_timestamps = previous_context
+        messages_for_openai = [{"role": m["role"], "content": m["content"]} for m in messages_with_timestamps]
+
+        messages = [
+            { "role": "system", "content": "You are a helpful assistant." },
+        ] + messages_for_openai + [
+            { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 500 characters."},
+        ]
+
+        min = 0
+        max = len(messages)
+        if max > 0:
+            while min < max:
+                # print(min, max)
+                if len(str(messages[min:max])) < 4097:
+                    messages = messages[min:max]
+                    break
+                min += 1
+
+        # print(messages)
+
         result = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                { "role": "system", "content": "You are a helpful assistant." },
-                { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 500 characters."},
-            ]
+            messages=messages
         )
-    except:
+    except Exception as e:
+        print(e)
         error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.", color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
         return
@@ -2363,9 +2424,17 @@ async def gpt(ctx, *prompts):
         assistant_response = result['choices'][0]['message']['content']
         embed = Embed(title="SearchFi AI Answer", description=assistant_response, color=random_color)
         await ctx.reply(embed=embed, mention_author=True)
+
+        # Save user's message to the DB
+        Queries.insert_message(db, user_id, "user", prompt_text)
+
+        # Save AI's message to the DB
+        Queries.insert_message(db, user_id, "assistant", assistant_response)
     else:
         error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.", color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
+
+
 
 
 bot.run(bot_token)

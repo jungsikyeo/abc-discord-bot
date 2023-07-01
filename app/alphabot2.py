@@ -2233,15 +2233,15 @@ async def draw(ctx, count = "0", *prompts):
     model = "gpt-3.5-turbo"
 
     messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant who is good at translating."
-            },
-            {
-                "role": "user",
-                "content": f"Please translate {prompt_text} into English."
-            }
-        ]
+        {
+            "role": "system",
+            "content": "You are a helpful assistant who is good at translating."
+        },
+        {
+            "role": "user",
+            "content": f"Please translate {prompt_text} into English."
+        }
+    ]
 
     # ChatGPT API 호출하기
     response = openai.ChatCompletion.create(
@@ -2252,11 +2252,11 @@ async def draw(ctx, count = "0", *prompts):
     print(answer)
 
     messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            },
-        )
+        {
+            "role": "assistant",
+            "content": answer
+        },
+    )
 
     # 사용자 메시지 추가
     messages.append(
@@ -2393,10 +2393,10 @@ async def gpt(ctx, *prompts):
         messages_for_openai = [{"role": m["role"], "content": m["content"]} for m in messages_with_timestamps]
 
         messages = [
-            { "role": "system", "content": "You are a helpful assistant." },
-        ] + messages_for_openai + [
-            { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 500 characters."},
-        ]
+                       { "role": "system", "content": "You are a helpful assistant." },
+                   ] + messages_for_openai + [
+                       { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 800 characters."},
+                   ]
 
         min = 0
         max = len(messages)

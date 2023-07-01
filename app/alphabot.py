@@ -2395,7 +2395,7 @@ async def gpt(ctx, *prompts):
         messages = [
                        { "role": "system", "content": "You are a helpful assistant." },
                    ] + messages_for_openai + [
-                       { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 500 characters."},
+                       { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 800 characters."},
                    ]
 
         min = 0

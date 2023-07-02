@@ -1686,8 +1686,12 @@ async def me_sol(ctx, symbol):
     # print(response)
     data = json.loads(response)
 
-    projectSupply = data['totalSupply']
-    projectOwners = data['uniqueHolders']
+    try:
+        projectSupply = data['totalSupply']
+        projectOwners = data['uniqueHolders']
+    except:
+        projectSupply = "-"
+        projectOwners = "-"
 
     embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ko/marketplace/{symbol}")
     embed.set_thumbnail(url=f"{projectImg}")

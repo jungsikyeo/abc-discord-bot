@@ -73,6 +73,7 @@ class Queries:
         pubPriceOption = form["pubPriceOption"]
         blockchain = form["blockchain"]
         regUser = form["regUser"]
+        user_id = form["user_id"]
 
         try:
             if form["noUpdate"]:
@@ -118,13 +119,15 @@ class Queries:
             (
                 id, name, discordUrl, twitterUrl, twitterProfileImage, mintDate, 
                 supply, wlPrice, pubPrice, blockchain, hasTime, 
-                regUser, noUpdate, isAlphabot, lastUpdated, dateCreated
+                regUser, noUpdate, isAlphabot, lastUpdated, dateCreated,
+                user_id
             ) 
             values 
             (
                 '{uuid}', %s, '{discordUrl}', '{twitterUrl}', '{twitterProfileImage}', {mintDate}, 
                 '{supply}', '{wlPrice}', '{pubPrice}', '{blockchain}', '{hasTime}', 
-                '{regUser}', '{noUpdate}','N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000')
+                '{regUser}', '{noUpdate}','N', concat(cast(UNIX_TIMESTAMP() as char),'000'), concat(cast(UNIX_TIMESTAMP() as char),'000'),
+                '{user_id}'
             )
         """
         print(insert_query)

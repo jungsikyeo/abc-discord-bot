@@ -79,6 +79,7 @@
             <div>
                 <label for="regUser">Creator by {{user.username}}#{{user.discriminator}}</label>
                 <input type="hidden" id="regUser" name="regUser" value="{{user.username}}#{{user.discriminator}}"/>
+                <input type="hidden" id="user_id" name="user_id" value="{{user.id}}"/>
             </div>
             <div class="submit">
                 <button type="submit" class="button">Register</button>

@@ -876,7 +876,7 @@ async def mrank(ctx):
             if item['walletCheckerUrl']:
                 link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
-            field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+            field_name = f"`{item['ranking']}.` {item['name']} (@{item['twitterUrl'].split('/')[-1]}) :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
             if item['mintDate'] == 'TBA':
                 field_value = f"{item['mintDate']}  |  {link_url}"
             else:
@@ -1014,7 +1014,7 @@ async def myrank(ctx, *, dc_id=None):
                 if item['walletCheckerUrl']:
                     link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
-                field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+                field_name = f"`{item['ranking']}.` {item['name']} (@{item['twitterUrl'].split('/')[-1]}) :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':
                     field_value = f"{item['mintDate']}  |  {link_url}"
                 else:
@@ -1083,7 +1083,7 @@ async def myup(ctx, *, dc_id=None):
                 if item['walletCheckerUrl']:
                     link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
-                field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+                field_name = f"`{item['ranking']}.` {item['name']} (@{item['twitterUrl'].split('/')[-1]}) :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':
                     field_value = f"{item['mintDate']}  |  {link_url}"
                 else:
@@ -1152,7 +1152,7 @@ async def mydown(ctx, *, dc_id=None):
                 if item['walletCheckerUrl']:
                     link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
-                field_name = f"`{item['ranking']}.` {item['name']} :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
+                field_name = f"`{item['ranking']}.` {item['name']} (@{item['twitterUrl'].split('/')[-1]}) :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
                 if item['mintDate'] == 'TBA':
                     field_value = f"{item['mintDate']}  |  {link_url}"
                 else:

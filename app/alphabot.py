@@ -738,23 +738,29 @@ class Queries:
             from (
                 select user_id, 'REG' type, count(1) cnt
                 from projects
-                where regUser <> 'SearchFI'
+                where isAlphabot <> 'Y'
                 group by user_id
                 union
                 select user_id, recommendType, count(1) cnt
                 from recommends
                 group by user_id, recommendType
+                union
+                select walletCheckerUserId, 'CHECKER', count(1) cnt
+                from projects
+                where walletCheckerUserId is not null
+                group by walletCheckerUserId
             ) a
             where user_id is not null
         )
         select
             user_id,
             ifnull((select cnt from main where user_id = m.user_id and type = 'REG'), 0) REG,
+            ifnull((select cnt from main where user_id = m.user_id and type = 'CHECKER'), 0) CHECKER,
             ifnull((select cnt from main where user_id = m.user_id and type = 'UP'), 0) UP,
             ifnull((select cnt from main where user_id = m.user_id and type = 'DOWN'), 0) DOWN
         from main m
         group by user_id
-        order by 2 desc, 3 desc,4 desc
+        order by 2 desc, (CHECKER + UP + DOWN) DESC, CHECKER DESC, UP DESC
         """
 
         with db.get_connection() as conn:
@@ -1688,7 +1694,9 @@ async def os(ctx, keyword, count:int = 0):
 @bot.command()
 async def msave(ctx, blockchain, keyword, symbol):
     reg_user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-    Queries.update_keyword(db, blockchain, keyword, symbol, reg_user)
+    user_id = ctx.author.id
+
+    Queries.update_keyword(db, blockchain, keyword, symbol, reg_user, user_id)
 
     embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", color=0x37E37B)
     embed.set_footer(text="Powered by 으노아부지#2642")
@@ -2257,7 +2265,12 @@ async def mstats(ctx):
     pages = []
 
     for page in range(num_pages):
-        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
+        description = "📅 : Project REG\n\n"
+        description += "✅ : Project CHECKER\n\n"
+        description += ":thumbsup: : Project UP\n\n"
+        description += ":thumbsdown: : Project DOWN```\n\n\n```"
+
+        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", description=f"{description}", color=0x00ff00)
 
         for i in range(10):
             index = page * 10 + i
@@ -2267,15 +2280,15 @@ async def mstats(ctx):
             item = results[index]
             user = bot.get_user(int(item['user_id']))
             if user is not None:
-                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** • {user.mention}"
+                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • ✅ **{item['CHECKER']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** - {user.mention}"
                 embed.add_field(name="", value=field_value, inline=False)
             else:
-                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** • <@{item['user_id']}>"
+                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • ✅ **{item['CHECKER']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** - <@{item['user_id']}>"
                 embed.add_field(name="", value=field_value, inline=False)
 
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"**🏆 Project REG / UP / DOWN Ranking 🏆**", embed=embed)
+        cal = Page(content=f"**🏆 Project REG / CHECKER / UP / DOWN Ranking 🏆**", embed=embed)
         pages.append(cal)
 
     paginator = Paginator(bot)

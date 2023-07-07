@@ -2265,12 +2265,14 @@ async def mstats(ctx):
     pages = []
 
     for page in range(num_pages):
-        description = "📅 : Project REG\n\n"
-        description += "✅ : Project CHECKER\n\n"
-        description += ":thumbsup: : Project UP\n\n"
-        description += ":thumbsdown: : Project DOWN```\n\n\n```"
+        description = "```\n📅 : Project REG Count\n"
+        description += "✅ : Project CHECKER Count\n"
+        description += "👍 : Project UP Count\n"
+        description += "👎 : Project DOWN Count\n\n```"
 
         embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", description=f"{description}", color=0x00ff00)
+
+        field_value = "```\n"
 
         for i in range(10):
             index = page * 10 + i
@@ -2279,13 +2281,17 @@ async def mstats(ctx):
 
             item = results[index]
             user = bot.get_user(int(item['user_id']))
-            if user is not None:
-                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • ✅ **{item['CHECKER']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** - {user.mention}"
-                embed.add_field(name="", value=field_value, inline=False)
-            else:
-                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • ✅ **{item['CHECKER']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** - <@{item['user_id']}>"
-                embed.add_field(name="", value=field_value, inline=False)
+            field_value += "{:>4s}{:<6s}{:<6s}{:<6s}{:<6s}{:<20s}\n".format(
+                f"{index + 1}. ",
+                f"📅 {item['REG']}",
+                f"✅ {item['CHECKER']}",
+                f"👍 {item['UP']}",
+                f"👎 {item['DOWN']}",
+                f"@{user}",
+            )
 
+        field_value += "```"
+        embed.add_field(name="", value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")
 
         cal = Page(content=f"**🏆 Project REG / CHECKER / UP / DOWN Ranking 🏆**", embed=embed)

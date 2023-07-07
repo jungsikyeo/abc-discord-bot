@@ -42,6 +42,7 @@ class UpDownView(View):
         self.db = db
         self.project_id = project_id
         self.regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        self.user_id = ctx.author.id
         if self.embed_message is not None:
             self.update_message()
 
@@ -54,10 +55,10 @@ class UpDownView(View):
     @discord.ui.button(label="UP", style=discord.ButtonStyle.green)
     async def up_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         buttonView = ButtonView(self.ctx, self.db, "")
-        Queries.merge_recommend(self.db, self.project_id, self.regUser, "UP")
+        Queries.merge_recommend(self.db, self.project_id, self.regUser, self.user_id, "UP")
         item = Queries.select_one_project(self.db, self.project_id)
         try:
-            avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
@@ -67,10 +68,10 @@ class UpDownView(View):
     @discord.ui.button(label="DOWN", style=discord.ButtonStyle.red)
     async def down_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         buttonView = ButtonView(self.ctx, self.db, "")
-        Queries.merge_recommend(self.db, self.project_id, self.regUser, "DOWN")
+        Queries.merge_recommend(self.db, self.project_id, self.regUser, self.user_id, "DOWN")
         item = Queries.select_one_project(self.db, self.project_id)
         try:
-            avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
@@ -88,8 +89,8 @@ class ButtonView(discord.ui.View):
         self.desktop = ctx.message.author.desktop_status
         self.mobile = ctx.message.author.mobile_status
 
-    async def get_member_avatar(self, member_name: str, member_discriminator: str):
-        member = discord.utils.get(self.ctx.message.guild.members, name=member_name, discriminator=member_discriminator)
+    async def get_member_avatar(self, user_id: int):
+        member = bot.get_user(user_id)
         if member is None:
             return "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         else:
@@ -123,72 +124,6 @@ class ButtonView(discord.ui.View):
             embed.add_field(name="Down", value=f":thumbsdown: {item['badCount']}", inline=True)
             embed.set_footer(text="Powered by 으노아부지#2642")
         return embed
-
-    def regButton(self):
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-        button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Registration", url=button_url)
-        view = discord.ui.View()
-        view.add_item(button)
-        return view
-
-    @discord.ui.button(label="AM", row=0, style=discord.ButtonStyle.success)
-    async def am_button_callback(self, button, interaction):
-        await interaction.response.defer()
-        await self.ctx.send(f"```* {self.day} AM *\n\nSearching...```")
-
-        projects = Queries.select_search_projects(self.db, self.day, "AM")
-        index = 1
-        for item in projects:
-            try:
-                avatar_url = await self.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            item["avatar_url"] = avatar_url
-            embed = self.makeEmbed(item)
-            embed_message = await self.ctx.send(embed=embed)
-            view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
-            if self.username == item['regUser']:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
-                button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
-                view.add_item(button)
-            await embed_message.edit(view=view)
-        embed=discord.Embed(title=f"{self.day} AM Mint", description=f"Total {str(len(projects))}", color=0x001eff)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await self.ctx.send(embed=embed)
-        await self.ctx.send(view=self.regButton())
-        try:
-            await interaction.response.send_message("")
-        except:
-            pass
-
-    @discord.ui.button(label="PM", row=0, style=discord.ButtonStyle.primary)
-    async def pm_button_callback(self, button, interaction):
-        await interaction.response.defer()
-        await self.ctx.send(f"```* {self.day} PM *\n\nSearching...```")
-
-        projects = Queries.select_search_projects(self.db, self.day, "PM")
-        for item in projects:
-            try:
-                avatar_url = await self.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            item["avatar_url"] = avatar_url
-            embed = self.makeEmbed(item)
-            embed_message = await self.ctx.send(embed=embed)
-            view = UpDownView(self.ctx, embed_message, embed, self.db, item['id'])
-            if self.username == item["regUser"]:
-                button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
-                button = discord.ui.Button(style=discord.ButtonStyle.link, label="Go to Modify", url=button_url)
-                view.add_item(button)
-            await embed_message.edit(view=view)
-        embed=discord.Embed(title=f"{self.day} PM Mint", description=f"Total {str(len(projects))}", color=0x001eff)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await self.ctx.send(embed=embed)
-        await self.ctx.send(view=self.regButton())
-        try:
-            await interaction.response.send_message("")
-        except:
-            pass
 
 class Database:
     def __init__(self, host, port, user, password, db):
@@ -234,6 +169,7 @@ class Queries:
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
+                user_id,
                 hasTime  
              FROM projects AA
              WHERE 1=1 
@@ -276,6 +212,7 @@ class Queries:
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
+                user_id,
                 hasTime  
              FROM projects AA
              WHERE 1=1 
@@ -319,6 +256,7 @@ class Queries:
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
+                user_id,
                 hasTime  
              FROM projects AA
              WHERE 1=1 
@@ -362,6 +300,7 @@ class Queries:
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
+                user_id,
                 hasTime  
              FROM projects AA
              WHERE 1=1 
@@ -401,6 +340,7 @@ class Queries:
                 FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
                 FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
                 regUser,
+                user_id,
                 hasTime  
              FROM projects AA
              WHERE 1=1 
@@ -434,15 +374,15 @@ class Queries:
                 result = cursor.fetchone()
                 return result
 
-    def merge_recommend(db, project_id, regUser, recommend_type):
+    def merge_recommend(db, project_id, regUser, user_id, recommend_type):
         insert_query = f"""
             insert into recommends
             (
-                projectId, regUser, recommendType
+                projectId, regUser, user_id, recommendType
             ) 
             values 
             (
-                '{project_id}', '{regUser}', '{recommend_type}'
+                '{project_id}', '{regUser}', '{user_id}', '{recommend_type}'
             )
             ON DUPLICATE KEY UPDATE recommendType='{recommend_type}';
         """
@@ -456,52 +396,6 @@ class Queries:
             conn.rollback()
             print(e)
             return {"status": "ERROR", "msg": e}
-
-    def select_my_up(db, regUser, today, tomorrow):
-        select_query = f"""
-        SELECT  
-            A.*,  
-            case when mintTime24 > 12 then 'PM' else 'AM' end timeType
-        FROM ( 
-             SELECT
-                AA.id, 
-                name, 
-                ifnull(discordUrl, '-') discordUrl,  
-                ifnull(twitterUrl, '-') twitterUrl,  
-                ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
-                ifnull(twitterProfileImage, '-') twitterProfileImage,  
-                ifnull(nullif(supply, ''), '-') supply,  
-                ifnull(nullif(wlPrice, ''), '-') wlPrice,  
-                ifnull(nullif(pubPrice, ''), '-') pubPrice,  
-                ifnull(blockchain, '-') blockchain,  
-                ifnull(starCount, '0') starCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
-                (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
-                mintDate/1000 unixMintDate,
-                case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
-                FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
-                FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
-                FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
-                AA.regUser,
-                AA.hasTime
-             FROM projects AA
-             INNER JOIN recommends BB ON BB.projectId = AA.id
-             WHERE 1=1 
-             AND BB.regUser = '{regUser}'
-             AND BB.recommendType = 'UP'
-             /*AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')*/
-             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') >= '{today}' 
-             AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') <= '{tomorrow}'
-             ORDER BY mintDate ASC 
-        ) A 
-        WHERE 1=1 
-        """
-
-        with db.get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(select_query)
-                result = cursor.fetchall()
-                return result
 
     def select_ranking(db):
         select_query = f"""
@@ -562,13 +456,13 @@ class Queries:
                 result = cursor.fetchall()
                 return result
 
-    def select_my_ranking(db, regUser):
+    def select_my_ranking(db, user_id):
         select_query = f"""
         SELECT f.*
         FROM (
                  SELECT
                      DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
-                     regUser,
+                     user_id,
                      id,
                      name,
                      twitterUrl,
@@ -581,7 +475,7 @@ class Queries:
                      star_score
                  FROM (
                           SELECT
-                              c.regUser,
+                              c.user_id,
                               c.id,
                               c.name,
                               c.mintDate,
@@ -608,34 +502,35 @@ class Queries:
                                        CASE WHEN COALESCE(a.starCount, 0) = '' THEN 0
                                             ELSE COALESCE(a.starCount, 0)
                                            END star_score,
-                                       a.regUser
+                                       a.regUser,
+                                       a.user_id
                                    FROM projects a
                                             LEFT OUTER JOIN recommends b ON a.id = b.projectId
                                    WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
                                ) c
-                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.regUser
+                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.user_id
                           having (up_score + down_score) > 0
                       ) d
                  ORDER BY (up_score - down_score) DESC
                  LIMIT 50
              ) f
-        WHERE regUser = %s
+        WHERE user_id = %s
         ORDER BY ranking ASC
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(select_query, (regUser,))
+                cursor.execute(select_query, (user_id,))
                 result = cursor.fetchall()
                 return result
 
-    def select_my_updown(db, regUser, type):
+    def select_my_updown(db, user_id, type):
         select_query = f"""
         SELECT f.*
         FROM (
                  SELECT
                      DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
-                     regUser,
+                     user_id,
                      id,
                      name,
                      twitterUrl,
@@ -648,7 +543,7 @@ class Queries:
                      star_score
                  FROM (
                           SELECT
-                              c.regUser,
+                              c.user_id,
                               c.id,
                               c.name,
                               c.mintDate,
@@ -675,51 +570,52 @@ class Queries:
                                        CASE WHEN COALESCE(a.starCount, 0) = '' THEN 0
                                             ELSE COALESCE(a.starCount, 0)
                                            END star_score,
-                                       a.regUser
+                                       a.regUser,
+                                       a.user_id
                                    FROM projects a
                                             LEFT OUTER JOIN recommends b ON a.id = b.projectId
                                    WHERE a.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')
                                ) c
-                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.regUser
+                          GROUP BY c.id, c.name, c.twitterUrl, c.discordUrl, c.walletCheckerUrl, c.user_id
                           having (up_score + down_score) > 0
                       ) d
                  ORDER BY (up_score - down_score) DESC
              ) f
             INNER JOIN recommends r ON f.id = r.projectId
-        WHERE r.regUser = %s
+        WHERE r.user_id = %s
         AND r.recommendType = %s
         ORDER BY ranking ASC
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(select_query, (regUser, type))
+                cursor.execute(select_query, (user_id, type))
                 result = cursor.fetchall()
                 return result
 
-    def add_recommendation(db, project_id, reg_user, recommend_type):
+    def add_recommendation(db, project_id, reg_user, user_id, recommend_type):
         insert_query = f"""
-        INSERT INTO recommends (projectId, regUser, recommendType)
-        VALUES (%s, %s, %s)
+        INSERT INTO recommends (projectId, regUser, user_id, recommendType)
+        VALUES (%s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE recommendType=%s;
         """
 
-        previous_recommendation = Queries.get_previous_recommendation(db, project_id, reg_user)
+        previous_recommendation = Queries.get_previous_recommendation(db, project_id, user_id)
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(insert_query, (project_id, reg_user, recommend_type, recommend_type))
+                cursor.execute(insert_query, (project_id, reg_user, user_id, recommend_type, recommend_type))
                 conn.commit()
 
         return previous_recommendation
 
-    def get_previous_recommendation(db, project_id, reg_user):
+    def get_previous_recommendation(db, project_id, user_id):
         select_query = f"""
-        SELECT recommendType FROM recommends WHERE projectId=%s AND regUser=%s;
+        SELECT recommendType FROM recommends WHERE projectId=%s AND user_id=%s;
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(select_query, (project_id, reg_user))
+                cursor.execute(select_query, (project_id, user_id))
                 result = cursor.fetchone()
 
         if result:
@@ -743,12 +639,12 @@ class Queries:
 
         return result
 
-    def update_wallet_checker_url(db, project_id, wallet_checker_url):
-        update_query = "UPDATE projects SET walletCheckerUrl = %s WHERE id = %s"
+    def update_wallet_checker_url(db, project_id, wallet_checker_url, user_id):
+        update_query = "UPDATE projects SET walletCheckerUrl = %s, walletCheckerUserId = %s WHERE id = %s"
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(update_query, (wallet_checker_url, project_id))
+                cursor.execute(update_query, (wallet_checker_url, user_id, project_id))
                 conn.commit()
 
     def get_tier_by_blockchain(db, blockchain):
@@ -768,16 +664,16 @@ class Queries:
 
         return result
 
-    def update_tier_url(db, blockchain, image_url, reg_user):
+    def update_tier_url(db, blockchain, image_url, reg_user, user_id):
         update_query = """
-        INSERT INTO tiers (blockchain, imageUrl, regUser)
-        VALUES (upper(%s), %s, %s)
-        ON DUPLICATE KEY UPDATE imageUrl = %s, regUser = %s
+        INSERT INTO tiers (blockchain, imageUrl, regUser, user_id)
+        VALUES (upper(%s), %s, %s, %s)
+        ON DUPLICATE KEY UPDATE imageUrl = %s, user_id = %s
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(update_query, (blockchain, image_url, reg_user, image_url, reg_user,))
+                cursor.execute(update_query, (blockchain, image_url, reg_user, user_id, image_url, user_id,))
                 conn.commit()
 
     def select_keyword(db, keyword):
@@ -798,16 +694,16 @@ class Queries:
 
         return result
 
-    def update_keyword(db, blockchain, keyword, symbol, reg_user):
+    def update_keyword(db, blockchain, keyword, symbol, reg_user, user_id):
         update_query = """
-        INSERT INTO keywords (blockchain, keyword, symbol, regUser)
-        VALUES (upper(%s), %s, %s, %s)
-        ON DUPLICATE KEY UPDATE blockchain = upper(%s), symbol = %s, regUser = %s
+        INSERT INTO keywords (blockchain, keyword, symbol, regUser, user_id)
+        VALUES (upper(%s), %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE blockchain = upper(%s), symbol = %s, user_id = %s
         """
 
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(update_query, (blockchain, keyword, symbol, reg_user, blockchain, symbol, reg_user,))
+                cursor.execute(update_query, (blockchain, keyword, symbol, reg_user, user_id, blockchain, symbol, user_id,))
                 conn.commit()
 
     def insert_message(db, user_id, role, content):
@@ -834,6 +730,38 @@ class Queries:
             return []
 
         return [{"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]} for r in results]
+
+    def select_stats(db):
+        select_query = f"""
+        with main as (
+            select a.user_id, a.type, a.cnt
+            from (
+                select user_id, 'REG' type, count(1) cnt
+                from projects
+                where regUser <> 'SearchFI'
+                group by user_id
+                union
+                select user_id, recommendType, count(1) cnt
+                from recommends
+                group by user_id, recommendType
+            ) a
+            where user_id is not null
+        )
+        select
+            user_id,
+            ifnull((select cnt from main where user_id = m.user_id and type = 'REG'), 0) REG,
+            ifnull((select cnt from main where user_id = m.user_id and type = 'UP'), 0) UP,
+            ifnull((select cnt from main where user_id = m.user_id and type = 'DOWN'), 0) DOWN
+        from main m
+        group by user_id
+        order by 2 desc, 3 desc,4 desc
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query)
+                result = cursor.fetchall()
+                return result
 
 
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
@@ -878,7 +806,7 @@ async def mint(ctx, *, arg="today"):
     color = "-"
     for item in projects:
         try:
-            avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         item["avatar_url"] = avatar_url
@@ -894,116 +822,6 @@ async def mint(ctx, *, arg="today"):
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
-async def my(ctx):
-    try:
-        regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-        today = datetime.datetime.now().date()
-        today_string = today.strftime("%Y-%m-%d")
-        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
-        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
-
-        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
-
-        my_up_list = Queries.select_my_up(db, regUser, today_string, tomorrow_string)
-        before_date = ""
-        before_time = ""
-        list_massage = "\n"
-        if len(my_up_list) > 0:
-            for item in my_up_list:
-                if len(list_massage) > 900:
-                    embed.add_field(name="", value=list_massage, inline=True)
-                    await ctx.send(embed=embed)
-                    embed=discord.Embed(title="", description="")
-                    list_massage = "\n"
-                item_date = f"{item['mintDay']}"
-                item_time = f"{item['mintTime24']}"
-                if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n"""
-                    before_date = item_date
-                    before_time = ""
-                if before_time != item_time:
-                    if before_time != "":
-                        list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
-                    before_time = item_time
-                list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
-                # print(len(list_massage))
-            list_massage = list_massage + ""
-        else:
-            # update_channel = await bot.fetch_channel(1089590412164993044)
-            # mention_string = update_channel.mention
-            list_massage = list_massage + f"❌ No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n❌ 추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
-            embed=discord.Embed(title="", description="")
-            embed.add_field(name="", value=list_massage, inline=True)
-            await ctx.reply(embed=embed, mention_author=True)
-            return
-    except Exception as e:
-        print("Error:", e)
-        return
-
-    embed.add_field(name="", value=list_massage, inline=True)
-    await ctx.send(embed=embed)
-
-@bot.command()
-async def you(ctx, dc_id):
-    try:
-        print(dc_id[2:-1])
-        user = await bot.fetch_user(dc_id[2:-1])
-        print(user)
-        if user is not None:
-            print(f"이름: {user.name}")
-            print(f"디스크리미네이터: {user.discriminator}")
-            regUser = user.name + "#" + user.discriminator
-        else:
-            regUser = dc_id
-
-
-        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
-
-        today = datetime.datetime.now().date()
-        today_string = today.strftime("%Y-%m-%d")
-        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
-        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
-
-        my_up_list = Queries.select_my_up(db, regUser, today_string, tomorrow_string)
-        before_date = ""
-        before_time = ""
-        list_massage = "\n"
-        if len(my_up_list) > 0:
-            for item in my_up_list:
-                if len(list_massage) > 900:
-                    embed.add_field(name="", value=list_massage, inline=True)
-                    await ctx.send(embed=embed)
-                    embed=discord.Embed(title="", description="")
-                    list_massage = "\n"
-                item_date = f"{item['mintDay']}"
-                item_time = f"{item['mintTime24']}"
-                if before_date != item_date:
-                    list_massage = list_massage + f"""\n\n"""
-                    before_date = item_date
-                    before_time = ""
-                if before_time != item_time:
-                    if before_time != "":
-                        list_massage = list_massage + "\n"
-                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
-                    before_time = item_time
-                list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
-                # print(len(list_massage))
-            list_massage = list_massage + ""
-        else:
-            list_massage = list_massage + f"❌ `{regUser}` has no recommended project.\n\n`❌ {regUser}`가 추천한 프로젝트는 없습니다."
-            embed=discord.Embed(title="", description="")
-            embed.add_field(name="", value=list_massage, inline=True)
-            await ctx.reply(embed=embed, mention_author=True)
-            return
-    except Exception as e:
-        print("Error:", e)
-        return
-
-    embed.add_field(name="", value=list_massage, inline=True)
-    await ctx.send(embed=embed)
-
-@bot.command()
 async def msearch(ctx, *, project_name):
     buttonView = ButtonView(ctx, db, "")
     pages = []
@@ -1013,7 +831,7 @@ async def msearch(ctx, *, project_name):
     if len(projects) > 0:
         for item in projects:
             try:
-                avatar_url = await buttonView.get_member_avatar(item['regUser'].split('#')[0], item['regUser'].split('#')[1])
+                avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
             except Exception as e:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
             item["avatar_url"] = avatar_url
@@ -1098,7 +916,8 @@ async def mmod(ctx):
 
 @bot.command()
 async def mup(ctx, *, twitter_handle: str):
-    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    user_id = ctx.author.id
 
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
@@ -1117,7 +936,7 @@ async def mup(ctx, *, twitter_handle: str):
 
     project_id = project_info['id']
 
-    previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "UP")
+    previous_recommendation = Queries.add_recommendation(db, project_id, regUser, user_id, "UP")
 
     if previous_recommendation is None:
         embed = Embed(title="Success", description=f":thumbup: Successfully recommended `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트를 추천했습니다!", color=0x37E37B)
@@ -1130,7 +949,8 @@ async def mup(ctx, *, twitter_handle: str):
 
 @bot.command()
 async def mdown(ctx, *, twitter_handle: str):
-    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    user_id = ctx.author.id
 
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
@@ -1151,7 +971,7 @@ async def mdown(ctx, *, twitter_handle: str):
 
     project_id = project_info['id']
 
-    previous_recommendation = Queries.add_recommendation(db, project_id, user_id, "DOWN")
+    previous_recommendation = Queries.add_recommendation(db, project_id, regUser, user_id, "DOWN")
 
     if previous_recommendation is None:
         embed = Embed(title="Success", description=f":thumbdown: Successfully downvoted `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트를 비추천했습니다!", color=0x37E37B)
@@ -1165,17 +985,11 @@ async def mdown(ctx, *, twitter_handle: str):
 @bot.command()
 async def myrank(ctx, *, dc_id=None):
     if dc_id == None:
-        user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        user_id = ctx.author.id
     else:
-        print(dc_id[2:-1])
-        user = await bot.fetch_user(dc_id[2:-1])
-        print(user)
-        if user is not None:
-            print(f"이름: {user.name}")
-            print(f"디스크리미네이터: {user.discriminator}")
-            user_id = user.name + "#" + user.discriminator
-        else:
-            user_id = dc_id
+        user_id = int(dc_id[2:-1])
+
+    user = await bot.fetch_user(user_id)
 
     buttonView = ButtonView(ctx, db, "")
     results = Queries.select_my_ranking(db, user_id)
@@ -1208,12 +1022,12 @@ async def myrank(ctx, *, dc_id=None):
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
             try:
-                avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+                avatar_url = await buttonView.get_member_avatar(user_id)
                 if avatar_url == None:
                     avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
             except Exception as e:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1222,12 +1036,12 @@ async def myrank(ctx, *, dc_id=None):
     else:
         embed = Embed(title="", color=0x0061ff)
         try:
-            avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(user_id)
             if avatar_url == None:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+        embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1240,17 +1054,11 @@ async def myrank(ctx, *, dc_id=None):
 @bot.command()
 async def myup(ctx, *, dc_id=None):
     if dc_id == None:
-        user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        user_id = ctx.author.id
     else:
-        print(dc_id[2:-1])
-        user = await bot.fetch_user(dc_id[2:-1])
-        print(user)
-        if user is not None:
-            print(f"이름: {user.name}")
-            print(f"디스크리미네이터: {user.discriminator}")
-            user_id = user.name + "#" + user.discriminator
-        else:
-            user_id = dc_id
+        user_id = int(dc_id[2:-1])
+
+    user = await bot.fetch_user(user_id)
 
     buttonView = ButtonView(ctx, db, "")
     results = Queries.select_my_updown(db, user_id, 'UP')
@@ -1283,12 +1091,12 @@ async def myup(ctx, *, dc_id=None):
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
             try:
-                avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+                avatar_url = await buttonView.get_member_avatar(user_id)
                 if avatar_url == None:
                     avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
             except Exception as e:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1297,12 +1105,12 @@ async def myup(ctx, *, dc_id=None):
     else:
         embed = Embed(title="", color=0x0061ff)
         try:
-            avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(user_id)
             if avatar_url == None:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        embed.set_author(name=f"{user_id}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
+        embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1315,17 +1123,11 @@ async def myup(ctx, *, dc_id=None):
 @bot.command()
 async def mydown(ctx, *, dc_id=None):
     if dc_id == None:
-        user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        user_id = ctx.author.id
     else:
-        print(dc_id[2:-1])
-        user = await bot.fetch_user(dc_id[2:-1])
-        print(user)
-        if user is not None:
-            print(f"이름: {user.name}")
-            print(f"디스크리미네이터: {user.discriminator}")
-            user_id = user.name + "#" + user.discriminator
-        else:
-            user_id = dc_id
+        user_id = int(dc_id[2:-1])
+
+    user = await bot.fetch_user(user_id)
 
     buttonView = ButtonView(ctx, db, "")
     results = Queries.select_my_updown(db, user_id, 'DOWN')
@@ -1358,12 +1160,12 @@ async def mydown(ctx, *, dc_id=None):
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
             try:
-                avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+                avatar_url = await buttonView.get_member_avatar(user_id)
                 if avatar_url == None:
                     avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
             except Exception as e:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user_id}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1372,12 +1174,12 @@ async def mydown(ctx, *, dc_id=None):
     else:
         embed = Embed(title="", color=0x0061ff)
         try:
-            avatar_url = await buttonView.get_member_avatar(user_id.split('#')[0], user_id.split('#')[1])
+            avatar_url = await buttonView.get_member_avatar(user_id)
             if avatar_url == None:
                 avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         except Exception as e:
             avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        embed.set_author(name=f"{user_id}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
+        embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
@@ -1414,9 +1216,10 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         return
 
     project_id = project_info['id']
+    user_id = ctx.author.id
 
     # Update the Wallet Checker URL
-    Queries.update_wallet_checker_url(db, project_id, wallet_checker_url)
+    Queries.update_wallet_checker_url(db, project_id, wallet_checker_url, user_id)
 
     embed = Embed(title="Success", description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", color=0x37e37b)
     embed.set_footer(text="Powered by 으노아부지#2642")
@@ -1425,10 +1228,11 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Super')
 async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
-    user_id = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    user_id = ctx.author.id
 
     if tier_url:
-        Queries.update_tier_url(db, blockchain, tier_url, user_id)
+        Queries.update_tier_url(db, blockchain, tier_url, regUser, user_id)
     result = Queries.get_tier_by_blockchain(db, blockchain)
     await ctx.reply(f"{result['imageUrl']}", mention_author=True)
 
@@ -2438,7 +2242,38 @@ async def gpt(ctx, *prompts):
         error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.", color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
 
+@bot.command()
+async def mstats(ctx):
+    results = Queries.select_stats(db)
 
+    num_pages = (len(results) + 9) // 10
+
+    pages = []
+
+    for page in range(num_pages):
+        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
+
+        for i in range(10):
+            index = page * 10 + i
+            if index >= len(results):
+                break
+
+            item = results[index]
+            user = bot.get_user(int(item['user_id']))
+            if user is not None:
+                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** • {user.mention}"
+                embed.add_field(name="", value=field_value, inline=False)
+            else:
+                field_value = f"`{index + 1}.` 📅 **{item['REG']}** • :thumbsup: **{item['UP']}** • :thumbsdown: **{item['DOWN']}** • <@{item['user_id']}>"
+                embed.add_field(name="", value=field_value, inline=False)
+
+        embed.set_footer(text=f"by SearchFI Bot")
+
+        cal = Page(content=f"**🏆 Project REG / UP / DOWN Ranking 🏆**", embed=embed)
+        pages.append(cal)
+
+    paginator = Paginator(bot)
+    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 
 bot.run(bot_token)

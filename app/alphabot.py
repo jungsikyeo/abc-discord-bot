@@ -624,7 +624,7 @@ class Queries:
 
     def get_project_id_by_twitter_handle(db, twitter_handle):
         select_query = f"""
-        SELECT id
+        SELECT id, walletCheckerUserId
         FROM projects
         WHERE twitterUrl LIKE replace(replace(%s, '@', ''), ' ', '');
         """
@@ -1208,6 +1208,9 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
 
     # Find the project ID using the Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+    project_id = project_info['id']
+    wallet_checker_user_id = project_info['walletCheckerUserId']
+    user_id = ctx.author.id
 
     if project_info is None:
         embed = Embed(title="Error", description="❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", color=0xff0000)
@@ -1215,8 +1218,11 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    project_id = project_info['id']
-    user_id = ctx.author.id
+    if wallet_checker_user_id != str(user_id):
+        embed = Embed(title="Error", description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
 
     # Update the Wallet Checker URL
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url, user_id)

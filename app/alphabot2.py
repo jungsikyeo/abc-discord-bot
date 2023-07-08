@@ -1224,7 +1224,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    if wallet_checker_user_id != str(user_id):
+    if wallet_checker_user_id is not None and wallet_checker_user_id != str(user_id):
         embed = Embed(title="Error", description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.", color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
         await ctx.reply(embed=embed, mention_author=True)

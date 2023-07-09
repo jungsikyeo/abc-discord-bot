@@ -109,12 +109,12 @@ class ButtonView(discord.ui.View):
             link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
         if str(self.mobile) == "online":
-            embed=discord.Embed(title=item['name'], description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            embed=discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}", description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.set_footer(text="Powered by 으노아부지#2642")
         else:
-            embed=discord.Embed(title=item['name'], description=f"{mintTime} | {link_url}", color=0x04ff00)
+            embed=discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}", description=f"{mintTime} | {link_url}", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.add_field(name=f"""Supply       """, value=f"{item['supply']}", inline=True)

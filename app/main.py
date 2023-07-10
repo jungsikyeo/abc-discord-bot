@@ -65,7 +65,7 @@ class Queries:
     def insert_project(db, uuid, form):
         name = form["name"]
         discordUrl = form["discordUrl"]
-        twitterUrl = form["twitterUrl"]
+        twitterUrl = form["twitterUrl"].split('?')[0]
         twitterProfileImage = form["twitterProfileImage"]
         mintDateOption = form["mintDateOption"]
         supplyOption = form["supplyOption"]
@@ -145,7 +145,7 @@ class Queries:
     def update_project(db, form):
         id = form["id"]
         name = form["name"]
-        twitterUrl = form["twitterUrl"]
+        twitterUrl = form["twitterUrl"].split('?')[0]
         twitterProfileImage = form["twitterProfileImage"]
         mintDateOption = form["mintDateOption"]
         supplyOption = form["supplyOption"]

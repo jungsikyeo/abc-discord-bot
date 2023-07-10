@@ -15,7 +15,7 @@ from pytz import all_timezones, timezone
 from discord.ui import Button, View
 from discord.ext import commands
 from discord import Embed
-from paginator import Paginator, Page, NavigationType
+from Paginator2 import Paginator, PageEmojis, NavigationType, Page
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from urllib.parse import quote, urlparse
@@ -771,8 +771,7 @@ class Queries:
 
 
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
-paginator = Paginator(bot)
-paginator_search = Paginator(bot)
+
 db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -825,6 +824,7 @@ async def mint(ctx, *, arg="today"):
         cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
 
+    paginator = Paginator(bot)
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
@@ -853,7 +853,8 @@ async def msearch(ctx, *, project_name):
             cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
             pages.append(cal)
 
-        await paginator_search.send(ctx.channel, pages, type=NavigationType.Buttons)
+        paginator = Paginator(bot)
+        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
     else:
         embed=discord.Embed(title="", description="")
         embed.add_field(name="", value=f"❌ No projects have been searched as `{project_name}`.\nPlease search for another word.\n\n❌ `{project_name}`(으)로 검색된 프로젝트가 없습니다.\n다른 단어를 검색하십시오.", inline=True)

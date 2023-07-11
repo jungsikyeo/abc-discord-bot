@@ -2027,107 +2027,103 @@ openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
 @bot.command()
 async def ai(ctx, count = "0", *prompts):
     await draw(ctx, count, *prompts)
-@bot.command()
-async def draw(ctx, count = "0", *prompts):
-    random_color = random.randint(0, 0xFFFFFF)
 
-    try:
-        count = int(count)
-    except:
-        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    if count == 0 or count > 4:
-        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    if len(prompts) == 0:
-        error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
-    embed.set_footer(text="Generating images...")
-    await ctx.send(embed=embed)
-
-    prompt_text = " ".join(prompts)
-    model = "gpt-3.5-turbo"
-
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant who is good at translating."
-        },
-        {
-            "role": "user",
-            "content": f"Please translate {prompt_text} into English."
-        }
-    ]
-
-    # ChatGPT API 호출하기
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages
-    )
-    answer = response['choices'][0]['message']['content']
-    print(answer)
-
-    messages.append(
-        {
-            "role": "assistant",
-            "content": answer
-        },
-    )
-
-    # 사용자 메시지 추가
-    messages.append(
-        {
-            "role": "user",
-            "content": "Based on the above, please imagine the appearance in more detail and describe it in one line."
-        }
-    )
-
-    # ChatGPT API 호출하기
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages
-    )
-    answer2 = response['choices'][0]['message']['content']
-    print(answer2)
-
-
-
-
-
-
-    try:
-        response = openai.Image.create(
-            prompt=answer2,
-            n=count,
-            size="1024x1024"
-        )
-        image_urls = [img["url"] for img in response["data"]]
-    except Exception as e:
-        print(str(e))
-        if str(e) == "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.":
-            error_embed = Embed(title="Error", description="Contains text that is not allowed.\n\n허용하지 않는 텍스트가 포함되어 있습니다.", color=0xFF0000)
-        else:
-            error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    index = 0
-    for image_url in image_urls:
-        index += 1
-        embed = Embed(title=f"Image {index}", color=random_color)
-        embed.set_image(url=image_url)
-        embed.set_footer(text=f"Image {index} generation complete")
-        await ctx.send(embed=embed)
-
-    embed = Embed(title="All Image generation complete", color=random_color)
-    await ctx.reply(embed=embed, mention_author=True)
+# @bot.command()
+# async def draw(ctx, count = "0", *prompts):
+#     random_color = random.randint(0, 0xFFFFFF)
+#
+#     try:
+#         count = int(count)
+#     except:
+#         error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
+#         await ctx.reply(embed=error_embed, mention_author=True)
+#         return
+#
+#     if count == 0 or count > 4:
+#         error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
+#         await ctx.reply(embed=error_embed, mention_author=True)
+#         return
+#
+#     if len(prompts) == 0:
+#         error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
+#         await ctx.reply(embed=error_embed, mention_author=True)
+#         return
+#
+#     embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
+#     embed.set_footer(text="Generating images...")
+#     await ctx.send(embed=embed)
+#
+#     prompt_text = " ".join(prompts)
+#     model = "gpt-3.5-turbo"
+#
+#     messages = [
+#         {
+#             "role": "system",
+#             "content": "You are a helpful assistant who is good at translating."
+#         },
+#         {
+#             "role": "user",
+#             "content": f"Please translate `{prompt_text}` into directly English. If it's English, please print it out as it is."
+#         }
+#     ]
+#
+#     # ChatGPT API 호출하기
+#     response = openai.ChatCompletion.create(
+#         model=model,
+#         messages=messages
+#     )
+#     answer = response['choices'][0]['message']['content']
+#     print(answer)
+#
+#     messages.append(
+#         {
+#             "role": "assistant",
+#             "content": answer
+#         },
+#     )
+#
+#     # # 사용자 메시지 추가
+#     # messages.append(
+#     #     {
+#     #         "role": "user",
+#     #         "content": "Based on the above, please imagine the appearance in more detail and describe it in one line."
+#     #     }
+#     # )
+#     #
+#     # # ChatGPT API 호출하기
+#     # response = openai.ChatCompletion.create(
+#     #     model=model,
+#     #     messages=messages
+#     # )
+#     # answer2 = response['choices'][0]['message']['content']
+#     # print(answer2)
+#
+#     try:
+#         response = openai.Image.create(
+#             prompt=answer,
+#             n=count,
+#             size="1024x1024"
+#         )
+#         image_urls = [img["url"] for img in response["data"]]
+#     except Exception as e:
+#         print(str(e))
+#         if str(e) == "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.":
+#             error_embed = Embed(title="Error", description="Contains text that is not allowed.\n\n허용하지 않는 텍스트가 포함되어 있습니다.", color=0xFF0000)
+#         else:
+#             error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
+#         await ctx.reply(embed=error_embed, mention_author=True)
+#         return
+#
+#     index = 0
+#     for image_url in image_urls:
+#         index += 1
+#         embed = Embed(title=f"Image {index}", color=random_color)
+#         embed.set_image(url=image_url)
+#         embed.set_footer(text=f"Image {index} generation complete")
+#         await ctx.send(embed=embed)
+#
+#     embed = Embed(title="All Image generation complete", color=random_color)
+#     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def ai2(ctx):
@@ -2174,7 +2170,132 @@ async def ai2(ctx):
         if operating_system.path.exists(image_path):
             operating_system.remove(image_path)
 
+def imageToString(img):
+    import io
+    import base64
 
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    my_encoded_img = base64.encodebytes(img_byte_arr.getvalue()).decode('ascii')
+    return my_encoded_img
+
+@bot.command()
+async def draw(ctx, count = "0", *prompts):
+    import urllib
+    from PIL import Image
+
+    random_color = random.randint(0, 0xFFFFFF)
+
+    try:
+        count = int(count)
+    except:
+        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    if count == 0 or count > 4:
+        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    if len(prompts) == 0:
+        error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
+    embed.set_footer(text="Generating images...")
+    await ctx.send(embed=embed)
+
+    prompt_text = " ".join(prompts)
+    model = "gpt-3.5-turbo"
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant who is good at translating."
+        },
+        {
+            "role": "user",
+            "content": f"Please translate `{prompt_text}` into directly English. If it's English, please print it out as it is."
+        }
+    ]
+
+    # ChatGPT API 호출하기
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages
+    )
+    answer = response['choices'][0]['message']['content']
+    print(answer)
+
+    try:
+        # 프롬프트에 사용할 제시어
+        prompt = answer
+        negative_prompt = ""
+
+        # [내 애플리케이션] > [앱 키] 에서 확인한 REST API 키 값 입력
+        REST_API_KEY = operating_system.getenv("KARLO_API_KEY")
+
+        r = requests.post(
+            'https://api.kakaobrain.com/v2/inference/karlo/t2i',
+            json = {
+                'prompt': prompt,
+                'negative_prompt': negative_prompt,
+                'width': 640,
+                'height': 640,
+                'samples': count,
+                'image_quality': 100,
+            },
+            headers = {
+                'Authorization': f'KakaoAK {REST_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+        )
+        # 응답 JSON 형식으로 변환
+        response = json.loads(r.content)
+
+        img_arr = []
+
+        for i in range(count):
+            img = Image.open(urllib.request.urlopen(response.get("images")[i].get("image")))
+            img_base64 = imageToString(img)
+            img_arr.append(img_base64)
+
+        r = requests.post(
+            'https://api.kakaobrain.com/v2/inference/karlo/upscale',
+            json = {
+                'images': img_arr,
+                'scale': 2,
+                'image_quality': 100
+            },
+            headers = {
+                'Authorization': f'KakaoAK {REST_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+        )
+        # 응답 JSON 형식으로 변환
+        response = json.loads(r.content)
+        print(response)
+
+        # 응답의 첫 번째 이미지 생성 결과 출력하기
+        image_urls = [img for img in response.get("images")]
+    except Exception as e:
+        print(str(e))
+        error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    index = 0
+    for image_url in image_urls:
+        index += 1
+        embed = Embed(title=f"Image {index}", color=random_color)
+        embed.set_image(url=image_url)
+        embed.set_footer(text=f"Image {index} generation complete")
+        await ctx.send(embed=embed)
+
+    embed = Embed(title="All Image generation complete", color=random_color)
+    await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def 챗(ctx, *prompts):

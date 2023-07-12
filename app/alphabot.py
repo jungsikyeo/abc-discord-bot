@@ -769,6 +769,28 @@ class Queries:
                 result = cursor.fetchall()
                 return result
 
+    def select_tarots(db, user_id):
+        select_query = f"""
+        SELECT draw_date, card_index FROM tarots WHERE user_id = %s
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, (user_id))
+                result = cursor.fetchone()
+                return result
+
+    def insert_tarots(db, user_id, current_date, frame_index):
+        update_query = """
+        INSERT INTO tarots (user_id, draw_date, card_index) VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE draw_date = VALUES(draw_date), card_index = VALUES(card_index)
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (user_id, current_date, frame_index))
+                conn.commit()
+
 
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 
@@ -2246,6 +2268,8 @@ async def draw(ctx, count = "0", *prompts):
                 'height': 640,
                 'samples': count,
                 'image_quality': 100,
+                'guidance_scale': 20,
+                'num_inference_steps': 50
             },
             headers = {
                 'Authorization': f'KakaoAK {REST_API_KEY}',
@@ -2422,6 +2446,61 @@ async def mstats(ctx):
     paginator = Paginator(bot)
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
+@bot.command()
+async def 타로(ctx):
+    await tarot(ctx)
+def get_card_frame(index):
+    from PIL import Image, ImageSequence
+
+    filepath = "tarot-cards-slide-show.gif"
+    img = Image.open(filepath)
+    if img.is_animated:
+        frames = [frame.copy() for frame in ImageSequence.Iterator(img)]
+        return frames[index]
+    return None
+@bot.command()
+async def tarot(ctx):
+    from io import BytesIO
+    import datetime
+
+    user_id = ctx.message.author.id
+    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+    current_date = datetime.date.today()
+
+    result = Queries.select_tarots(db, user_id)
+
+    filename = f'tarot_{user_id}.png'
+
+    if result and current_date <= result['draw_date']:
+        # If the user has drawn today, just send the previous draw
+        frame = get_card_frame(result['card_index'])
+        frame.save(f"./static/{filename}", format='PNG')
+
+        byte_arr = BytesIO()
+        frame.save(byte_arr, format='PNG')
+        byte_arr.seek(0)
+
+        embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random.randint(0, 0xFFFFFF))
+        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={current_date.isoformat()}")  # Set the image in the embed using the image URL
+        await ctx.reply(embed=embed, mention_author=True)
+    else:
+        # Else, make a new draw
+        random_color = random.randint(0, 0xFFFFFF)
+        frame_index = random.randint(0,16)
+
+        frame = get_card_frame(frame_index)
+        frame.save(f"./static/{filename}", format='PNG')
+
+        byte_arr = BytesIO()
+        frame.save(byte_arr, format='PNG')
+        byte_arr.seek(0)
+
+        embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random_color)
+        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={current_date.isoformat()}")  # Set the image in the embed using the image URL
+
+        Queries.insert_tarots(db, user_id, current_date, frame_index)
+
+        await ctx.reply(embed=embed, mention_author=True)
 
 bot.run(bot_token)
 

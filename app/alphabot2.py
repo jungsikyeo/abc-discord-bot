@@ -2467,6 +2467,9 @@ async def tarot(ctx):
     regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
     current_date = datetime.date.today()
 
+    now_in_seconds = time.time()
+    now_in_milliseconds = int(now_in_seconds * 1000)
+
     result = Queries.select_tarots(db, user_id)
 
     filename = f'tarot_{user_id}.png'
@@ -2481,7 +2484,7 @@ async def tarot(ctx):
         byte_arr.seek(0)
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random.randint(0, 0xFFFFFF))
-        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={current_date.isoformat()}")  # Set the image in the embed using the image URL
+        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
         await ctx.reply(embed=embed, mention_author=True)
     else:
         # Else, make a new draw
@@ -2496,7 +2499,7 @@ async def tarot(ctx):
         byte_arr.seek(0)
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random_color)
-        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={current_date.isoformat()}")  # Set the image in the embed using the image URL
+        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
 
         Queries.insert_tarots(db, user_id, current_date, frame_index)
 

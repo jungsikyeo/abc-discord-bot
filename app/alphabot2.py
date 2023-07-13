@@ -2239,7 +2239,7 @@ async def draw(ctx, count = "0", *prompts):
         },
         {
             "role": "user",
-            "content": f"Please translate `{prompt_text}` into directly English. If it's English, please print it out as it is."
+            "content": f"```{prompt_text}```\n\nPlease translate the above sentence directly into English.\n\nIf the sentence is English, please print it out as it is."
         }
     ]
 
@@ -2255,6 +2255,11 @@ async def draw(ctx, count = "0", *prompts):
         # 프롬프트에 사용할 제시어
         prompt = answer
         negative_prompt = ""
+        seeds = []
+        seed = random.randint(0, 4294967291)
+
+        for index in range(count):
+            seeds.append(seed + index)
 
         # [내 애플리케이션] > [앱 키] 에서 확인한 REST API 키 값 입력
         REST_API_KEY = operating_system.getenv("KARLO_API_KEY")
@@ -2263,13 +2268,13 @@ async def draw(ctx, count = "0", *prompts):
             'https://api.kakaobrain.com/v2/inference/karlo/t2i',
             json = {
                 'prompt': prompt,
-                'negative_prompt': negative_prompt,
-                'width': 640,
-                'height': 640,
+                'width': 512,
+                'height': 512,
                 'samples': count,
-                'image_quality': 100,
-                'guidance_scale': 20,
-                'num_inference_steps': 50
+                'image_quality': 70,
+                'guidance_scale': 12.5,
+                'num_inference_steps': 20,
+                'seed': seeds
             },
             headers = {
                 'Authorization': f'KakaoAK {REST_API_KEY}',
@@ -2300,10 +2305,11 @@ async def draw(ctx, count = "0", *prompts):
         )
         # 응답 JSON 형식으로 변환
         response = json.loads(r.content)
-        print(response)
+        # print(response)
 
         # 응답의 첫 번째 이미지 생성 결과 출력하기
         image_urls = [img for img in response.get("images")]
+        # image_urls = [img["image"] for img in response.get("images")]
     except Exception as e:
         print(str(e))
         error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
@@ -2460,7 +2466,6 @@ def get_card_frame(index):
     return None
 @bot.command()
 async def tarot(ctx):
-    from io import BytesIO
     import datetime
 
     user_id = ctx.message.author.id
@@ -2472,16 +2477,9 @@ async def tarot(ctx):
 
     result = Queries.select_tarots(db, user_id)
 
-    filename = f'tarot_{user_id}.png'
-
     if result and current_date <= result['draw_date']:
         # If the user has drawn today, just send the previous draw
-        frame = get_card_frame(result['card_index'])
-        frame.save(f"./static/{filename}", format='PNG')
-
-        byte_arr = BytesIO()
-        frame.save(byte_arr, format='PNG')
-        byte_arr.seek(0)
+        filename = f"{result['card_index']}.jpg"
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random.randint(0, 0xFFFFFF))
         embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
@@ -2489,14 +2487,8 @@ async def tarot(ctx):
     else:
         # Else, make a new draw
         random_color = random.randint(0, 0xFFFFFF)
-        frame_index = random.randint(0,16)
-
-        frame = get_card_frame(frame_index)
-        frame.save(f"./static/{filename}", format='PNG')
-
-        byte_arr = BytesIO()
-        frame.save(byte_arr, format='PNG')
-        byte_arr.seek(0)
+        frame_index = random.randint(0,77)
+        filename = f"{frame_index}.jpg"
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", color=random_color)
         embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL

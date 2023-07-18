@@ -108,8 +108,14 @@ class ButtonView(discord.ui.View):
         if item['walletCheckerUrl'] != '-':
             link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
 
+        call_url = None
+        if item['callUrl'] != '-':
+            call_url = item['callUrl']
+
         if str(self.mobile) == "online":
             embed=discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}", description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            if call_url:
+                embed.add_field(name="SearchFi Call", value=f"{call_url}", inline=True)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.set_footer(text="Powered by 으노아부지#2642")
@@ -122,6 +128,8 @@ class ButtonView(discord.ui.View):
             embed.add_field(name=f"""Public Price """, value=f"{item['pubPrice']} {item['blockchain']}", inline=True)
             embed.add_field(name="Up", value=f":thumbsup: {item['goodCount']}", inline=True)
             embed.add_field(name="Down", value=f":thumbsdown: {item['badCount']}", inline=True)
+            if call_url:
+                embed.add_field(name="SearchFi Call", value=f"{call_url}", inline=True)
             embed.set_footer(text="Powered by 으노아부지#2642")
         return embed
 
@@ -156,6 +164,7 @@ class Queries:
                 ifnull(discordUrl, '-') discordUrl,  
                 ifnull(twitterUrl, '-') twitterUrl,  
                 ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                ifnull(callUrl, '-') callUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -199,6 +208,7 @@ class Queries:
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
                 ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                ifnull(callUrl, '-') callUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -243,6 +253,7 @@ class Queries:
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
                 ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                ifnull(callUrl, '-') callUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -287,6 +298,7 @@ class Queries:
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
                 ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                ifnull(callUrl, '-') callUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -327,6 +339,7 @@ class Queries:
                 ifnull(discordUrl, '-') discordUrl, 
                 ifnull(twitterUrl, '-') twitterUrl,  
                 ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                ifnull(callUrl, '-') callUrl,  
                 ifnull(twitterProfileImage, '-') twitterProfileImage,  
                 ifnull(nullif(supply, ''), '-') supply,  
                 ifnull(nullif(wlPrice, ''), '-') wlPrice,  
@@ -624,7 +637,7 @@ class Queries:
 
     def get_project_id_by_twitter_handle(db, twitter_handle):
         select_query = f"""
-        SELECT id, walletCheckerUserId
+        SELECT *
         FROM projects
         WHERE twitterUrl LIKE replace(replace(%s, '@', ''), ' ', '');
         """
@@ -645,6 +658,14 @@ class Queries:
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (wallet_checker_url, user_id, project_id))
+                conn.commit()
+
+    def update_call_url(db, project_id, call_url, user_id):
+        update_query = "UPDATE projects SET callUrl = %s, callUrlUserId = %s WHERE id = %s"
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(update_query, (call_url, user_id, project_id))
                 conn.commit()
 
     def get_tier_by_blockchain(db, blockchain):
@@ -1257,6 +1278,65 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url, user_id)
 
     embed = Embed(title="Success", description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", color=0x37e37b)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    await ctx.reply(embed=embed, mention_author=True)
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
+async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
+    if twitter_handle is None or call_url is None:
+        embed = Embed(title="Error", description="❌ Usage: `!mcall <Twitter_Handle> <Call_Massage_Link>`\n\n❌ 사용방법: `!mcall <트위터 핸들> <Call 메시지 링크>`", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # Validate the URL
+    nft_alpha_channels = [
+        "https://discord.com/channels/961242951504261130/1059449160262234153",
+        "https://discord.com/channels/961242951504261130/1059431422349291530",
+        "https://discord.com/channels/961242951504261130/1059474081310838804",
+        "https://discord.com/channels/961242951504261130/1059431299393265685",
+    ]
+
+    url_error = True
+    for channel in nft_alpha_channels:
+        if channel in call_url:
+            url_error = False
+            break
+
+    if url_error:
+        embed = Embed(title="Error", description=f"❌ Only messages from the channel below can be registered for Call message link. \n\n"
+                                                 f"❌ Call 메시지 링크는 아래 채널의 메시지만 등록할 수 있습니다.\n\n"
+                                                 f"{nft_alpha_channels[0]}\n"
+                                                 f"{nft_alpha_channels[1]}\n"
+                                                 f"{nft_alpha_channels[2]}\n"
+                                                 f"{nft_alpha_channels[3]}\n", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # Find the project ID using the Twitter handle
+    project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+    project_id = project_info['id']
+    call_user_id = project_info['callUrlUserId']
+    user_id = ctx.author.id
+
+    if project_info is None:
+        embed = Embed(title="Error", description="❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    if call_user_id is not None and call_user_id != str(user_id):
+        embed = Embed(title="Error", description=f"❌ This link is already registered by <@{call_user_id}>. Only <@{call_user_id}> can be changed.\n\n❌ 이미 <@{call_user_id}>의 의해 링크가 등록되어 있습니다. <@{call_user_id}>만 URL변경이 가능합니다.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # Update the Wallet Checker URL
+    Queries.update_call_url(db, project_id, call_url, user_id)
+
+    embed = Embed(title="Success", description=f"✅ Call message link for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Call 메시지 링크가 업데이트되었습니다!", color=0x37e37b)
     embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
 

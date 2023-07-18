@@ -2498,5 +2498,44 @@ async def tarot(ctx):
 
         await ctx.reply(embed=embed, mention_author=True)
 
+@bot.command()
+async def mp(ctx, symbol: str, amount: float):
+    ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")
+    binance_api_url = "https://api.binance.com/api/v3/ticker/price"
+    exchange_rate_api_url = f"https://v6.exchangerate-api.com/v6/{ex_api_key}/latest/USD"
+
+    # Get coin price in USD from Binance API
+    response = requests.get(binance_api_url, params={"symbol": symbol.upper() + "USDT"})
+    if response.status_code != 200:
+        await ctx.send("Invalid coin symbol.")
+        return
+    coin_price_in_usd = float(response.json()['price'])
+
+    # Get exchange rates
+    response = requests.get(exchange_rate_api_url)
+    if response.status_code != 200:
+        await ctx.send("Error getting exchange rates.")
+        return
+    exchange_rates = response.json()['conversion_rates']
+
+    # Convert amount to different currencies
+    usd_amount = coin_price_in_usd * amount
+    result = {
+        "USD": usd_amount,
+        "KRW": usd_amount * exchange_rates['KRW'],
+        "CNY": usd_amount * exchange_rates['CNY'],
+        "JPY": usd_amount * exchange_rates['JPY']
+    }
+
+    embed = discord.Embed(title=f"{amount} {symbol.upper()} is equal to:", color=0xEFB90A)
+
+    embed.add_field(name="🇺🇸 USA", value="```{:,.2f} USD```".format(result['USD']), inline=False)
+    embed.add_field(name="🇰🇷 SOUTH KOREA", value="```{:,.2f} KRW```".format(result['KRW']), inline=False)
+    embed.add_field(name="🇨🇳 CHINA", value="```{:,.2f} CNY```".format(result['CNY']), inline=False)
+    embed.add_field(name="🇯🇵 JAPAN", value="```{:,.2f} JPY```".format(result['JPY']), inline=False)
+
+    await ctx.send(embed=embed)
+
+
 bot.run(bot_token)
 

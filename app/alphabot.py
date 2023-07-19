@@ -2556,9 +2556,10 @@ async def tarot(ctx):
     now_in_milliseconds = int(now_in_seconds * 1000)
 
     result = Queries.select_tarots(db, user_id)
-    keyword = Queries.select_keyword(db, f"tarot{result['card_index']}")
 
     if result and current_date <= result['draw_date']:
+        keyword = Queries.select_keyword(db, f"tarot{result['card_index']}")
+
         # If the user has drawn today, just send the previous draw
         filename = f"{result['card_index']}.jpg"
 
@@ -2570,6 +2571,8 @@ async def tarot(ctx):
         random_color = random.randint(0, 0xFFFFFF)
         frame_index = random.randint(0,77)
         filename = f"{frame_index}.jpg"
+
+        keyword = Queries.select_keyword(db, f"tarot{frame_index}")
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", description=f"{keyword['symbol']}", color=random_color)
         embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL

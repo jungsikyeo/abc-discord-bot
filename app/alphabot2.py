@@ -757,31 +757,60 @@ class Queries:
         with main as (
             select a.user_id, a.type, a.cnt
             from (
-                select user_id, 'REG' type, count(1) cnt
-                from projects
-                where isAlphabot <> 'Y'
-                group by user_id
-                union
-                select user_id, recommendType, count(1) cnt
-                from recommends
-                group by user_id, recommendType
-                union
-                select walletCheckerUserId, 'CHECKER', count(1) cnt
-                from projects
-                where walletCheckerUserId is not null
-                group by walletCheckerUserId
-            ) a
+                     select user_id, 'REG' type, count(1) cnt
+                     from projects
+                     where isAlphabot <> 'Y'
+                     group by user_id
+                     union
+                     select user_id, recommendType, count(1) cnt
+                     from recommends
+                     group by user_id, recommendType
+                     union
+                     select walletCheckerUserId, 'CHECKER', count(1) cnt
+                     from projects
+                     where walletCheckerUserId is not null
+                     group by walletCheckerUserId
+                     union
+                     select callUrlUserId, 'SEARCHFI_CALL', count(1) cnt
+                     from projects
+                     where callUrlUserId is not null
+                     group by callUrlUserId
+                 ) a
             where user_id is not null
+        ),
+        stats as (
+            select
+                user_id,
+                ifnull((select cnt from main where user_id = m.user_id and type = 'REG'), 0) REG,
+                ifnull((select cnt from main where user_id = m.user_id and type = 'CHECKER'), 0) CHECKER,
+                ifnull((select cnt from main where user_id = m.user_id and type = 'SEARCHFI_CALL'), 0) SEARCHFI_CALL,
+                ifnull((select cnt from main where user_id = m.user_id and type = 'UP'), 0) UP,
+                ifnull((select cnt from main where user_id = m.user_id and type = 'DOWN'), 0) DOWN
+            from main m
+            group by user_id
+        ),
+        ranks as (
+            select
+                user_id,
+                REG,
+                CHECKER,
+                SEARCHFI_CALL,
+                UP,
+                DOWN,
+                ((REG * 2) + (CHECKER * 1.5) + (SEARCHFI_CALL * 1.5) + (UP * 0.1) + (DOWN * 0.1)) RANK_POINT
+            FROM stats
         )
         select
+            DENSE_RANK() OVER (ORDER BY RANK_POINT DESC) AS ranking,
             user_id,
-            ifnull((select cnt from main where user_id = m.user_id and type = 'REG'), 0) REG,
-            ifnull((select cnt from main where user_id = m.user_id and type = 'CHECKER'), 0) CHECKER,
-            ifnull((select cnt from main where user_id = m.user_id and type = 'UP'), 0) UP,
-            ifnull((select cnt from main where user_id = m.user_id and type = 'DOWN'), 0) DOWN
-        from main m
-        group by user_id
-        order by 2 desc, (CHECKER + UP + DOWN) DESC, CHECKER DESC, UP DESC
+            REG,
+            CHECKER,
+            SEARCHFI_CALL,
+            UP,
+            DOWN,
+            RANK_POINT
+        from ranks
+        order by ranking
         """
 
         with db.get_connection() as conn:
@@ -2498,10 +2527,11 @@ async def mstats(ctx):
     pages = []
 
     for page in range(num_pages):
-        description = "```\n📅 : Project REG Count\n"
-        description += "✅ : Project CHECKER Count\n"
-        description += "👍 : Project UP Count\n"
-        description += "👎 : Project DOWN Count\n\n```"
+        description = "```\n📅 : Project REG Count (2 Point)\n"
+        description += "✅ : Project CHECKER Count (1.5 Point)\n"
+        description += "📢 : Project Call Count (1.5 Point)\n"
+        description += "👍 : Project UP Count (0.1 Point)\n"
+        description += "👎 : Project DOWN Count (0.1 Point)\n\n```"
 
         embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", description=f"{description}", color=0x00ff00)
 
@@ -2514,10 +2544,11 @@ async def mstats(ctx):
 
             item = results[index]
             user = bot.get_user(int(item['user_id']))
-            field_value += "{:>4s}{:<6s}{:<6s}{:<6s}{:<6s}{:<20s}\n".format(
-                f"{index + 1}. ",
+            field_value += "{:>4s}{:<6s}{:<6s}{:<6s}{:<6s}{:<6s}{:<20s}\n".format(
+                f"{item['ranking']}. ",
                 f"📅 {item['REG']}",
                 f"✅ {item['CHECKER']}",
+                f"📢 {item['SEARCHFI_CALL']}",
                 f"👍 {item['UP']}",
                 f"👎 {item['DOWN']}",
                 f"@{user}",
@@ -2527,7 +2558,7 @@ async def mstats(ctx):
         embed.add_field(name="", value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"**🏆 Project REG / CHECKER / UP / DOWN Ranking 🏆**", embed=embed)
+        cal = Page(content=f"**🏆 Project REG / CHECKER / CALL / UP / DOWN Ranking 🏆**", embed=embed)
         pages.append(cal)
 
     paginator = Paginator(bot)

@@ -1859,8 +1859,8 @@ timezone_mapping.update({
     'JST': 'Asia/Tokyo',
     'CET': 'Europe/Central',
     'CEST': 'Europe/Central',
-    'EET': 'Europe/Eastern',
-    'EEST': 'Europe/Eastern',
+    'EET': 'Europe/Bucharest',
+    'EEST': 'Europe/Bucharest',
     'WET': 'Europe/Western',
     'WEST': 'Europe/Western',
     # Add more if needed

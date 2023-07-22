@@ -410,6 +410,54 @@ class Queries:
             print(e)
             return {"status": "ERROR", "msg": e}
 
+    def select_my_up(db, user_id, today, tomorrow):
+        select_query = f"""
+            SELECT  
+                A.*,  
+                case when mintTime24 > 12 then 'PM' else 'AM' end timeType
+            FROM ( 
+                 SELECT
+                    AA.id, 
+                    name, 
+                    ifnull(discordUrl, '-') discordUrl,  
+                    ifnull(twitterUrl, '-') twitterUrl,     
+                    ifnull(walletCheckerUrl, '-') walletCheckerUrl,  
+                    ifnull(callUrl, '-') callUrl,  
+                    ifnull(twitterProfileImage, '-') twitterProfileImage,  
+                    ifnull(nullif(supply, ''), '-') supply,  
+                    ifnull(nullif(wlPrice, ''), '-') wlPrice,  
+                    ifnull(nullif(pubPrice, ''), '-') pubPrice,  
+                    ifnull(blockchain, '-') blockchain,  
+                    ifnull(starCount, '0') starCount,  
+                    (select count(1) from recommends where projectId = AA.id and recommendType = 'UP') goodCount,  
+                    (select count(1) from recommends where projectId = AA.id and recommendType = 'DOWN') badCount, 
+                    mintDate/1000 unixMintDate,
+                    case when mintDate = 'TBA' then mintDate else FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') end mintDay, 
+                    FROM_UNIXTIME(mintDate/1000, '%Y년 %m월 %d일') mintDayKor, 
+                    FROM_UNIXTIME(mintDate/1000, '%H:%i') mintTime24,  
+                    FROM_UNIXTIME(mintDate/1000, '%h:%i') mintTime12,
+                    AA.regUser,
+                    AA.user_id,
+                    AA.hasTime
+                 FROM projects AA
+                 INNER JOIN recommends BB ON BB.projectId = AA.id
+                 WHERE 1=1 
+                 AND BB.user_id = '{user_id}'
+                 AND BB.recommendType = 'UP'
+                 /*AND AA.mintDate >= concat(UNIX_TIMESTAMP(now()), '000')*/
+                 AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') >= '{today}' 
+                 AND FROM_UNIXTIME(mintDate/1000, '%Y-%m-%d') <= '{tomorrow}'
+                 ORDER BY mintDate ASC 
+            ) A 
+            WHERE 1=1 
+            """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query)
+                result = cursor.fetchall()
+                return result
+
     def select_ranking(db):
         select_query = f"""
         SELECT
@@ -1060,6 +1108,118 @@ async def mdown(ctx, *, twitter_handle: str):
         embed = Embed(title="Changed", description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!", color=0x37E37B)
     embed.set_footer(text="Powered by 으노아부지#2642")
     await ctx.reply(embed=embed, mention_author=True)
+
+@bot.command()
+async def mylist(ctx):
+    try:
+        regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        user_id = ctx.author.id
+        today = datetime.datetime.now().date()
+        today_string = today.strftime("%Y-%m-%d")
+        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
+
+        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
+
+        my_up_list = Queries.select_my_up(db, user_id, today_string, tomorrow_string)
+        before_date = ""
+        before_time = ""
+        list_massage = "\n"
+        if len(my_up_list) > 0:
+            for item in my_up_list:
+                if len(list_massage) > 900:
+                    embed.add_field(name="", value=list_massage, inline=True)
+                    await ctx.send(embed=embed)
+                    embed=discord.Embed(title="", description="")
+                    list_massage = "\n"
+                item_date = f"{item['mintDay']}"
+                item_time = f"{item['mintTime24']}"
+                if before_date != item_date:
+                    list_massage = list_massage + f"""\n\n"""
+                    before_date = item_date
+                    before_time = ""
+                if before_time != item_time:
+                    if before_time != "":
+                        list_massage = list_massage + "\n"
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
+                    before_time = item_time
+                list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
+                # print(len(list_massage))
+            list_massage = list_massage + ""
+        else:
+            # update_channel = await bot.fetch_channel(1089590412164993044)
+            # mention_string = update_channel.mention
+            list_massage = list_massage + f"❌ No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n❌ 추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
+            embed=discord.Embed(title="", description="")
+            embed.add_field(name="", value=list_massage, inline=True)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except Exception as e:
+        print("Error:", e)
+        return
+
+    embed.add_field(name="", value=list_massage, inline=True)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def youlist(ctx, dc_id):
+    try:
+        print(dc_id[2:-1])
+        user_id = dc_id[2:-1]
+        user = await bot.fetch_user(user_id)
+        print(user)
+        if user is not None:
+            print(f"이름: {user.name}")
+            print(f"디스크리미네이터: {user.discriminator}")
+            regUser = user.name + "#" + user.discriminator
+        else:
+            regUser = dc_id
+
+
+        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
+
+        today = datetime.datetime.now().date()
+        today_string = today.strftime("%Y-%m-%d")
+        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
+        tomorrow_string = tomorrow.strftime("%Y-%m-%d")
+
+        my_up_list = Queries.select_my_up(db, user_id, today_string, tomorrow_string)
+        before_date = ""
+        before_time = ""
+        list_massage = "\n"
+        if len(my_up_list) > 0:
+            for item in my_up_list:
+                if len(list_massage) > 900:
+                    embed.add_field(name="", value=list_massage, inline=True)
+                    await ctx.send(embed=embed)
+                    embed=discord.Embed(title="", description="")
+                    list_massage = "\n"
+                item_date = f"{item['mintDay']}"
+                item_time = f"{item['mintTime24']}"
+                if before_date != item_date:
+                    list_massage = list_massage + f"""\n\n"""
+                    before_date = item_date
+                    before_time = ""
+                if before_time != item_time:
+                    if before_time != "":
+                        list_massage = list_massage + "\n"
+                    list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
+                    before_time = item_time
+                list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
+                # print(len(list_massage))
+            list_massage = list_massage + ""
+        else:
+            list_massage = list_massage + f"❌ `{regUser}` has no recommended project.\n\n`❌ {regUser}`가 추천한 프로젝트는 없습니다."
+            embed=discord.Embed(title="", description="")
+            embed.add_field(name="", value=list_massage, inline=True)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except Exception as e:
+        print("Error:", e)
+        return
+
+    embed.add_field(name="", value=list_massage, inline=True)
+    await ctx.send(embed=embed)
 
 @bot.command()
 async def myrank(ctx, *, dc_id=None):

@@ -2639,28 +2639,29 @@ async def gpt(ctx, *prompts):
         messages = [
                        { "role": "system", "content": "You are a helpful assistant in SearchFi Community." },
                    ] \
-                   + messages_for_openai \
                    + [
                        {"role": "user", "content": "서치파이는 NFT DAO 커뮤니티입니다.\n\n프로젝트 탐색 및 연구를 기반으로 생태계를 확장하는 것이 목표입니다.\n\n디스코드 내에서 서비스를 운영하고 있으며 한국어, 영어, 일본어, 중국어 채널이 따로 있을 만큼 해외 이용자 수가 많습니다.\n\n팀원은 12명으로 CEO는 이정진이며, 그의 트위터는 @eth_apple 입니다."}
                    ] \
                    + [
                        {"role": "user", "content": "SearchFi is an NFT DAO community.\n\nThe goal is to expand the ecosystem based on project exploration and research.\n\nWe operate the service within Discord and have a large number of overseas users, with separate Korean, English, Japanese, and Chinese channels.\n\nThere are 12 team members, CEO Lee Jung-jin, and his Twitter account is @eth_apple."}
                    ] \
+                   + messages_for_openai \
                    + [
                        { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 600 characters."},
                    ]
 
-        min = 0
+        min = 3
         max = len(messages)
         if max > 0:
             while min < max:
                 # print(min, max)
-                if len(str(messages[min:max])) < 4097:
-                    messages = messages[min:max]
+                if len(str(messages[0:2] + messages[min:max])) < 4097:
+                    messages = messages[0:2] + messages[min:max]
                     break
                 min += 1
 
         # print(messages)
+        # print(len(str(messages)))
 
         result = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",

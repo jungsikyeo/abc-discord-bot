@@ -2309,6 +2309,50 @@ async def addrole(ctx, sheet_name, role_name):
     await ctx.send("사용자 확인을 완료했습니다.")
 
 @bot.command()
+@commands.has_any_role('SF.Team')
+async def removerole(ctx, role_name):
+    try:
+        # 결과를 저장할 문자열을 초기화합니다.
+        result_str = ""
+
+        guild = ctx.guild  # 현재 채팅창의 길드를 가져옵니다.
+        role = discord.utils.get(guild.roles, name=role_name)  # 특정 역할을 가져옵니다.
+
+        if role is None:
+            await ctx.send(f"{role_name} 역할은 서버에 없습니다.")
+            return
+
+        member_count = len(guild.members)
+        processed_count = 0
+
+        # 길드의 모든 멤버를 반복하면서 역할이 있는 멤버를 찾습니다.
+        for member in guild.members:
+            if role in member.roles:
+                await member.remove_roles(role)  # 역할을 제거합니다.
+                result_str += f"{member.name}#{member.discriminator} 님에게서 {role_name} 역할을 제거했습니다.\n"
+
+            processed_count += 1
+
+            # 5000명마다 진행 상태를 업데이트합니다. 마지막 멤버도 처리합니다.
+            if processed_count % 5000 == 0 or processed_count == member_count:
+                await ctx.send(f"진행률: {processed_count}/{member_count} ({(processed_count / member_count) * 100:.2f}%)")
+
+        # 결과를 txt 파일로 저장합니다.
+        with open('remove_result.txt', 'w') as f:
+            f.write(result_str)
+
+        # 파일을 메시지로 첨부하여 보냅니다.
+        await ctx.send(file=discord.File('remove_result.txt'))
+
+    except Exception as e:
+        # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
+        print(e)
+        await ctx.send(f"오류가 발생했습니다: {str(e)}")
+
+    # 완료 메시지를 보냅니다.
+    await ctx.send(f"{role_name} 역할 제거를 완료했습니다.")
+
+@bot.command()
 async def 나무(ctx):
     embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/w/SearchFi", color=0xFFFFFF)
     await ctx.reply(embed=embed, mention_author=True)
@@ -2319,103 +2363,6 @@ openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
 @bot.command()
 async def ai(ctx, count = "0", *prompts):
     await draw(ctx, count, *prompts)
-
-# @bot.command()
-# async def draw(ctx, count = "0", *prompts):
-#     random_color = random.randint(0, 0xFFFFFF)
-#
-#     try:
-#         count = int(count)
-#     except:
-#         error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-#         await ctx.reply(embed=error_embed, mention_author=True)
-#         return
-#
-#     if count == 0 or count > 4:
-#         error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-#         await ctx.reply(embed=error_embed, mention_author=True)
-#         return
-#
-#     if len(prompts) == 0:
-#         error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
-#         await ctx.reply(embed=error_embed, mention_author=True)
-#         return
-#
-#     embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
-#     embed.set_footer(text="Generating images...")
-#     await ctx.send(embed=embed)
-#
-#     prompt_text = " ".join(prompts)
-#     model = "gpt-3.5-turbo"
-#
-#     messages = [
-#         {
-#             "role": "system",
-#             "content": "You are a helpful assistant who is good at translating."
-#         },
-#         {
-#             "role": "user",
-#             "content": f"Please translate `{prompt_text}` into directly English. If it's English, please print it out as it is."
-#         }
-#     ]
-#
-#     # ChatGPT API 호출하기
-#     response = openai.ChatCompletion.create(
-#         model=model,
-#         messages=messages
-#     )
-#     answer = response['choices'][0]['message']['content']
-#     print(answer)
-#
-#     messages.append(
-#         {
-#             "role": "assistant",
-#             "content": answer
-#         },
-#     )
-#
-#     # # 사용자 메시지 추가
-#     # messages.append(
-#     #     {
-#     #         "role": "user",
-#     #         "content": "Based on the above, please imagine the appearance in more detail and describe it in one line."
-#     #     }
-#     # )
-#     #
-#     # # ChatGPT API 호출하기
-#     # response = openai.ChatCompletion.create(
-#     #     model=model,
-#     #     messages=messages
-#     # )
-#     # answer2 = response['choices'][0]['message']['content']
-#     # print(answer2)
-#
-#     try:
-#         response = openai.Image.create(
-#             prompt=answer,
-#             n=count,
-#             size="1024x1024"
-#         )
-#         image_urls = [img["url"] for img in response["data"]]
-#     except Exception as e:
-#         print(str(e))
-#         if str(e) == "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.":
-#             error_embed = Embed(title="Error", description="Contains text that is not allowed.\n\n허용하지 않는 텍스트가 포함되어 있습니다.", color=0xFF0000)
-#         else:
-#             error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
-#         await ctx.reply(embed=error_embed, mention_author=True)
-#         return
-#
-#     index = 0
-#     for image_url in image_urls:
-#         index += 1
-#         embed = Embed(title=f"Image {index}", color=random_color)
-#         embed.set_image(url=image_url)
-#         embed.set_footer(text=f"Image {index} generation complete")
-#         await ctx.send(embed=embed)
-#
-#     embed = Embed(title="All Image generation complete", color=random_color)
-#     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def ai2(ctx):

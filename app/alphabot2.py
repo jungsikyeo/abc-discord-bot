@@ -2269,43 +2269,47 @@ async def addrole(ctx, sheet_name, role_name):
         client = gspread.authorize(creds)
 
         # 시트 열기
-        sheet = client.open(sheet_name).sheet1  # 시트 이름을 파라미터로 받아옵니다.
-        user_list = sheet.get_all_records()  # 시트에서 모든 레코드를 가져옵니다.
+        sheet = client.open(sheet_name).sheet1
+        user_list = sheet.get_all_records()
 
-        guild = ctx.guild  # 현재 채팅창의 길드를 가져옵니다.
-        role = discord.utils.get(guild.roles, name=role_name)  # 특정 역할을 가져옵니다.
+        guild = ctx.guild
+        role = discord.utils.get(guild.roles, name=role_name)
 
-        # 시트에서 가져온 모든 사용자를 반복합니다.
+        total_count = len(user_list)
+        processed_count = 0
+
         for user_info in user_list:
-            if 'discord_uid' in user_info:  # 'discord_username' 대신 'discord_uid'를 찾습니다.
+            if 'discord_uid' in user_info:
                 try:
-                    uid = int(user_info['discord_uid'])  # UID를 정수로 변환합니다.
+                    uid = int(user_info['discord_uid'])
                 except ValueError:
-                    # UID가 숫자 형식이 아닐 때 처리합니다.
                     result_str += f"UID {user_info['discord_uid']}은(는) 유효한 숫자 형식이 아닙니다.\n"
                     continue
 
-                member = guild.get_member(uid)  # UID를 이용하여 멤버를 찾습니다.
+                member = guild.get_member(uid)
 
-                if member is not None:  # 멤버를 찾았다면
+                if member is not None:
                     result_str += f"{member.name}#{member.discriminator} (UID: {member.id}) 님에게 {role_name} 롤을 부여했습니다.\n"
                     await member.add_roles(role)
-                else:  # 멤버를 찾지 못했다면
+                else:
                     result_str += f"UID {uid}의 사용자는 서버에 없습니다.\n"
+
+            processed_count += 1
+
+            # 500명마다 진행 상태를 업데이트합니다. 마지막 사용자도 처리합니다.
+            if processed_count % 500 == 0 or processed_count == total_count:
+                await ctx.send(f"진행률: {processed_count}/{total_count} ({(processed_count / total_count) * 100:.2f}%)")
 
         # 결과를 txt 파일로 저장합니다.
         with open('result.txt', 'w') as f:
             f.write(result_str)
 
-        # 파일을 메시지로 첨부하여 보냅니다.
         await ctx.send(file=discord.File('result.txt'))
 
     except Exception as e:
-        # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
         print(e)
         await ctx.send(f"오류가 발생했습니다: {str(e)}")
 
-    # 완료 메시지를 보냅니다.
     await ctx.send("사용자 확인을 완료했습니다.")
 
 @bot.command()

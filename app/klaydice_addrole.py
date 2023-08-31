@@ -71,63 +71,71 @@ def fetch_all_members():
         after = data[-1]['user']['id']
         time.sleep(1)
 
+        print(f"Total members: {len(members)}")
+        log_file.write(f"Total members: {len(members)}\n")
+
     return members
 
 MAX_RETRIES = 2  # 최대 재시도 횟수
 
 # 롤을 관리하는 함수
 def manage_roles(all_members, sheet_data, log_file):
+    processed_count = 0  # 처리된 회원 수를 저장할 변수
     for member in all_members:
+        processed_count += 1  # 처리된 회원 수를 1 증가
         uid = member['user']['id']
         current_roles = set(member['roles'])
         sheet_entry = sheet_data.get(uid, "")
 
-        time.sleep(1)  # API rate-limiting
-
-        print(f"{uid} Search....")
-        log_file.write(f"{uid} Search....\n")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 현재 타임스탬프
+        print(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} Search....")
+        log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} Search....\n")
 
         retries = 0
         while retries < MAX_RETRIES:
             try:
                 if sheet_entry:
                     if role_id not in current_roles:
+                        time.sleep(1)
+
                         # Add role
                         url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{uid}/roles/{role_id}"
                         headers = {"Authorization": f"Bot {discord_api_token}"}
                         response = requests.put(url, headers=headers)
                         if response.status_code == 204:
-                            print(f"Role added for UID {uid}\n")
-                            log_file.write(f"Role added for UID {uid}\n\n")
+                            print(f"{timestamp} - Role added for UID {uid}\n")
+                            log_file.write(f"{timestamp} - Role added for UID {uid}\n\n")
                             break  # 성공하면 반복 종료
                         else:
-                            print(f"Failed to add role for UID {uid}. Retrying...")
-                            log_file.write(f"Failed to add role for UID {uid}. Retrying...\n")
+                            print(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is not target\n")
+                            log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is not target\n\n")
                     else:
-                        print(f"{uid} is already having role\n")
-                        log_file.write(f"{uid} is already having role\n\n")
+                        print(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is already having role\n")
+                        log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is already having role\n\n")
                         break
                 else:
                     if role_id in current_roles:
+                        time.sleep(1)
+
                         # Remove role
                         url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{uid}/roles/{role_id}"
                         headers = {"Authorization": f"Bot {discord_api_token}"}
                         response = requests.delete(url, headers=headers)
                         if response.status_code == 204:
-                            print(f"Role removed for UID {uid}\n")
-                            log_file.write(f"Role removed for UID {uid}\n\n")
+                            print(f"{timestamp} - {processed_count}/{len(all_members)}: Role removed for UID {uid}\n")
+                            log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: Role removed for UID {uid}\n\n")
                             break  # 성공하면 반복 종료
                         else:
-                            print(f"Failed to remove role for UID {uid}. Retrying...")
-                            log_file.write(f"Failed to remove role for UID {uid}. Retrying...\n")
+                            print(f"{timestamp} - {processed_count}/{len(all_members)}: Failed to remove role for UID {uid}. Retrying...")
+                            log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: Failed to remove role for UID {uid}. Retrying...\n")
                     else:
-                        print(f"{uid} is not target\n")
-                        log_file.write(f"{uid} is not target\n\n")
+                        print(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is not target\n")
+                        log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: {uid} is not target\n\n")
                         break
                 retries += 1  # 재시도 횟수 증가
             except Exception as e:
-                print(f"An error occurred for UID {uid}: {str(e)}. Retrying...")
-                log_file.write(f"An error occurred for UID {uid}: {str(e)}. Retrying...\n")
+                print(f"{timestamp} - {processed_count}/{len(all_members)}: An error occurred for UID {uid}: {str(e)}. Retrying...")
+                log_file.write(f"{timestamp} - {processed_count}/{len(all_members)}: An error occurred for UID {uid}: {str(e)}. Retrying...\n")
                 retries += 1  # 재시도 횟수 증가
 
 # Main Execution

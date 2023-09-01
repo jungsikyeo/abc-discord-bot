@@ -9,11 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 디렉토리 생성
-log_directory = "./klaydice_addrole"
-if not os.path.exists(log_directory):
-    os.makedirs(log_directory)
-
 # 환경 변수로부터 토큰을 가져옵니다.
 discord_api_token = os.getenv("SEARCHFI_BOT_TOKEN")
 
@@ -140,7 +135,7 @@ def manage_roles(all_members, sheet_data, log_file):
 
 # Main Execution
 current_date = datetime.now().strftime("%Y%m%d")
-log_file_name = f"{log_directory}/klaydice_addrole_{current_date}.txt"
+log_file_name = f"klaydice_addrole.txt"
 
 with open(log_file_name, "w") as log_file:
     try:

@@ -2,13 +2,14 @@ import asyncio
 import discord
 import os
 import pymysql
+import requests
+import logging
 from discord.ext import commands
 from discord.ui import View, button, Select, Modal, InputText
 from discord import Embed, ButtonStyle
 from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
-from asyncio import TimeoutError
 
 load_dotenv()
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
@@ -20,9 +21,7 @@ mysql_id = os.getenv("MYSQL_ID")
 mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")
 
-products_db = {}
-user_tokens_db = {}
-user_tickets_db = {}
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class Database:
@@ -51,7 +50,7 @@ class WelcomeView(View):
 
     @button(label="Prizes", style=ButtonStyle.primary)
     async def button_prizes(self, button, interaction):
-        connection = db.get_connection()
+        connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
             cursor.execute("""
@@ -65,13 +64,13 @@ class WelcomeView(View):
                 return
 
             await interaction.response.send_message(
-                view=ProductSelectView(all_products),
+                view=ProductSelectView(self.db, all_products),
                 ephemeral=True
             )
         except Exception as e:
             description = "```❌ 경품을 불러오는 중에 문제가 발생했습니다.\n\n❌ There was a problem while trying to retrieve the prize.```"
             await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
+            logging.error(f'button_prizes error: {e}')
         finally:
             cursor.close()
             connection.close()
@@ -80,7 +79,7 @@ class WelcomeView(View):
     async def button_my_tickets(self, button, interaction):
         user_id = str(interaction.user.id)
 
-        connection = db.get_connection()
+        connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
             cursor.execute("""
@@ -108,7 +107,7 @@ class WelcomeView(View):
             description = "```❌ 응모한 티켓을 불러오는 중에 문제가 발생했습니다.\n\n" \
                           "❌ There was a problem loading the ticket you applied for.```"
             await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
+            logging.error(f'button_my_tickets error: {e}')
         finally:
             cursor.close()
             connection.close()
@@ -117,7 +116,7 @@ class WelcomeView(View):
     async def button_my_tokens(self, button, interaction):
         user_id = str(interaction.user.id)
 
-        connection = db.get_connection()
+        connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
             cursor.execute("""
@@ -140,24 +139,26 @@ class WelcomeView(View):
         except Exception as e:
             description = "```❌ 데이터 불러오는 중에 문제가 발생했습니다.\n\n❌ There was a problem loading data.```"
             await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
+            logging.error(f'button_my_tokens error: {e}')
         finally:
             cursor.close()
             connection.close()
 
 
 class ProductSelectView(View):
-    def __init__(self, all_products):
+    def __init__(self, db, all_products):
         super().__init__()
+        self.db = db
         self.all_products = all_products
         self.options = [discord.SelectOption(label=f"""{product['name']}""", value=product['name']) for product in
                         all_products]
-        self.add_item(ProductSelect(self.options, self.all_products))
+        self.add_item(ProductSelect(self.db, self.options, self.all_products))
 
 
 class ProductSelect(Select):
-    def __init__(self, options, all_products):
+    def __init__(self, db, options, all_products):
         super().__init__(placeholder='Please choose a prize', min_values=1, max_values=1, options=options)
+        self.db = db
         self.all_products = all_products
 
     async def callback(self, interaction):
@@ -168,7 +169,7 @@ class ProductSelect(Select):
                 selected_product = product
                 break
 
-        buy_button_view = BuyButton(selected_product)
+        buy_button_view = BuyButton(self.db, selected_product)
 
         description = "응모하시려면 아래에 `Buy` 버튼을 눌러주세요.\n\nPlease press the `Buy` button below to apply."
         embed = Embed(title=selected_product['name'], description=description, color=0xFFFFFF)
@@ -183,14 +184,15 @@ class ProductSelect(Select):
 
 
 class BuyButton(View):
-    def __init__(self, product):
+    def __init__(self, db, product):
         super().__init__()
+        self.db = db
         self.product = product
 
     @button(label="Buy", style=discord.ButtonStyle.primary, custom_id="buy_button")
-    async def buy(self, button, interaction):
+    async def button_buy(self, button, interaction):
         user_id = str(interaction.user.id)
-        connection = db.get_connection()
+        connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
             cursor.execute("""
@@ -236,8 +238,8 @@ class BuyButton(View):
                     where user_id = %s
                 """, (user_tokens, user_id))
 
-                description = f"```✅ `{self.product['name']}` 경품에 응모하였습니다.\n\n" \
-                              f"✅ You applied for the `{self.product['name']}` prize.```"
+                description = f"✅ `{self.product['name']}` 경품에 응모하였습니다.\n\n" \
+                              f"✅ You applied for the `{self.product['name']}` prize."
                 embed = Embed(title="", description=description, color=0xFFFFFF)
                 await interaction.response.send_message(
                     embed=embed,
@@ -247,14 +249,23 @@ class BuyButton(View):
         except Exception as e:
             description = "```❌ 경품을 응모하는 중에 문제가 발생했습니다.\n\n❌ There was a problem applying for the prize.```"
             await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
+            logging.error(f'buy error: {e}')
             connection.rollback()
         finally:
             cursor.close()
             connection.close()
 
 
-class ModalAddPrize(Modal):
+class AddPrizeButton(View):
+    def __init__(self):
+        super().__init__()
+
+    @button(label="Add Prize", style=discord.ButtonStyle.primary, custom_id="add_prize_button")
+    async def button_add_prize(self, button, interaction):
+        await interaction.response.send_modal(modal=AddPrizeModal(db))
+
+
+class AddPrizeModal(Modal):
     def __init__(self, db):
         super().__init__(title="Add Prize")
         self.item_name = InputText(label="Prize Name",
@@ -273,24 +284,47 @@ class ModalAddPrize(Modal):
         self.db = db
 
     async def callback(self, interaction):
-        name = self.item_name.value
-        image = self.item_image.value
-        try:
-            price = int(self.item_price.value)
-        except Exception as e:
-            description = "```❌ 가격은 숫자로 입력해야합니다.\n\n❌ Price must be entered numerically.```"
-            await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
-            return
-
-        connection = db.get_connection()
+        connection = self.db.get_connection()
         cursor = connection.cursor()
+
         try:
+            name = self.item_name.value
+            cursor.execute("""
+                select count(id) cnt
+                from products
+                where name = %s
+            """, name)
+            item = cursor.fetchone()
+            if int(item['cnt']) > 0:
+                description = "```❌ 이미 동일한 이름의 경품이 있습니다.\n\n❌ You already have a prize with the same name.```"
+                await interaction.response.send_message(description, ephemeral=True)
+                logging.error(f'AddPrizeModal name error: Already have a prize with the same name.')
+                return
+
+            try:
+                image = self.item_image.value
+                response = requests.head(image)
+                if response.status_code == 200 and 'image' in response.headers['Content-Type']:
+                    pass
+            except Exception as e:
+                description = "```❌ 유효한 이미지URL을 입력해야합니다.\n\n❌ You must enter a valid image URL.```"
+                await interaction.response.send_message(description, ephemeral=True)
+                logging.error(f'AddPrizeModal image error: {e}')
+                return
+
+            try:
+                price = int(self.item_price.value)
+            except Exception as e:
+                description = "```❌ 가격은 숫자로 입력해야합니다.\n\n❌ Price must be entered numerically.```"
+                await interaction.response.send_message(description, ephemeral=True)
+                logging.error(f'AddPrizeModal price error: {e}')
+                return
+
             cursor.execute("""
                 insert into products (name, image, price)
                 values (%s, %s, %s)
             """, (name, image, price))
-            description = f"```✅ `{name}`이 등록되었습니다.\n\n✅ '{name}' registered.```"
+            description = f"✅ `{name}`이 경품으로 등록되었습니다.\n\n✅ `{name}` has been registered as a prize."
             embed = Embed(title="", description=description, color=0xFFFFFF)
             await interaction.response.send_message(
                 embed=embed,
@@ -299,9 +333,9 @@ class ModalAddPrize(Modal):
             connection.commit()
         except Exception as e:
             connection.rollback()
-            description = "```❌ 데이터 불러오는 중에 문제가 발생했습니다.\n\n❌ There was a problem loading data.```"
+            description = "```❌ 데이터 처리 중에 문제가 발생했습니다.\n\n❌ There was a problem processing the data.```"
             await interaction.response.send_message(description, ephemeral=True)
-            print(f"error: {e}")
+            logging.error(f'AddPrizeModal db error: {e}')
         finally:
             cursor.close()
             connection.close()
@@ -331,25 +365,18 @@ async def start(ctx):
     embed.set_image(
         url="https://media.discordapp.net/attachments/1069466892101746740/1148837901422035006/3c914e942de4d39a.gif?width=1920&height=1080")
     embed.set_footer(text="Powered by 으노아부지#2642")
-
     view = WelcomeView(db)
-
     await ctx.send(embed=embed, view=view)
 
 
-@bot.slash_command(
-    name='add_prize',
-    description='Add Prizes command in ShoppingFi.',
-    default_permission=True
-)
+@bot.command()
 @commands.has_any_role('SF.Team')
-async def add_prize(interaction):
-    modal = ModalAddPrize(db)
-    try:
-        await interaction.response.send_modal(modal=modal)
-        await asyncio.sleep(10)
-    except TimeoutError:
-        await interaction.response.send_message("Error: timeout", ephemeral=True)
+async def add_prize(ctx):
+    embed = Embed(title="Add Prize", description="🎁️ 아래 버튼으로 경품을 등록해주세요.\n\n"
+                                                 "🎁️ Please register the prize using the button below.", color=0xFFFFFF)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    view = AddPrizeButton()
+    await ctx.reply(embed=embed, view=view, mention_author=True)
 
 
 bot.run(bot_token)

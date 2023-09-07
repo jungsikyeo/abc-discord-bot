@@ -346,7 +346,8 @@ db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 
 
 async def is_reservation_channel(ctx):
-    return ctx.channel.id == '961445326374457354'
+    return True
+    # return ctx.channel.name == channel_name
 
 
 @bot.command()

@@ -734,6 +734,21 @@ class Queries:
         return result
 
     def update_tier_url(db, blockchain, image_url, reg_user, user_id):
+        select_query = f"""
+        SELECT count(1) lock_cnt
+        FROM tiers t
+        WHERE blockchain = %s
+        AND t.lock = 1
+        """
+
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(select_query, blockchain)
+                result = cursor.fetchone()
+
+                if result['lock_cnt'] > 0:
+                    return {"lock_cnt": 1}
+
         update_query = """
         INSERT INTO tiers (blockchain, imageUrl, regUser, user_id)
         VALUES (upper(%s), %s, %s, %s)
@@ -744,6 +759,7 @@ class Queries:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (blockchain, image_url, reg_user, user_id, image_url, user_id,))
                 conn.commit()
+        return {"lock_cnt": 0}
 
     def select_keyword(db, keyword):
         select_query = f"""
@@ -1537,7 +1553,12 @@ async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
     user_id = ctx.author.id
 
     if tier_url:
-        Queries.update_tier_url(db, blockchain, tier_url, regUser, user_id)
+        update_result = Queries.update_tier_url(db, blockchain, tier_url, regUser, user_id)
+        if update_result["lock_cnt"] != "0":
+            embed = Embed(title="Error", description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ", color=0x37e37b)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
     result = Queries.get_tier_by_blockchain(db, blockchain)
     await ctx.reply(f"{result['imageUrl']}", mention_author=True)
 

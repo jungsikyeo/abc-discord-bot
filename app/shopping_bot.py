@@ -1,4 +1,3 @@
-import asyncio
 import discord
 import os
 import pymysql
@@ -54,7 +53,7 @@ class WelcomeView(View):
         cursor = connection.cursor()
         try:
             cursor.execute("""
-                select id, name, image, price 
+                select id, name, image, price, quantity
                 from products
             """)
             all_products = cursor.fetchall()
@@ -174,6 +173,7 @@ class ProductSelect(Select):
         description = "응모하시려면 아래에 `Buy` 버튼을 눌러주세요.\n\nPlease press the `Buy` button below to apply."
         embed = Embed(title=selected_product['name'], description=description, color=0xFFFFFF)
         embed.add_field(name="Price", value=f"```{selected_product['price']} tokens```", inline=True)
+        embed.add_field(name="Total Quantity", value=f"```{selected_product['quantity']}```", inline=True)
         embed.set_image(url=selected_product['image'])
 
         await interaction.response.send_message(
@@ -196,7 +196,7 @@ class BuyButton(View):
         cursor = connection.cursor()
         try:
             cursor.execute("""
-                select id, name, image, price 
+                select id, name, image, price, quantity 
                 from products
                 where id = %s
             """, self.product['id'])
@@ -278,9 +278,13 @@ class AddPrizeModal(Modal):
         self.item_price = InputText(label="Price",
                                     placeholder="100",
                                     custom_id="price", )
+        self.item_quantity = InputText(label="Quantity",
+                                       placeholder="1",
+                                       custom_id="quantity", )
         self.add_item(self.item_name)
         self.add_item(self.item_image)
         self.add_item(self.item_price)
+        self.add_item(self.item_quantity)
         self.db = db
 
     async def callback(self, interaction):
@@ -320,10 +324,18 @@ class AddPrizeModal(Modal):
                 logging.error(f'AddPrizeModal price error: {e}')
                 return
 
+            try:
+                quantity = int(self.item_quantity.value)
+            except Exception as e:
+                description = "```❌ 가격은 숫자로 입력해야합니다.\n\n❌ Price must be entered numerically.```"
+                await interaction.response.send_message(description, ephemeral=True)
+                logging.error(f'AddPrizeModal quantity error: {e}')
+                return
+
             cursor.execute("""
-                insert into products (name, image, price)
-                values (%s, %s, %s)
-            """, (name, image, price))
+                insert into products (name, image, price, quantity)
+                values (%s, %s, %s, %s)
+            """, (name, image, price, quantity))
             description = f"✅ `{name}`이 경품으로 등록되었습니다.\n\n✅ `{name}` has been registered as a prize."
             embed = Embed(title="", description=description, color=0xFFFFFF)
             await interaction.response.send_message(
@@ -351,7 +363,7 @@ async def is_reservation_channel(ctx):
 
 @bot.command()
 @commands.check(is_reservation_channel)
-async def start(ctx):
+async def shop_start(ctx):
     description = "ShoppingFi에 오신 것을 환영합니다!\n\n" \
                   "SearchFi가 준비한 경품 추첨에 SearchFi 토큰으로 참여할 수 있습니다.\n\n" \
                   "`Prizes` 버튼을 클릭하면 경품이 표시됩니다.\n\n" \

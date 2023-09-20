@@ -63,7 +63,7 @@ class WelcomeView(View):
                 return
 
             await interaction.response.send_message(
-                view=ProductSelectView(self.db, all_products),
+                view=ProductSelectView(self.db, all_products, interaction),
                 ephemeral=True
             )
         except Exception as e:
@@ -145,20 +145,22 @@ class WelcomeView(View):
 
 
 class ProductSelectView(View):
-    def __init__(self, db, all_products):
+    def __init__(self, db, all_products, org_interaction):
         super().__init__()
         self.db = db
         self.all_products = all_products
+        self.org_interaction = org_interaction
         self.options = [discord.SelectOption(label=f"""{product['name']}""", value=product['name']) for product in
                         all_products]
-        self.add_item(ProductSelect(self.db, self.options, self.all_products))
+        self.add_item(ProductSelect(self.db, self.options, self.all_products, self.org_interaction))
 
 
 class ProductSelect(Select):
-    def __init__(self, db, options, all_products):
+    def __init__(self, db, options, all_products, org_interaction):
         super().__init__(placeholder='Please choose a prize', min_values=1, max_values=1, options=options)
         self.db = db
         self.all_products = all_products
+        self.org_interaction = org_interaction
 
     async def callback(self, interaction):
         selected_product = None
@@ -168,7 +170,7 @@ class ProductSelect(Select):
                 selected_product = product
                 break
 
-        buy_button_view = BuyButton(self.db, selected_product)
+        buy_button_view = BuyButton(self.db, selected_product, interaction)
 
         description = "응모하시려면 아래에 `Buy` 버튼을 눌러주세요.\n\nPlease press the `Buy` button below to apply."
         embed = Embed(title=selected_product['name'], description=description, color=0xFFFFFF)
@@ -176,18 +178,18 @@ class ProductSelect(Select):
         embed.add_field(name="Total Quantity", value=f"```{selected_product['quantity']}```", inline=True)
         embed.set_image(url=selected_product['image'])
 
-        await interaction.response.send_message(
+        await self.org_interaction.edit_original_message(
             embed=embed,
-            view=buy_button_view,
-            ephemeral=True
+            view=buy_button_view
         )
 
 
 class BuyButton(View):
-    def __init__(self, db, product):
+    def __init__(self, db, product, org_interaction):
         super().__init__()
         self.db = db
         self.product = product
+        self.org_interaction = org_interaction
 
     @button(label="Buy", style=discord.ButtonStyle.primary, custom_id="buy_button")
     async def button_buy(self, button, interaction):
@@ -206,7 +208,11 @@ class BuyButton(View):
                 price = int(product['price'])
             else:
                 description = "```❌ 경품을 응모하는 중에 문제가 발생했습니다.\n\n❌ There was a problem applying for the prize.```"
-                await interaction.response.send_message(description, ephemeral=True)
+                await self.org_interaction.edit_original_message(
+                    content=description,
+                    embed=None,
+                    view=None
+                )
                 return
 
             cursor.execute("""
@@ -223,7 +229,11 @@ class BuyButton(View):
 
             if user_tokens < price:
                 description = "```❌ 토큰이 부족합니다.\n\n❌ Not enough tokens.```"
-                await interaction.response.send_message(description, ephemeral=True)
+                await self.org_interaction.edit_original_message(
+                    content=description,
+                    embed=None,
+                    view=None
+                )
                 return
             else:
                 user_tokens -= price
@@ -241,14 +251,18 @@ class BuyButton(View):
                 description = f"✅ `{self.product['name']}` 경품에 응모하였습니다.\n\n" \
                               f"✅ You applied for the `{self.product['name']}` prize."
                 embed = Embed(title="", description=description, color=0xFFFFFF)
-                await interaction.response.send_message(
+                await self.org_interaction.edit_original_message(
                     embed=embed,
-                    ephemeral=True
+                    view=None
                 )
             connection.commit()
         except Exception as e:
             description = "```❌ 경품을 응모하는 중에 문제가 발생했습니다.\n\n❌ There was a problem applying for the prize.```"
-            await interaction.response.send_message(description, ephemeral=True)
+            await self.org_interaction.edit_original_message(
+                content=description,
+                embed=None,
+                view=None
+            )
             logging.error(f'buy error: {e}')
             connection.rollback()
         finally:

@@ -24,6 +24,8 @@ mysql_db = os.getenv("MYSQL_DB")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+view_timeout = 5 * 60
+
 
 class Database:
     def __init__(self, host, port, user, password, db):
@@ -149,13 +151,16 @@ class WelcomeView(View):
 
 class ProductSelectView(View):
     def __init__(self, db, all_products, org_interaction):
-        super().__init__()
+        super().__init__(timeout=view_timeout)
         self.db = db
         self.all_products = all_products
         self.org_interaction = org_interaction
         self.options = [discord.SelectOption(label=f"""{product['name']}""", value=product['name']) for product in
                         all_products]
         self.add_item(ProductSelect(self.db, self.options, self.all_products, self.org_interaction))
+
+    async def on_timeout(self):
+        await self.org_interaction.delete_original_message()
 
 
 class ProductSelect(Select):

@@ -3,12 +3,14 @@ import os
 import pymysql
 import requests
 import logging
+import random
 from discord.ext import commands
 from discord.ui import View, button, Select, Modal, InputText
 from discord import Embed, ButtonStyle
 from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
+from prettyprinter import pprint
 
 load_dotenv()
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
@@ -55,6 +57,7 @@ class WelcomeView(View):
             cursor.execute("""
                 select id, name, image, price, quantity
                 from products
+                where product_status = 'OPEN'
             """)
             all_products = cursor.fetchall()
             if not all_products:
@@ -311,6 +314,7 @@ class AddPrizeModal(Modal):
                 select count(id) cnt
                 from products
                 where name = %s
+                and product_status = 'OPEN'
             """, name)
             item = cursor.fetchone()
             if int(item['cnt']) > 0:
@@ -403,6 +407,296 @@ async def add_prize(ctx):
     embed.set_footer(text="Powered by 으노아부지#2642")
     view = AddPrizeButton()
     await ctx.reply(embed=embed, view=view, mention_author=True)
+
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def giveaway_raffle(ctx):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        result = start_raffle(db)
+
+        description = "Congratulations! " \
+                      "here is the winner list of last giveaway\n\n"
+        for product, users in result.items():
+            users_str = '\n'.join([f"<@{user}>" for user in users])
+            description += f"🏆 `{product}` winner:\n{users_str}\n\n"
+
+        embed = Embed(
+            title='🎉 Giveaway Winner 🎉',
+            description=description,
+            color=0xFFFFFF,
+        )
+
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logging.error(f'giveaway_raffle error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def start_raffle(db):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    products, prizes, ticket_holders = setting_data(db)
+    winners = {}
+    try:
+        for prize, count in prizes.items():
+            already_won = set()
+            weights = {user: tickets.get(prize, 0) for user, tickets in ticket_holders.items()}
+
+            for _ in range(count):
+                weights = {user: weight for user, weight in weights.items() if user not in already_won}
+
+                if sum(weights.values()) == 0:
+                    print(f"No tickets for {prize}. Skipping...")
+                    continue
+
+                winner = pick_winner(weights)
+                winners.setdefault(prize, []).append(winner)
+                already_won.add(winner)
+        pprint(winners)
+
+        cursor.execute("""
+            update products set product_status = %s
+            where product_status = 'OPEN'
+        """, 'CLOSE')
+        connection.commit()
+    except Exception as e:
+        connection.rollback()
+        logging.error(f'start_raffle db error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+    return winners
+
+
+def setting_data(db):
+    products = get_products(db)
+    prizes = {product.get('name'): product.get('quantity') for product in products}
+    ticket_holders = get_user_tickets(db)
+
+    return products, prizes, ticket_holders
+
+
+def get_products(db):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    products = None
+    try:
+        cursor.execute("""
+            select p.id, p.name, p.image, p.price, p.quantity
+            from products p 
+            where p.product_status = 'OPEN'
+        """)
+        products = cursor.fetchall()
+    except Exception as e:
+        logging.error(f'get_products db error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return products
+
+
+def get_user_tickets(db):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    ticket_holders = {}
+    try:
+        cursor.execute("""
+            select u.user_id, p.name, count(u.id) tickets
+            from user_tickets u
+            inner join products p on p.id = u.product_id
+            where p.product_status = 'OPEN'
+            group by u.user_id, p.id, p.name 
+        """)
+        user_tickets = cursor.fetchall()
+
+        for ticket in user_tickets:
+            user_id = ticket.get('user_id')
+            name = ticket.get('name')
+            tickets = ticket.get('tickets')
+
+            if user_id not in ticket_holders:
+                ticket_holders[user_id] = {}
+
+            ticket_holders[user_id][name] = tickets
+    except Exception as e:
+        logging.error(f'get_user_tickets db error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return ticket_holders
+
+
+def pick_winner(weights):
+    total = sum(weights.values())
+    rand_val = random.randint(1, total)
+    current = 0
+
+    for user, weight in weights.items():
+        current += weight
+        if rand_val <= current:
+            return user
+
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def giveaway_check(ctx, user_tag):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        user_id = user_tag[2:-1]
+
+        cursor.execute("""
+            select p.id, p.name, p.image, p.price, count(p.id) tickets
+            from user_tickets u
+            inner join products p on u.product_id = p.id
+            where u.user_id = %s
+            and p.product_status = 'OPEN'
+            group by p.id, p.name, p.image, p.price
+        """, user_id)
+        all_user_tickets = cursor.fetchall()
+
+        cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, user_id)
+        user = cursor.fetchone()
+        if not user:
+            user_tokens = 0
+        else:
+            user_tokens = user['tokens']
+
+        description = f"{user_tag} tickets:\n\n"
+        for user_ticket in all_user_tickets:
+            description += f"""`{user_ticket['name']}`     x{user_ticket['tickets']}\n"""
+        if not all_user_tickets:
+            description += "No ticket.\n"
+
+        description += f"\n" \
+                       f"{user_tag} tokens:\n\n" \
+                       f"""`{user_tokens}` tokens"""
+
+        embed = Embed(title="Giveaway Check", description=description)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        print("Error:", e)
+        return
+
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def give_tokens(ctx, user_tag, amount):
+    try:
+        params = {
+            'user_id': user_tag[2:-1],
+            'token': int(amount),
+            'action_user_id': ctx.author.id,
+            'action_type': 'give-rewards',
+        }
+
+        result = await save_tokens(params)
+
+        if result.get('success') > 0:
+            description = f"Successfully gave `{params.get('token')}` tokens to {user_tag}\n\n" \
+                          f"{user_tag} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+            embed = Embed(
+                title='✅ token Given',
+                description=description,
+                color=0xFFFFFF,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logging.error(f'give_tokens error: {e}')
+
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def remove_tokens(ctx, user_tag, amount):
+    try:
+        params = {
+            'user_id': user_tag[2:-1],
+            'token': int(amount) * (-1),
+            'action_user_id': ctx.author.id,
+            'action_type': 'remove-rewards',
+        }
+
+        result = await save_tokens(params)
+
+        if result.get('success') > 0:
+            description = f"Successfully removed `{params.get('token')}` tokens to {user_tag}\n\n" \
+                          f"{user_tag} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+            embed = Embed(
+                title='✅ token Removed',
+                description=description,
+                color=0xFFFFFF,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logging.error(f'remove_tokens error: {e}')
+
+
+async def save_tokens(params):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    result = 0
+    try:
+        user_id = params.get('user_id')
+        token = params.get('token')
+
+        cursor.execute("""
+            select tokens
+            from user_tokens
+            where user_id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+
+        if user:
+            before_user_tokens = user.get('tokens')
+            user_tokens = int(before_user_tokens)
+            user_tokens += token
+
+            if user_tokens < 0:
+                user_tokens = 0
+
+            cursor.execute("""
+                update user_tokens set tokens = %s
+                where user_id = %s
+            """, (user_tokens, user_id,))
+        else:
+            before_user_tokens = 0
+            user_tokens = token
+
+            cursor.execute("""
+                insert into user_tokens (user_id, tokens)
+                values (%s, %s)
+            """, (user_id, user_tokens,))
+
+        connection.commit()
+        result = {
+            'success': 1,
+            'before_user_tokens': before_user_tokens,
+            'after_user_tokens': user_tokens
+        }
+    except Exception as e:
+        logging.error(f'save_tokens error: {e}')
+        connection.rollback()
+        result = {
+            'success': 0,
+            'before_user_tokens': 0,
+            'after_user_tokens': 0
+        }
+    finally:
+        cursor.close()
+        connection.close()
+        return result
 
 
 bot.run(bot_token)

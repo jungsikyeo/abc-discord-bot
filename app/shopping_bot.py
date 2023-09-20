@@ -598,8 +598,6 @@ async def give_tokens(ctx, user_tag, amount):
         params = {
             'user_id': user_tag[2:-1],
             'token': int(amount),
-            'action_user_id': ctx.author.id,
-            'action_type': 'give-rewards',
         }
 
         result = await save_tokens(params)
@@ -608,7 +606,7 @@ async def give_tokens(ctx, user_tag, amount):
             description = f"Successfully gave `{params.get('token')}` tokens to {user_tag}\n\n" \
                           f"{user_tag} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
             embed = Embed(
-                title='✅ token Given',
+                title='✅ Token Given',
                 description=description,
                 color=0xFFFFFF,
             )
@@ -624,8 +622,6 @@ async def remove_tokens(ctx, user_tag, amount):
         params = {
             'user_id': user_tag[2:-1],
             'token': int(amount) * (-1),
-            'action_user_id': ctx.author.id,
-            'action_type': 'remove-rewards',
         }
 
         result = await save_tokens(params)
@@ -634,7 +630,7 @@ async def remove_tokens(ctx, user_tag, amount):
             description = f"Successfully removed `{params.get('token')}` tokens to {user_tag}\n\n" \
                           f"{user_tag} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
             embed = Embed(
-                title='✅ token Removed',
+                title='✅ Token Removed',
                 description=description,
                 color=0xFFFFFF,
             )
@@ -697,6 +693,52 @@ async def save_tokens(params):
         cursor.close()
         connection.close()
         return result
+
+
+@bot.command()
+@commands.has_any_role('SF.Team')
+async def remove_ticket(ctx, user_tag, *, product_name):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        user_id = user_tag[2:-1]
+
+        cursor.execute("""
+            select count(1) cnt, max(a.id) as user_ticket_id
+            from user_tickets a
+            inner join products p on a.product_id = p.id
+            where p.product_status = 'OPEN'
+            and a.user_id = %s
+            and upper(replace(p.name,' ', '')) = upper(replace(%s, ' ', '')) 
+        """, (user_id, product_name, ))
+        user_ticket = cursor.fetchone()
+
+        before_user_tickets = int(user_ticket.get('cnt'))
+        if before_user_tickets > 0:
+            user_ticket_id = int(user_ticket.get('user_ticket_id'))
+            cursor.execute("""
+                delete from user_tickets
+                where id = %s
+            """, (user_ticket_id,))
+            connection.commit()
+            after_user_tickets = before_user_tickets - 1
+        else:
+            after_user_tickets = 0
+
+        description = f"Successfully removed `{product_name}` ticket to {user_tag}\n\n" \
+                      f"{user_tag} `{product_name}` tickets: `{before_user_tickets}` -> `{after_user_tickets}`"
+        embed = Embed(
+            title='✅ Ticket Removed',
+            description=description,
+            color=0xFFFFFF,
+        )
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logging.error(f'save_tokens error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
 
 
 bot.run(bot_token)

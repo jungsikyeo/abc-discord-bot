@@ -812,12 +812,12 @@ class RPSGameView(View):
             )
             await interaction.channel.send(embed=embed)
         elif (author_choice == "가위(Scissors)" and opponent_choice == "보(Paper)") or (author_choice == "바위(Rock)" and opponent_choice == "가위(Scissors)") or (author_choice == "보(Paper)" and opponent_choice == "바위(Rock)"):
-            result = f"<@{self.challenger.id}> is Winner!"
-            description = f"<@{self.challenger.id}>: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
+            result = f"{self.challenger.mention} is Winner!"
+            description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.challenger, self.opponent, self.amount, description)
         else:
             result = f"{self.opponent.name} is Winner!"
-            description = f"<@{self.challenger.id}>: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
+            description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.opponent, self.challenger, self.amount, description)
 
         self.stop()  # View를 중지하고 버튼을 비활성화
@@ -895,8 +895,8 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
         result = await save_tokens(params)
 
         if result.get('success') > 0:
-            description += f"Successfully gave `{params.get('token')}` tokens to <@{winner.id}>\n" \
-                          f"<@{winner.id}> tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`\n\n"
+            description += f"Successfully gave `{params.get('token')}` tokens to {winner.mention}\n" \
+                          f"{winner.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`\n\n"
 
         params = {
             'user_id': loser.id,
@@ -906,8 +906,8 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
         result = await save_tokens(params)
 
         if result.get('success') > 0:
-            description += f"Successfully removed `{params.get('token')}` tokens to <@{loser.id}>\n" \
-                          f"<@{loser.id}> tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+            description += f"Successfully removed `{params.get('token')}` tokens to {loser.mention}\n" \
+                          f"{loser.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
 
             embed = Embed(
                 title='✅ RPS Result',

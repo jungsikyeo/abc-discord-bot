@@ -875,6 +875,26 @@ async def rps(ctx, opponent: discord.Member, amount=1):
             await ctx.reply(embed=embed, mention_author=True)
             return
 
+        cursor.execute("""
+            select tokens
+            from user_tokens
+            where user_id = %s
+        """, opponent.id)
+        user = cursor.fetchone()
+        if not user:
+            user_tokens = 0
+        else:
+            user_tokens = int(user['tokens'])
+
+        if amount > user_tokens:
+            embed = Embed(
+                title='Insufficient Tokens',
+                description="❌ 상대방이 보유한 토큰이 부족합니다. \n\n❌ Opponent does not have enough tokens.",
+                color=0xff0000,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+
         game_view = RPSGameView(ctx.author, opponent, amount)
         await game_view.send_initial_message(ctx)
     except Exception as e:

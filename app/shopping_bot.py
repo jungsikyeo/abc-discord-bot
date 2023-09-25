@@ -748,10 +748,10 @@ async def remove_ticket(ctx, user_tag, *, product_name):
 
 class RPSGameView(View):
     def __init__(self, challenger, opponent, amount):
-        super().__init__(timeout=5)  # 5초 동안 버튼 응답을 기다립니다.
+        super().__init__(timeout=10)  # 5초 동안 버튼 응답을 기다립니다.
         self.challenger = challenger
         self.opponent = opponent
-        self.time_left = 5
+        self.time_left = 10
         self.message = None
         self.amount = amount
 
@@ -785,7 +785,7 @@ class RPSGameView(View):
         )
         await self.message.edit(embed=embed)
 
-    @discord.ui.button(label="수락", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.primary)
     async def accept(self, button, interaction):
         if interaction.user.id != self.opponent.id:
             embed = Embed(
@@ -822,7 +822,7 @@ class RPSGameView(View):
 
         self.stop()  # View를 중지하고 버튼을 비활성화
 
-    @discord.ui.button(label="거부", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
     async def decline(self, button, interaction):
         if interaction.user.id != self.opponent.id:
             embed = Embed(

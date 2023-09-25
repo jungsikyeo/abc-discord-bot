@@ -756,18 +756,34 @@ class RPSGameView(View):
         self.amount = amount
 
     async def send_initial_message(self, ctx):
-        self.message = await ctx.send(f"{self.opponent.mention}, {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하시겠습니까? 남은 시간: 5초", view=self)
+        embed = Embed(
+            title='RPS Game',
+            description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하시겠습니까?\n남은 시간: {self.time_left}초\n\n"
+                        f"{self.opponent.mention}! {self.challenger.name} has signed up for rock-paper-scissors with {self.amount} tokens. Would you like to accept it?\nTime remaining: {self.time_left} seconds\n\n",
+            color=0xFFFFFF,
+        )
+        self.message = await ctx.send(embed=embed, view=self)
         self.update_timer.start()
 
     @tasks.loop(seconds=1)  # 1초마다 업데이트
     async def update_timer(self):
         self.time_left -= 1
         if self.time_left <= 0:
-            await self.message.edit(content=f"{self.opponent.name}님이 응답 시간을 초과하셨습니다.\n\n{self.opponent.name } has exceeded its response time.", view=None)
+            embed = Embed(
+                title='Response Timeout',
+                description=f"{self.opponent.name}님이 응답 시간을 초과하셨습니다.\n\n{self.opponent.name } has exceeded its response time.",
+                color=0xff0000,
+            )
+            await self.message.edit(embed=embed, view=None)
             self.update_timer.stop()
             return
-        await self.message.edit(content=f"{self.opponent.mention}! {self.challenger.name}님이 가위바위보 게임을 신청하셨습니다. 수락하시겠습니까?\n남은 시간: {self.time_left}초\n\n"
-                                        f"{self.opponent.mention}! {self.challenger.name} has signed up for rock-paper-scissors. Would you like to accept it?\nTime remaining: {self.time_left} seconds")
+        embed = Embed(
+            title='RPS Game',
+            description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하시겠습니까?\n남은 시간: {self.time_left}초\n\n"
+                        f"{self.opponent.mention}! {self.challenger.name} has signed up for rock-paper-scissors with {self.amount} tokens. Would you like to accept it?\nTime remaining: {self.time_left} seconds\n\n",
+            color=0xFFFFFF,
+        )
+        await self.message.edit(embed=embed)
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.primary)
     async def accept(self, button, interaction):
@@ -830,7 +846,7 @@ class RPSGameView(View):
 async def rps(ctx, opponent: discord.Member, amount=1):
     if ctx.author.id == opponent.id:
         embed = Embed(
-            title='Insufficient Tokens',
+            title='Game Error',
             description="❌ 자신과는 게임을 진행할 수 없습니다.\n\n❌ You can't play with yourself.",
             color=0xff0000,
         )

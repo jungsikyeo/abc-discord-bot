@@ -551,7 +551,7 @@ def pick_winner(weights):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+# @commands.has_any_role('SF.Team')
 async def giveaway_check(ctx, user_tag):
     connection = db.get_connection()
     cursor = connection.cursor()

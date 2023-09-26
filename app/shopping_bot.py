@@ -816,7 +816,7 @@ class RPSGameView(View):
             description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.challenger, self.opponent, self.amount, description)
         else:
-            result = f"{self.opponent.name} is Winner!"
+            result = f"{self.opponent.mention} is Winner!"
             description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.opponent, self.challenger, self.amount, description)
 

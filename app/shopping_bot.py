@@ -4,6 +4,7 @@ import pymysql
 import requests
 import logging
 import random
+from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from discord.ui import View, button, Select, Modal, InputText
 from discord import Embed, ButtonStyle
@@ -15,7 +16,8 @@ from prettyprinter import pprint
 load_dotenv()
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 bot_token = os.getenv("SHOPPING_BOT_TOKEN")
-channel_name = os.getenv("SHOPPING_CHANNEL_NAME")
+shopping_channel_id = os.getenv("SHOPPING_CHANNEL_ID")
+gameroom_channel_id = os.getenv("GAMEROOM_CHANNEL_ID")
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
@@ -381,7 +383,7 @@ db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 
 
 async def is_reservation_channel(ctx):
-    return channel_name in ctx.channel.name
+    return int(shopping_channel_id) == ctx.channel.id
 
 
 @bot.command()
@@ -551,7 +553,6 @@ def pick_winner(weights):
 
 
 @bot.command()
-# @commands.has_any_role('SF.Team')
 async def giveaway_check(ctx, user_tag):
     connection = db.get_connection()
     cursor = connection.cursor()
@@ -842,67 +843,91 @@ class RPSGameView(View):
         self.stop()  # View를 중지하고 버튼을 비활성화
 
 
-@bot.command()
-async def rps(ctx, opponent: discord.Member, amount=1):
-    if ctx.author.id == opponent.id:
-        embed = Embed(
-            title='Game Error',
-            description="❌ 자신과는 게임을 진행할 수 없습니다.\n\n❌ You can't play with yourself.",
-            color=0xff0000,
-        )
-        await ctx.reply(embed=embed, mention_author=True)
-        return
-    connection = db.get_connection()
-    cursor = connection.cursor()
-    try:
-        cursor.execute("""
-            select tokens
-            from user_tokens
-            where user_id = %s
-        """, ctx.author.id)
-        user = cursor.fetchone()
-        if not user:
-            user_tokens = 0
-        else:
-            user_tokens = int(user['tokens'])
+class RPSGame(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.last_played = {}  # user_id를 키로 하고 마지막으로 게임을 한 시간을 값으로 가지는 딕셔너리
 
-        if amount > user_tokens:
+    @commands.command()
+    async def rps(self, ctx, opponent: discord.Member, amount=1):
+        # gameroom_channel_id 채널에서는 제한 없이 게임 가능
+        if ctx.channel.id != int(gameroom_channel_id):
+            # 해당 유저가 마지막으로 게임을 한 시간 가져오기
+            last_time = self.last_played.get(ctx.author.id)
+
+            # 유저가 하루 이내에 게임을 한 경우 에러 메시지 보내기
+            if last_time and (datetime.utcnow() - last_time) < timedelta(days=1):
+                embed = Embed(
+                    title='Game Error',
+                    description=f"❌ 이 채널에서는 하루에 한 번만 게임을 할 수 있습니다.\n<#{gameroom_channel_id}>에서는 제한없이 가능합니다.\n\n"
+                                f"❌ You can only play once a day in this channel.\nYou can play without limits in <#{gameroom_channel_id}>.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
+
+        if ctx.author.id == opponent.id:
             embed = Embed(
-                title='Insufficient Tokens',
-                description="❌ 보유한 토큰이 부족합니다. \n\n❌ Token holding quantity is insufficient.",
+                title='Game Error',
+                description="❌ 자신과는 게임을 진행할 수 없습니다.\n\n❌ You can't play with yourself.",
                 color=0xff0000,
             )
             await ctx.reply(embed=embed, mention_author=True)
             return
 
-        cursor.execute("""
-            select tokens
-            from user_tokens
-            where user_id = %s
-        """, opponent.id)
-        user = cursor.fetchone()
-        if not user:
-            user_tokens = 0
-        else:
-            user_tokens = int(user['tokens'])
+        connection = db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, ctx.author.id)
+            user = cursor.fetchone()
+            if not user:
+                user_tokens = 0
+            else:
+                user_tokens = int(user['tokens'])
 
-        if amount > user_tokens:
-            embed = Embed(
-                title='Insufficient Tokens',
-                description="❌ 상대방이 보유한 토큰이 부족합니다. \n\n❌ Opponent does not have enough tokens.",
-                color=0xff0000,
-            )
-            await ctx.reply(embed=embed, mention_author=True)
-            return
+            if abs(amount) > user_tokens:
+                embed = Embed(
+                    title='Insufficient Tokens',
+                    description="❌ 보유한 토큰이 부족합니다. \n\n❌ Token holding quantity is insufficient.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
 
-        game_view = RPSGameView(ctx.author, opponent, amount)
-        await game_view.send_initial_message(ctx)
-    except Exception as e:
-        logging.error(f'rps error: {e}')
-        connection.rollback()
-    finally:
-        cursor.close()
-        connection.close()
+            cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, opponent.id)
+            user = cursor.fetchone()
+            if not user:
+                user_tokens = 0
+            else:
+                user_tokens = int(user['tokens'])
+
+            if abs(amount) > user_tokens:
+                embed = Embed(
+                    title='Insufficient Tokens',
+                    description="❌ 상대방이 보유한 토큰이 부족합니다. \n\n❌ Opponent does not have enough tokens.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
+
+            game_view = RPSGameView(ctx.author, opponent, amount)
+            await game_view.send_initial_message(ctx)
+
+            self.last_played[ctx.author.id] = datetime.utcnow()
+        except Exception as e:
+            logging.error(f'rps error: {e}')
+            connection.rollback()
+        finally:
+            cursor.close()
+            connection.close()
 
 
 async def save_rps_tokens(interaction, winner, loser, amount, description):
@@ -939,4 +964,5 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
         logging.error(f'save_rps_tokens error: {e}')
 
 
+bot.add_cog(RPSGame(bot))
 bot.run(bot_token)

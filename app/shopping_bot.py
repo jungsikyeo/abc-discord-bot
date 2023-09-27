@@ -883,7 +883,7 @@ class RPSGame(commands.Cog):
         if abs(amount) > 20:
             embed = Embed(
                 title='Game Error',
-                description=f"❌ 최대 30개의 토큰만 가능합니다.\n\n"
+                description=f"❌ 최대 20개의 토큰만 가능합니다.\n\n"
                             f"❌ You can only have a maximum of 30 tokens.",
                 color=0xff0000,
             )

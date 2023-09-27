@@ -18,6 +18,7 @@ command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 bot_token = os.getenv("SHOPPING_BOT_TOKEN")
 shopping_channel_id = os.getenv("SHOPPING_CHANNEL_ID")
 gameroom_channel_id = os.getenv("GAMEROOM_CHANNEL_ID")
+giveup_token_channel_id = os.getenv("GIVEUP_TOKEN_CHANNEL_ID")
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
@@ -598,7 +599,7 @@ async def giveaway_check(ctx, user_tag):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian')
 async def give_tokens(ctx, user_tag, amount):
     try:
         params = {
@@ -617,12 +618,14 @@ async def give_tokens(ctx, user_tag, amount):
                 color=0xFFFFFF,
             )
             await ctx.reply(embed=embed, mention_author=True)
+            channel = bot.get_channel(int(giveup_token_channel_id))
+            await channel.send(embed=embed)
     except Exception as e:
         logging.error(f'give_tokens error: {e}')
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian')
 async def remove_tokens(ctx, user_tag, amount):
     try:
         params = {
@@ -641,6 +644,8 @@ async def remove_tokens(ctx, user_tag, amount):
                 color=0xFFFFFF,
             )
             await ctx.reply(embed=embed, mention_author=True)
+            channel = bot.get_channel(int(giveup_token_channel_id))
+            await channel.send(embed=embed)
     except Exception as e:
         logging.error(f'remove_tokens error: {e}')
 
@@ -875,7 +880,7 @@ class RPSGame(commands.Cog):
             await ctx.reply(embed=embed, mention_author=True)
             return
 
-        if abs(amount) > 30:
+        if abs(amount) > 20:
             embed = Embed(
                 title='Game Error',
                 description=f"❌ 최대 30개의 토큰만 가능합니다.\n\n"

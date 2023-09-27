@@ -4,7 +4,7 @@ import pymysql
 import requests
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from discord.ext import commands, tasks
 from discord.ui import View, button, Select, Modal, InputText
 from discord import Embed, ButtonStyle
@@ -846,17 +846,17 @@ class RPSGameView(View):
 class RPSGame(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_played = {}  # user_id를 키로 하고 마지막으로 게임을 한 시간을 값으로 가지는 딕셔너리
+        self.last_played_date = {}  # user_id를 키로 하고 마지막으로 게임을 한 날짜를 값으로 가지는 딕셔너리
 
     @commands.command()
     async def rps(self, ctx, opponent: discord.Member, amount=1):
         # gameroom_channel_id 채널에서는 제한 없이 게임 가능
         if ctx.channel.id != int(gameroom_channel_id):
-            # 해당 유저가 마지막으로 게임을 한 시간 가져오기
-            last_time = self.last_played.get(ctx.author.id)
+            # 해당 유저가 마지막으로 게임을 한 날짜 가져오기
+            last_date = self.last_played_date.get(ctx.author.id)
 
-            # 유저가 하루 이내에 게임을 한 경우 에러 메시지 보내기
-            if last_time and (datetime.utcnow() - last_time) < timedelta(days=1):
+            # 유저가 오늘 이미 게임을 한 경우 에러 메시지 보내기
+            if last_date and last_date == datetime.utcnow().date():
                 embed = Embed(
                     title='Game Error',
                     description=f"❌ 이 채널에서는 하루에 한 번만 게임을 할 수 있습니다.\n<#{gameroom_channel_id}>에서는 제한없이 가능합니다.\n\n"
@@ -931,7 +931,8 @@ class RPSGame(commands.Cog):
             game_view = RPSGameView(ctx.author, opponent, amount)
             await game_view.send_initial_message(ctx)
 
-            self.last_played[ctx.author.id] = datetime.utcnow()
+            if ctx.channel.id != int(gameroom_channel_id):
+                self.last_played_date[ctx.author.id] = datetime.utcnow().date()
         except Exception as e:
             logging.error(f'rps error: {e}')
             connection.rollback()

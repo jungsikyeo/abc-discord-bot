@@ -803,27 +803,44 @@ class RPSGameView(View):
             return
         self.update_timer.stop()  # 타이머 중지
         # 게임 시작
-        choices = ["가위(Scissors)", "바위(Rock)", "보(Paper)"]
+        choices = [
+            {
+                'name': '가위(Scissors)',
+                'emoji': ':v:'
+            },
+            {
+                'name': '바위(Rock)',
+                'emoji': ':fist:'
+            },
+            {
+                'name': '보(Paper)',
+                'emoji': ':raised_back_of_hand:'
+            }
+        ]
         author_choice = random.choice(choices)
         opponent_choice = random.choice(choices)
 
         # 결과 계산
         if author_choice == opponent_choice:
-            result = "무승부(Draw)"
-            description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
+            result = ":zany_face: 무승부(Draw)"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
             embed = Embed(
                 title='✅ RPS Result',
                 description=description,
                 color=0xFFFFFF,
             )
             await interaction.channel.send(embed=embed)
-        elif (author_choice == "가위(Scissors)" and opponent_choice == "보(Paper)") or (author_choice == "바위(Rock)" and opponent_choice == "가위(Scissors)") or (author_choice == "보(Paper)" and opponent_choice == "바위(Rock)"):
+        elif (author_choice['name'] == "가위(Scissors)" and opponent_choice['name'] == "보(Paper)") \
+                or (author_choice['name'] == "바위(Rock)" and opponent_choice['name'] == "가위(Scissors)") \
+                or (author_choice['name'] == "보(Paper)" and opponent_choice['name'] == "바위(Rock)"):
             result = f"{self.challenger.mention} is Winner!"
-            description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n" \
+                          f"{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.challenger, self.opponent, self.amount, description)
         else:
             result = f"{self.opponent.mention} is Winner!"
-            description = f"{self.challenger.name}: {author_choice}\n{self.opponent.name}: {opponent_choice}\n\nResult: {result}\n\n"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n" \
+                          f"{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.opponent, self.challenger, self.amount, description)
 
         self.stop()  # View를 중지하고 버튼을 비활성화

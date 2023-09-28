@@ -1445,7 +1445,7 @@ async def mydown(ctx, *, dc_id=None):
     await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
 async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
     if twitter_handle is None or wallet_checker_url is None:
         embed = Embed(title="Error", description="❌ Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`\n\n❌ 사용방법: `!mchecker <트위터 핸들> <지갑체크 URL>`", color=0xff0000)
@@ -1487,7 +1487,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
 async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
     if twitter_handle is None or call_url is None:
         embed = Embed(title="Error", description="❌ Usage: `!mcall <Twitter_Handle> <Call_Massage_Link>`\n\n❌ 사용방법: `!mcall <트위터 핸들> <Call 메시지 링크>`", color=0xff0000)
@@ -1547,7 +1547,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
 async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
     regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
     user_id = ctx.author.id
@@ -2274,7 +2274,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Super')
+@commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
 async def addrole(ctx, sheet_name, role_name):
     import gspread
     from oauth2client.service_account import ServiceAccountCredentials
@@ -2334,7 +2334,7 @@ async def addrole(ctx, sheet_name, role_name):
     await ctx.send("사용자 확인을 완료했습니다.")
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def removerole(ctx, role_name):
     try:
         # 결과를 저장할 문자열을 초기화합니다.

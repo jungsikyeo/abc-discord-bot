@@ -408,7 +408,7 @@ async def shop_start(ctx):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def add_prize(ctx):
     embed = Embed(title="Add Prize", description="🎁️ 아래 버튼으로 경품을 등록해주세요.\n\n"
                                                  "🎁️ Please register the prize using the button below.", color=0xFFFFFF)
@@ -418,7 +418,7 @@ async def add_prize(ctx):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def giveaway_raffle(ctx):
     connection = db.get_connection()
     cursor = connection.cursor()
@@ -599,7 +599,7 @@ async def giveaway_check(ctx, user_tag):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Guardian')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_tokens(ctx, user_tag, amount):
     try:
         params = {
@@ -625,7 +625,7 @@ async def give_tokens(ctx, user_tag, amount):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team', 'SF.Guardian')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def remove_tokens(ctx, user_tag, amount):
     try:
         params = {
@@ -707,7 +707,7 @@ async def save_tokens(params):
 
 
 @bot.command()
-@commands.has_any_role('SF.Team')
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def remove_ticket(ctx, user_tag, *, product_name):
     connection = db.get_connection()
     cursor = connection.cursor()

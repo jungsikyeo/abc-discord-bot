@@ -997,18 +997,18 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
         logging.error(f'save_rps_tokens error: {e}')
 
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    # 명령어 처리를 위해 아래의 코드 추가
-    await bot.process_commands(message)
-
-    if random.random() < 0.9:  # 5% 확률로 토큰 지급
-        tokens_to_add = 10  # 예: 10토큰 지급
-        channel = bot.get_channel(int(giveup_token_channel_id))
-        await channel.send(f"{message.author.mention}, 축하합니다! {tokens_to_add}토큰을 받았습니다. ")
+# @bot.event
+# async def on_message(message):
+#     if message.author.bot:
+#         return
+#
+#     # 명령어 처리를 위해 아래의 코드 추가
+#     await bot.process_commands(message)
+#
+#     if random.random() < 0.9:  # 5% 확률로 토큰 지급
+#         tokens_to_add = 10  # 예: 10토큰 지급
+#         channel = bot.get_channel(int(giveup_token_channel_id))
+#         await channel.send(f"{message.author.mention}, 축하합니다! {tokens_to_add}토큰을 받았습니다. ")
 
 
 bot.add_cog(RPSGame(bot))

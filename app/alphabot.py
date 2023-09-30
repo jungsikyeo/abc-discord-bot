@@ -959,9 +959,13 @@ async def mint(ctx, *, arg="today"):
             color = "+"
         cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
         pages.append(cal)
-
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    if len(projects) > 0:
+        paginator = Paginator(bot)
+        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    else:
+        embed=discord.Embed(title="", description="")
+        embed.add_field(name="", value=f"❌ There is no mint project for today's date.\n\n❌ 오늘 날짜의 민팅 프로젝트가 없습니다.", inline=True)
+        await ctx.reply(embed=embed, mention_author=True)
 
 @bot.command()
 async def msearch(ctx, *, project_name):

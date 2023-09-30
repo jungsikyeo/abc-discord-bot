@@ -774,14 +774,14 @@ class RPSGameView(View):
     @tasks.loop(seconds=1)  # 1초마다 업데이트
     async def update_timer(self):
         self.time_left -= 1
-        if self.time_left <= 0:
+        if self.time_left < 0:
+            self.update_timer.stop()
             embed = Embed(
                 title='Response Timeout',
                 description=f"{self.opponent.name}님이 응답 시간을 초과하셨습니다.\n\n{self.opponent.name } has exceeded its response time.",
                 color=0xff0000,
             )
             await self.message.edit(embed=embed, view=None)
-            self.update_timer.stop()
             return
         embed = Embed(
             title='RPS Game',
@@ -997,6 +997,222 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
         logging.error(f'save_rps_tokens error: {e}')
 
 
+class RPSGame2View(View):
+    def __init__(self, ctx, challenger, opponent, amount):
+        super().__init__(timeout=10)
+        self.ctx = ctx
+        self.time_left = 10
+        self.challenger = challenger
+        self.opponent = opponent
+        self.amount = amount
+        self.author_choice = None
+        self.opponent_choice = None
+        self.message = None
+
+    async def send_initial_message(self, ctx):
+        embed = Embed(
+            title='RPS Game 2',
+            description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하신다면 아래 버튼을 선택해주세요.\n남은 시간: {self.time_left}초\n\n"
+                        f"{self.opponent.mention}! {self.challenger.name } has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
+            color=0xFFFFFF,
+        )
+        self.message = await ctx.send(embed=embed, view=self)
+        self.update_timer.start()
+
+    @tasks.loop(seconds=1)
+    async def update_timer(self):
+        self.time_left -= 1
+        if self.time_left < 0:
+            self.update_timer.stop()
+            no_choice_user = ""
+            if not self.author_choice:
+                no_choice_user += f"{self.challenger.name}, "
+            if not self.opponent_choice:
+                no_choice_user += f"{self.opponent.name}, "
+            embed = Embed(
+                title='Response Timeout',
+                description=f"{no_choice_user[:-2]}님이 응답 시간을 초과하셨습니다.\n\n{no_choice_user[:-2]} has exceeded its response time.",
+                color=0xff0000,
+            )
+            await self.message.edit(embed=embed, view=None)
+            return
+        embed = Embed(
+            title='RPS Game 2',
+            description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하신다면 아래 버튼을 선택해주세요.\n남은 시간: {self.time_left}초\n\n"
+                        f"{self.opponent.mention}! {self.challenger.name } has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
+            color=0xFFFFFF,
+        )
+        await self.message.edit(embed=embed)
+
+    async def resolve_game(self):
+        self.update_timer.stop()  # 타이머 중지
+        # 게임 시작
+        choices = [
+            {
+                'name': '가위(Scissors)',
+                'emoji': ':v:'
+            },
+            {
+                'name': '바위(Rock)',
+                'emoji': ':fist:'
+            },
+            {
+                'name': '보(Paper)',
+                'emoji': ':raised_back_of_hand:'
+            }
+        ]
+        author_choice = next((choice for choice in choices if choice['name'] == self.author_choice), None)
+        opponent_choice = next((choice for choice in choices if choice['name'] == self.opponent_choice), None)
+        # 결과 계산
+        if author_choice == opponent_choice:
+            result = ":zany_face: 무승부(Draw)"
+            description = f"{self.challenger.name}: {author_choice['name']}\n{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
+            embed = Embed(
+                title='✅ RPS Result',
+                description=description,
+                color=0xFFFFFF,
+            )
+            await self.ctx.send(embed=embed)
+        elif (author_choice['name'] == "가위(Scissors)" and opponent_choice['name'] == "보(Paper)") \
+                or (author_choice['name'] == "바위(Rock)" and opponent_choice['name'] == "가위(Scissors)") \
+                or (author_choice['name'] == "보(Paper)" and opponent_choice['name'] == "바위(Rock)"):
+            result = f"{self.challenger.mention} is Winner!"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n" \
+                          f"{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
+            await save_rps_tokens(self.ctx, self.challenger, self.opponent, self.amount, description)
+        else:
+            result = f"{self.opponent.mention} is Winner!"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n" \
+                          f"{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
+            await save_rps_tokens(self.ctx, self.opponent, self.challenger, self.amount, description)
+
+        self.stop()  # View를 중지하고 버튼을 비활성화
+
+    @discord.ui.button(label="✊ 바위(Rock)", style=discord.ButtonStyle.blurple)
+    async def choose_rock(self, button, interaction):
+        await self.handle_choice(interaction, "바위(Rock)")
+
+    @discord.ui.button(label="🖐️ 보(Paper)", style=discord.ButtonStyle.green)
+    async def choose_paper(self, button, interaction):
+        await self.handle_choice(interaction, "보(Paper)")
+
+    @discord.ui.button(label="✌️가위(Scissors)", style=discord.ButtonStyle.red)
+    async def choose_scissors(self, button, interaction):
+        await self.handle_choice(interaction, "가위(Scissors)")
+
+    async def handle_choice(self, interaction, choice):
+        user = interaction.user
+        if user != self.challenger and user != self.opponent:
+            return
+
+        if user == self.challenger:
+            self.author_choice = choice
+        elif user == self.opponent:
+            self.opponent_choice = choice
+
+        await interaction.response.send_message(f"당신은 {choice}를 선택하셨습니다. 상대방의 선택을 기다려주세요.\n\nYou have selected {choice}. Please wait for opponent choice.", ephemeral=True)
+        if self.author_choice and self.opponent_choice:
+            await self.resolve_game()
+
+
+class RPSGame2(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.last_played_date = {}  # user_id를 키로 하고 마지막으로 게임을 한 날짜를 값으로 가지는 딕셔너리
+
+    @commands.command()
+    async def rps2(self, ctx, opponent: discord.Member, amount: int):
+        # gameroom_channel_id 채널에서는 제한 없이 게임 가능
+        if ctx.channel.id != int(gameroom_channel_id):
+            # 해당 유저가 마지막으로 게임을 한 날짜 가져오기
+            last_date = self.last_played_date.get(ctx.author.id)
+
+            # 유저가 오늘 이미 게임을 한 경우 에러 메시지 보내기
+            if last_date and last_date == datetime.utcnow().date():
+                embed = Embed(
+                    title='Game Error',
+                    description=f"❌ 이 채널에서는 하루에 한 번만 게임을 할 수 있습니다.\n<#{gameroom_channel_id}>에서는 제한없이 가능합니다.\n\n"
+                                f"❌ You can only play once a day in this channel.\nYou can play without limits in <#{gameroom_channel_id}>.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
+
+        if ctx.author.id == opponent.id:
+            embed = Embed(
+                title='Game Error',
+                description="❌ 자신과는 게임을 진행할 수 없습니다.\n\n❌ You can't play with yourself.",
+                color=0xff0000,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+
+        if abs(amount) > 20:
+            embed = Embed(
+                title='Game Error',
+                description=f"❌ 최대 20개의 토큰만 가능합니다.\n\n"
+                            f"❌ You can only have a maximum of 20 tokens.",
+                color=0xff0000,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+
+        connection = db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, ctx.author.id)
+            user = cursor.fetchone()
+            if not user:
+                user_tokens = 0
+            else:
+                user_tokens = int(user['tokens'])
+
+            if abs(amount) > user_tokens:
+                embed = Embed(
+                    title='Insufficient Tokens',
+                    description="❌ 보유한 토큰이 부족합니다. \n\n❌ Token holding quantity is insufficient.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
+
+            cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, opponent.id)
+            user = cursor.fetchone()
+            if not user:
+                user_tokens = 0
+            else:
+                user_tokens = int(user['tokens'])
+
+            if abs(amount) > user_tokens:
+                embed = Embed(
+                    title='Insufficient Tokens',
+                    description="❌ 상대방이 보유한 토큰이 부족합니다. \n\n❌ Opponent does not have enough tokens.",
+                    color=0xff0000,
+                )
+                await ctx.reply(embed=embed, mention_author=True)
+                return
+
+            game_view = RPSGame2View(ctx, ctx.author, opponent, amount)
+            await game_view.send_initial_message(ctx)
+
+            if ctx.channel.id != int(gameroom_channel_id):
+                self.last_played_date[ctx.author.id] = datetime.utcnow().date()
+        except Exception as e:
+            logging.error(f'rps error: {e}')
+            connection.rollback()
+        finally:
+            cursor.close()
+            connection.close()
+
+
 # @bot.event
 # async def on_message(message):
 #     if message.author.bot:
@@ -1012,4 +1228,5 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
 
 
 bot.add_cog(RPSGame(bot))
+bot.add_cog(RPSGame2(bot))
 bot.run(bot_token)

@@ -829,7 +829,7 @@ class RPSGameView(View):
                 description=description,
                 color=0xFFFFFF,
             )
-            await interaction.channel.send(embed=embed)
+            await self.message.edit(embed=embed, view=None)
         elif (author_choice['name'] == "가위(Scissors)" and opponent_choice['name'] == "보(Paper)") \
                 or (author_choice['name'] == "바위(Rock)" and opponent_choice['name'] == "가위(Scissors)") \
                 or (author_choice['name'] == "보(Paper)" and opponent_choice['name'] == "바위(Rock)"):
@@ -1072,7 +1072,7 @@ class RPSGame2View(View):
                 description=description,
                 color=0xFFFFFF,
             )
-            await self.ctx.send(embed=embed)
+            await self.message.edit(embed=embed, view=None)
         elif (author_choice['name'] == "가위(Scissors)" and opponent_choice['name'] == "보(Paper)") \
                 or (author_choice['name'] == "바위(Rock)" and opponent_choice['name'] == "가위(Scissors)") \
                 or (author_choice['name'] == "보(Paper)" and opponent_choice['name'] == "바위(Rock)"):

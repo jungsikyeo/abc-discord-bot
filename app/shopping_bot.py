@@ -1106,8 +1106,12 @@ class RPSGame2View(View):
             return
 
         if user == self.challenger:
+            if self.author_choice:
+                return
             self.author_choice = choice
         elif user == self.opponent:
+            if self.opponent_choice:
+                return
             self.opponent_choice = choice
 
         await interaction.response.send_message(f"당신은 {choice}를 선택하셨습니다. 상대방의 선택을 기다려주세요.\n\nYou have selected {choice}. Please wait for opponent choice.", ephemeral=True)

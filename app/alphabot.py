@@ -1558,13 +1558,17 @@ async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
 
     if tier_url:
         update_result = Queries.update_tier_url(db, blockchain, tier_url, regUser, user_id)
-        if update_result["lock_cnt"] != "0":
+        if int(update_result["lock_cnt"]) > 0:
             embed = Embed(title="Error", description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ", color=0x37e37b)
             embed.set_footer(text="Powered by 으노아부지#2642")
             await ctx.reply(embed=embed, mention_author=True)
             return
-    result = Queries.get_tier_by_blockchain(db, blockchain)
-    await ctx.reply(f"{result['imageUrl']}", mention_author=True)
+        embed = Embed(title="Success", description=f"✅ `{blockchain}` has been updated!\n\n✅ `{blockchain}` 내용이 업데이트되었습니다!", color=0x37e37b)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.reply(embed=embed, mention_author=True)
+    else:
+        result = Queries.get_tier_by_blockchain(db, blockchain)
+        await ctx.reply(f"{result['imageUrl']}", mention_author=True)
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"

@@ -1066,7 +1066,7 @@ class RPSGame2View(View):
         # 결과 계산
         if author_choice == opponent_choice:
             result = ":zany_face: 무승부(Draw)"
-            description = f"{self.challenger.name}: {author_choice['name']}\n{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
+            description = f"{self.challenger.name}: {author_choice['emoji']}{author_choice['name']}\n{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
             embed = Embed(
                 title='✅ RPS Result',
                 description=description,

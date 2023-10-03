@@ -106,7 +106,9 @@ class Queries:
         else:
             pubPrice = form["pubPrice"]
 
-        check_query = f"SELECT COUNT(*) cnt FROM projects WHERE lower(twitterUrl) = lower('{twitterUrl}')"
+        check_query = f"SELECT COUNT(*) cnt " \
+                      f"FROM projects " \
+                      f"WHERE replace(lower(twitterUrl), 'twitter.com' , 'x.com') = replace(lower('{twitterUrl}'), 'twitter.com' , 'x.com')"
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(check_query)

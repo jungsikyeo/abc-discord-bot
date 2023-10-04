@@ -130,7 +130,7 @@ class WelcomeView(View):
                 select tokens
                 from user_tokens
                 where user_id = %s
-            """, user_id)
+            """, str(user_id))
             user = cursor.fetchone()
             if not user:
                 user_tokens = 0
@@ -230,7 +230,7 @@ class BuyButton(View):
                 select tokens
                 from user_tokens
                 where user_id = %s
-            """, user_id)
+            """, str(user_id))
             user = cursor.fetchone()
 
             if user:
@@ -252,12 +252,12 @@ class BuyButton(View):
                 cursor.execute("""
                     insert into user_tickets(user_id, product_id)
                     values (%s, %s)
-                """, (user_id, product['id']))
+                """, (str(user_id), product['id']))
 
                 cursor.execute("""
                     update user_tokens set tokens = %s
                     where user_id = %s
-                """, (user_tokens, user_id))
+                """, (user_tokens, str(user_id)))
 
                 description = f"✅ `{self.product['name']}` 경품에 응모하였습니다.\n\n" \
                               f"✅ You applied for the `{self.product['name']}` prize."
@@ -574,7 +574,7 @@ async def giveaway_check(ctx, user_tag):
                 select tokens
                 from user_tokens
                 where user_id = %s
-            """, user_id)
+            """, str(user_id))
         user = cursor.fetchone()
         if not user:
             user_tokens = 0
@@ -662,7 +662,7 @@ async def save_tokens(params):
             select tokens
             from user_tokens
             where user_id = %s
-        """, (user_id,))
+        """, (str(user_id),))
         user = cursor.fetchone()
 
         if user:
@@ -676,7 +676,7 @@ async def save_tokens(params):
             cursor.execute("""
                 update user_tokens set tokens = %s
                 where user_id = %s
-            """, (user_tokens, user_id,))
+            """, (user_tokens, str(user_id),))
         else:
             before_user_tokens = 0
             user_tokens = token
@@ -684,7 +684,7 @@ async def save_tokens(params):
             cursor.execute("""
                 insert into user_tokens (user_id, tokens)
                 values (%s, %s)
-            """, (user_id, user_tokens,))
+            """, (str(user_id), user_tokens,))
 
         connection.commit()
         result = {

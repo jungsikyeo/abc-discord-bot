@@ -7,19 +7,35 @@ import os as operating_system
 import openai
 import random
 import cloudscraper
-import cfscrape
 import json
 import pytz
 import urllib3
-from pytz import all_timezones, timezone
-from discord.ui import Button, View
+import urllib
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import pandas as pd
+import re
+import gspread
+import uuid
+import io
+import base64
+from datetime import timezone
+from pytz import all_timezones
 from discord.ext import commands
+from discord.commands import Option
+from discord.commands.context import ApplicationContext
 from discord import Embed
-from Paginator2 import Paginator, PageEmojis, NavigationType, Page
+from discord.ui import View
+from discord.ext.pages import Paginator
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from urllib.parse import quote, urlparse
 from dotenv import load_dotenv
+from matplotlib.dates import DateFormatter
+from binance.client import Client
+from datetime import timedelta
+from oauth2client.service_account import ServiceAccountCredentials
+from PIL import Image, ImageSequence
 
 load_dotenv()
 
@@ -30,71 +46,30 @@ mysql_port = operating_system.getenv("MYSQL_PORT")
 mysql_id = operating_system.getenv("MYSQL_ID")
 mysql_passwd = operating_system.getenv("MYSQL_PASSWD")
 mysql_db = operating_system.getenv("MYSQL_DB")
-bot_domain=operating_system.getenv("SEARCHFI_BOT_DOMAIN")
+bot_domain = operating_system.getenv("SEARCHFI_BOT_DOMAIN")
 discord_client_id = operating_system.getenv("DISCORD_CLIENT_ID")
+guild_ids = list(map(int, operating_system.getenv('GUILD_ID').split(',')))
 
-class UpDownView(View):
-    def __init__(self, ctx, embed_message, embed, db, project_id):
-        super().__init__(timeout=None)
-        self.ctx = ctx
-        self.embed_message = embed_message
-        self.embed = embed
-        self.db = db
-        self.project_id = project_id
-        self.regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-        self.user_id = ctx.author.id
-        if self.embed_message is not None:
-            self.update_message()
 
-    async def on_timeout(self):
-        await self.embed_message.edit(view=None)
-
-    def update_message(self):
-        self.embed_message.edit(embed=self.embed, view=self)
-
-    @discord.ui.button(label="UP", style=discord.ButtonStyle.green)
-    async def up_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        buttonView = ButtonView(self.ctx, self.db, "")
-        Queries.merge_recommend(self.db, self.project_id, self.regUser, self.user_id, "UP")
-        item = Queries.select_one_project(self.db, self.project_id)
-        try:
-            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        item["avatar_url"] = avatar_url
-        embed = buttonView.makeEmbed(item)
-        await self.embed_message.edit(embed=embed, view=self)
-
-    @discord.ui.button(label="DOWN", style=discord.ButtonStyle.red)
-    async def down_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        buttonView = ButtonView(self.ctx, self.db, "")
-        Queries.merge_recommend(self.db, self.project_id, self.regUser, self.user_id, "DOWN")
-        item = Queries.select_one_project(self.db, self.project_id)
-        try:
-            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        item["avatar_url"] = avatar_url
-        embed = buttonView.makeEmbed(item)
-        await self.embed_message.edit(embed=embed, view=self)
-
-class ButtonView(discord.ui.View):
-    def __init__(self, ctx, db, day):
-        super().__init__()
-        self.ctx = ctx
-        self.db = db
-        self.day = day
-        self.id = ctx.message.author.id
-        self.username = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
-        self.desktop = ctx.message.author.desktop_status
-        self.mobile = ctx.message.author.mobile_status
-
-    async def get_member_avatar(self, user_id: int):
+async def get_member_avatar(user_id: int):
+    try:
         member = bot.get_user(user_id)
         if member is None:
             return "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
         else:
             return member.avatar
+    except:
+        return "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+
+
+class PageButtonView(View):
+    def __init__(self, ctx):
+        super().__init__()
+        self.ctx = ctx
+        self.id = ctx.author.id
+        self.username = f"{ctx.author.name}#{ctx.author.discriminator}"
+        self.desktop = ctx.author.desktop_status
+        self.mobile = ctx.author.mobile_status
 
     def makeEmbed(self, item):
         if item['hasTime'] == "True":
@@ -113,14 +88,17 @@ class ButtonView(discord.ui.View):
             call_url = item['callUrl']
 
         if str(self.mobile) == "online":
-            embed=discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}", description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""", color=0x04ff00)
+            embed = discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}",
+                                  description=f"""{mintTime} | {link_url}\n> **Supply**             {item['supply']} \n> **WL Price**         {item['wlPrice']} {item['blockchain']} \n> **Public Price**   {item['pubPrice']} {item['blockchain']}\n:thumbsup: {item['goodCount']}     :thumbsdown: {item['badCount']}""",
+                                  color=0x04ff00)
             if call_url:
                 embed.add_field(name="SearchFi Call", value=f"{call_url}", inline=True)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.set_footer(text="Powered by 으노아부지#2642")
         else:
-            embed=discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}", description=f"{mintTime} | {link_url}", color=0x04ff00)
+            embed = discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}",
+                                  description=f"{mintTime} | {link_url}", color=0x04ff00)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
             embed.add_field(name=f"""Supply       """, value=f"{item['supply']}", inline=True)
@@ -133,8 +111,18 @@ class ButtonView(discord.ui.View):
             embed.set_footer(text="Powered by 으노아부지#2642")
         return embed
 
-class Database:
-    def __init__(self, host, port, user, password, db):
+
+class ProjectButtonView(View):
+    def __init__(self):
+        super().__init__()
+
+    async def send_initial_message(self, ctx, embed, button_url, label):
+        self.add_item(discord.ui.Button(label=label, url=button_url, style=discord.ButtonStyle.link))
+        await ctx.respond(embed=embed, view=self, ephemeral=True)
+
+
+class Queries:
+    def __init__(self, host, port, user, password, db_name):
         self.pool = PooledDB(
             creator=pymysql,
             maxconnections=5,
@@ -143,7 +131,7 @@ class Database:
             port=int(port),
             user=user,
             password=password,
-            database=db,
+            database=db_name,
             charset='utf8mb4',
             cursorclass=DictCursor
         )
@@ -151,8 +139,7 @@ class Database:
     def get_connection(self):
         return self.pool.connection()
 
-class Queries:
-    def select_search_projects(db, day, week):
+    def select_search_projects(self, day, week):
         select_query = f"""
         SELECT  
             A.*,  
@@ -190,13 +177,13 @@ class Queries:
         AND case when mintTime24 > 12 then 'PM' else 'AM' end = '{week}'
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_all_projects(db, today, tomorrow):
+    def select_all_projects(self, today, tomorrow):
         select_query = f"""
         SELECT  
             A.*,  
@@ -235,13 +222,13 @@ class Queries:
         WHERE 1=1 
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_today_projects(db, today, tomorrow):
+    def select_today_projects(self, today, tomorrow):
         select_query = f"""
         SELECT  
             A.*,  
@@ -280,13 +267,13 @@ class Queries:
         WHERE 1=1 
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_one_project(db, project_id):
+    def select_one_project(self, project_id):
         select_query = f"""
         SELECT  
             A.*,  
@@ -321,13 +308,13 @@ class Queries:
         WHERE 1=1 
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchone()
                 return result
 
-    def select_search_project(db, project_name):
+    def select_search_project(self, project_name):
         select_query = f"""
         SELECT  
             A.*,  
@@ -365,13 +352,13 @@ class Queries:
         WHERE 1=1 
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_change_date(db, date):
+    def select_change_date(self, date):
         select_query = f"""
         select 
            a.date_string, 
@@ -381,13 +368,13 @@ class Queries:
         ) a 
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchone()
                 return result
 
-    def merge_recommend(db, project_id, regUser, user_id, recommend_type):
+    def merge_recommend(self, project_id, regUser, user_id, recommend_type):
         insert_query = f"""
             insert into recommends
             (
@@ -400,17 +387,17 @@ class Queries:
             ON DUPLICATE KEY UPDATE recommendType='{recommend_type}';
         """
         try:
-            with db.get_connection() as conn:
+            with self.get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(insert_query)
                     conn.commit()
-            return {"status":"OK"}
+            return {"status": "OK"}
         except Exception as e:
             conn.rollback()
             print(e)
             return {"status": "ERROR", "msg": e}
 
-    def select_my_up(db, user_id, today, tomorrow):
+    def select_my_up(self, user_id, today, tomorrow):
         select_query = f"""
             SELECT  
                 A.*,  
@@ -452,13 +439,13 @@ class Queries:
             WHERE 1=1 
             """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_ranking(db):
+    def select_ranking(self):
         select_query = f"""
         SELECT
             DENSE_RANK() OVER (ORDER BY (up_score - down_score) DESC) AS ranking,
@@ -511,13 +498,13 @@ class Queries:
         LIMIT 50;
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_my_ranking(db, user_id):
+    def select_my_ranking(self, user_id):
         select_query = f"""
         SELECT f.*
         FROM (
@@ -579,13 +566,13 @@ class Queries:
         ORDER BY ranking ASC
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (user_id,))
                 result = cursor.fetchall()
                 return result
 
-    def select_my_updown(db, user_id, type):
+    def select_my_updown(self, user_id, type):
         select_query = f"""
         SELECT f.*
         FROM (
@@ -648,33 +635,33 @@ class Queries:
         ORDER BY ranking ASC
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (user_id, type))
                 result = cursor.fetchall()
                 return result
 
-    def add_recommendation(db, project_id, reg_user, user_id, recommend_type):
+    def add_recommendation(self, project_id, reg_user, user_id, recommend_type):
         insert_query = f"""
         INSERT INTO recommends (projectId, regUser, user_id, recommendType)
         VALUES (%s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE recommendType=%s;
         """
 
-        previous_recommendation = Queries.get_previous_recommendation(db, project_id, user_id)
-        with db.get_connection() as conn:
+        previous_recommendation = Queries.get_previous_recommendation(self, project_id, user_id)
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(insert_query, (project_id, reg_user, user_id, recommend_type, recommend_type))
                 conn.commit()
 
         return previous_recommendation
 
-    def get_previous_recommendation(db, project_id, user_id):
+    def get_previous_recommendation(self, project_id, user_id):
         select_query = f"""
         SELECT recommendType FROM recommends WHERE projectId=%s AND user_id=%s;
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (project_id, user_id))
                 result = cursor.fetchone()
@@ -683,14 +670,14 @@ class Queries:
             return result['recommendType']
         return None
 
-    def get_project_id_by_twitter_handle(db, twitter_handle):
+    def get_project_id_by_twitter_handle(self, twitter_handle):
         select_query = f"""
         SELECT *
         FROM projects
         WHERE twitterUrl LIKE replace(replace(%s, '@', ''), ' ', '');
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (f"%{twitter_handle}",))
                 result = cursor.fetchone()
@@ -700,30 +687,30 @@ class Queries:
 
         return result
 
-    def update_wallet_checker_url(db, project_id, wallet_checker_url, user_id):
+    def update_wallet_checker_url(self, project_id, wallet_checker_url, user_id):
         update_query = "UPDATE projects SET walletCheckerUrl = %s, walletCheckerUserId = %s WHERE id = %s"
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (wallet_checker_url, user_id, project_id))
                 conn.commit()
 
-    def update_call_url(db, project_id, call_url, user_id):
+    def update_call_url(self, project_id, call_url, user_id):
         update_query = "UPDATE projects SET callUrl = %s, callUrlUserId = %s WHERE id = %s"
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (call_url, user_id, project_id))
                 conn.commit()
 
-    def get_tier_by_blockchain(db, blockchain):
+    def get_tier_by_blockchain(self, blockchain):
         select_query = f"""
         SELECT imageUrl
         FROM tiers
         WHERE blockchain = case when upper(%s) = null then 'ETH' else upper(%s) end;
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (blockchain, blockchain,))
                 result = cursor.fetchone()
@@ -733,7 +720,7 @@ class Queries:
 
         return result
 
-    def update_tier_url(db, blockchain, image_url, reg_user, user_id):
+    def update_tier_url(self, blockchain, image_url, reg_user, user_id):
         select_query = f"""
         SELECT count(1) lock_cnt
         FROM tiers t
@@ -741,7 +728,7 @@ class Queries:
         AND t.lock = 1
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, blockchain)
                 result = cursor.fetchone()
@@ -755,13 +742,13 @@ class Queries:
         ON DUPLICATE KEY UPDATE imageUrl = %s, user_id = %s
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (blockchain, image_url, reg_user, user_id, image_url, user_id,))
                 conn.commit()
         return {"lock_cnt": 0}
 
-    def select_keyword(db, keyword):
+    def select_keyword(self, keyword):
         select_query = f"""
         SELECT *
         FROM keywords
@@ -769,7 +756,7 @@ class Queries:
         limit 1
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (keyword, keyword,))
                 result = cursor.fetchone()
@@ -779,34 +766,35 @@ class Queries:
 
         return result
 
-    def update_keyword(db, blockchain, keyword, symbol, reg_user, user_id):
+    def update_keyword(self, blockchain, keyword, symbol, reg_user, user_id):
         update_query = """
         INSERT INTO keywords (blockchain, keyword, symbol, regUser, user_id)
         VALUES (upper(%s), %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE blockchain = upper(%s), symbol = %s, user_id = %s
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(update_query, (blockchain, keyword, symbol, reg_user, user_id, blockchain, symbol, user_id,))
+                cursor.execute(update_query,
+                               (blockchain, keyword, symbol, reg_user, user_id, blockchain, symbol, user_id,))
                 conn.commit()
 
-    def insert_message(db, user_id, role, content):
+    def insert_message(self, user_id, role, content):
         update_query = """
         INSERT INTO messages (user_id, role, content) VALUES (%s, %s, %s)
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (user_id, role, content,))
                 conn.commit()
 
-    def select_message(db, user_id):
+    def select_message(self, user_id):
         select_query = """
         SELECT role, content, timestamp FROM messages WHERE user_id = %s ORDER BY timestamp ASC
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (user_id,))
                 results = cursor.fetchall()
@@ -816,7 +804,7 @@ class Queries:
 
         return [{"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]} for r in results]
 
-    def select_stats(db):
+    def select_stats(self):
         select_query = f"""
         with main as (
             select a.user_id, a.type, a.cnt
@@ -877,30 +865,30 @@ class Queries:
         order by ranking
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query)
                 result = cursor.fetchall()
                 return result
 
-    def select_tarots(db, user_id):
+    def select_tarots(self, user_id):
         select_query = f"""
         SELECT draw_date, card_index FROM tarots WHERE user_id = %s
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(select_query, (user_id))
                 result = cursor.fetchone()
                 return result
 
-    def insert_tarots(db, user_id, current_date, frame_index):
+    def insert_tarots(self, user_id, current_date, frame_index):
         update_query = """
         INSERT INTO tarots (user_id, draw_date, card_index) VALUES (%s, %s, %s)
         ON DUPLICATE KEY UPDATE draw_date = VALUES(draw_date), card_index = VALUES(card_index)
         """
 
-        with db.get_connection() as conn:
+        with self.get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(update_query, (user_id, current_date, frame_index))
                 conn.commit()
@@ -908,9 +896,10 @@ class Queries:
 
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 
-db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
+db = Queries(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 @bot.event
 async def on_ready():
@@ -919,9 +908,15 @@ async def on_ready():
     print("connection was succesful")
     await bot.change_presence(status=discord.Status.online, activity=None)
 
-@bot.command()
-async def mint(ctx, *, arg="today"):
-    if arg == "today":
+
+@bot.slash_command(
+    name="mint",
+    description="project minting info (today / tmr) ",
+    guild_ids=guild_ids
+)
+async def mint(ctx: ApplicationContext,
+               mint_date: Option(str, "yyyy-mm-dd", required=False) = "today"):
+    if mint_date == "today":
         target_date = datetime.datetime.now()
 
         today = target_date
@@ -930,99 +925,90 @@ async def mint(ctx, *, arg="today"):
         tomorrow_string = tomorrow.strftime("%Y-%m-%d")
     else:
         try:
-            target_date = datetime.datetime.strptime(arg, "%Y%m%d").date()
+            target_date = datetime.datetime.strptime(mint_date.replace('-', ''), "%Y%m%d").date()
 
             today = target_date
             tomorrow = target_date + datetime.timedelta(days=1)
             today_string = today.strftime("%Y-%m-%d")
             tomorrow_string = tomorrow.strftime("%Y-%m-%d")
         except ValueError:
-            await ctx.reply("```❌ Invalid date format. Please try again. (yyyymmdd)\n\n잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyymmdd)```", mention_author=True)
+            await ctx.respond("```"
+                              "❌ Invalid date format. Please try again. (yyyy-mm-dd)\n\n"
+                              "❌ 잘못된 날짜 형식입니다. 다시 시도해주세요. (yyyy-mm-dd)"
+                              "```")
             return
 
-    buttonView = ButtonView(ctx, db, "")
+    buttonView = PageButtonView(ctx)
     pages = []
-    projects = Queries.select_all_projects(db, today_string, tomorrow_string) # removed the if-else statement and only use select_all_projects method
-    before_mint_day = ""
-    color = "-"
+    projects = Queries.select_all_projects(db, today_string, tomorrow_string)
     for item in projects:
-        try:
-            avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        avatar_url = await get_member_avatar(item['user_id'])
         item["avatar_url"] = avatar_url
-        embed=buttonView.makeEmbed(item)
-
-        if before_mint_day == "":
-            before_mint_day = item['mintDay']
-        if before_mint_day != item['mintDay']:
-            color = "+"
-        cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
-        pages.append(cal)
+        embed = buttonView.makeEmbed(item)
+        pages.append(embed)
     if len(projects) > 0:
-        paginator = Paginator(bot)
-        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+        paginator = Paginator(pages)
+        await paginator.respond(ctx.interaction, ephemeral=False)
     else:
-        embed=discord.Embed(title="", description="")
-        embed.add_field(name="", value=f"❌ There is no mint project for today's date.\n\n❌ 오늘 날짜의 민팅 프로젝트가 없습니다.", inline=True)
-        await ctx.reply(embed=embed, mention_author=True)
+        embed = discord.Embed(title="", description="")
+        embed.add_field(name="",
+                        value=f"❌ There is no mint project for today's date.\n\n"
+                              f"❌ 오늘 날짜의 민팅 프로젝트가 없습니다.",
+                        inline=True)
+        await ctx.respond(embed=embed, ephemeral=True)
 
-@bot.command()
-async def msearch(ctx, *, project_name):
-    buttonView = ButtonView(ctx, db, "")
+
+@bot.slash_command(
+    name="msearch",
+    description="<searching> using this to searching the project of name, twitter",
+    guild_ids=guild_ids
+)
+async def msearch(ctx: ApplicationContext,
+                  searching: Option(str, "project name or twitter handle", required=True)):
+    buttonView = PageButtonView(ctx)
     pages = []
-    projects = Queries.select_search_project(db, project_name)
-    before_mint_day = ""
-    color = "-"
+    projects = Queries.select_search_project(db, searching)
     if len(projects) > 0:
         for item in projects:
-            try:
-                avatar_url = await buttonView.get_member_avatar(int(item['user_id']))
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+            avatar_url = await get_member_avatar(item['user_id'])
             item["avatar_url"] = avatar_url
-            embed=buttonView.makeEmbed(item)
-
-            if before_mint_day == "":
-                before_mint_day = item['mintDay']
-            if before_mint_day != item['mintDay']:
-                if color == "+":
-                    color = "-"
-                else:
-                    color = "+"
-            cal = Page(content=f"```diff\n{color}[{item['mintDay']}]{color}```", embed=embed)
-            pages.append(cal)
-
-        paginator = Paginator(bot)
-        await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+            embed = buttonView.makeEmbed(item)
+            pages.append(embed)
+        paginator = Paginator(pages)
+        await paginator.respond(ctx.interaction, ephemeral=False)
     else:
-        embed=discord.Embed(title="", description="")
-        embed.add_field(name="", value=f"❌ No projects have been searched as `{project_name}`.\nPlease search for another word.\n\n❌ `{project_name}`(으)로 검색된 프로젝트가 없습니다.\n다른 단어를 검색하십시오.", inline=True)
-        await ctx.reply(embed=embed, mention_author=True)
+        embed = discord.Embed(title="", description="")
+        embed.add_field(name="",
+                        value=f"❌ No projects have been searched as `{searching}`.\n"
+                              f"Please search for another word.\n\n"
+                              f"❌ `{searching}`(으)로 검색된 프로젝트가 없습니다.\n"
+                              f"다른 단어를 검색하십시오.",
+                        inline=True)
+        await ctx.respond(embed=embed, ephemeral=True)
 
-@bot.command()
-async def mrank(ctx):
+
+@bot.slash_command(
+    name="mrank",
+    description="top 50 project recommanded by users",
+    guild_ids=guild_ids
+)
+async def mrank(ctx: ApplicationContext):
     results = Queries.select_ranking(db)
-
     num_pages = (len(results) + 9) // 10
-
     pages = []
-
     for page in range(num_pages):
-        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
-
+        embed = Embed(title=f"**🏆 Project Ranking Top 50 🏆**\n\n"
+                            f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
         for i in range(10):
             index = page * 10 + i
             if index >= len(results):
                 break
-
             item = results[index]
             link_url = f"[Twitter]({item['twitterUrl']})"
             if item['discordUrl']:
                 link_url = f"{link_url}  |  [Discord]({item['discordUrl']})"
             if item['walletCheckerUrl']:
                 link_url = f"{link_url}  |  [Checker]({item['walletCheckerUrl']})"
-
             field_name = f"`{item['ranking']}.` {item['name']} (@{item['twitterUrl'].split('/')[-1]}) :thumbsup: {item['up_score']}  :thumbsdown: {item['down_score']}"
             if item['mintDate'] == 'TBA':
                 field_value = f"{item['mintDate']}  |  {link_url}"
@@ -1030,116 +1016,139 @@ async def mrank(ctx):
                 field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
             embed.add_field(name=field_name, value=field_value, inline=False)
             embed.set_footer(text=f"by SearchFI Bot")
+        pages.append(embed)
+    paginator = Paginator(pages)
+    await paginator.respond(ctx.interaction, ephemeral=False)
 
-        cal = Page(content=f"**🏆 Project Ranking Top 50 🏆**", embed=embed)
-        pages.append(cal)
 
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
-
-@bot.command()
-async def mreg(ctx):
-    embed = Embed(title="Warning", description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.", color=0xFFFFFF)
+@bot.slash_command(
+    name="mreg",
+    description="register project ",
+    guild_ids=guild_ids
+)
+async def mreg(ctx: ApplicationContext):
+    embed = Embed(title="Warning",
+                  description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.",
+                  color=0xFFFFFF)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
-
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-    button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
-    view = discord.ui.View()
-    view.add_item(button)
-    await ctx.send(view=view)
+    view = ProjectButtonView()
+    await view.send_initial_message(ctx, embed, button_url, "Go to Registration")
 
-@bot.command()
-async def mmod(ctx):
-    embed = Embed(title="Warning", description="ℹ️ Please correct the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 수정해주세요.", color=0xFFFFFF)
+
+@bot.slash_command(
+    name="mmod",
+    description="edit project (only your registration can edit)",
+    guild_ids=guild_ids
+)
+async def mmod(ctx: ApplicationContext):
+    embed = Embed(title="Warning",
+                  description="ℹ️ Please correct the project with the button below.\n\n"
+                              "ℹ️ 아래 버튼으로 프로젝트를 수정해주세요.",
+                  color=0xFFFFFF)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
-
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
-    button = discord.ui.Button(style=discord.ButtonStyle.red, label="Go to Modify", url=button_url)
-    view = discord.ui.View()
-    view.add_item(button)
-    await ctx.send(view=view)
+    view = ProjectButtonView()
+    await view.send_initial_message(ctx, embed, button_url, "Go to Modify")
 
-@bot.command()
-async def mup(ctx, *, twitter_handle: str):
-    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+@bot.slash_command(
+    name="mup",
+    description="recommand project",
+    guild_ids=guild_ids
+)
+async def mup(ctx: ApplicationContext,
+              twitter_handle: Option(str, "twitter handle", required=True)):
+    regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
-
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
-
     if project_info is None:
-        embed = Embed(title="Error", description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ No project found for `{twitter_handle}`.\n\n"
+                                  f"❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
-
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-        button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
-        view = discord.ui.View()
-        view.add_item(button)
-        await ctx.send(view=view)
-
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     project_id = project_info['id']
-
     previous_recommendation = Queries.add_recommendation(db, project_id, regUser, user_id, "UP")
-
     if previous_recommendation is None:
-        embed = Embed(title="Success", description=f":thumbup: Successfully recommended `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트를 추천했습니다!", color=0x37E37B)
+        embed = Embed(title="Success",
+                      description=f":thumbup: Successfully recommended `{twitter_handle}` project!\n\n"
+                                  f":thumbup: `{twitter_handle}` 프로젝트를 추천했습니다!",
+                      color=0x37E37B)
     elif previous_recommendation == "UP":
-        embed = Embed(title="Warning", description=f"ℹ️ You have already recommended `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 추천하셨습니다.", color=0xffffff)
+        embed = Embed(title="Warning",
+                      description=f"ℹ️ You have already recommended `{twitter_handle}` project.\n\n"
+                                  f"ℹ️ 이미 `{twitter_handle}` 프로젝트를 추천하셨습니다.",
+                      color=0xffffff)
     else:
-        embed = Embed(title="Changed", description=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!", color=0x37E37B)
+        embed = Embed(title="Changed",
+                      description=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n"
+                                  f":thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!",
+                      color=0x37E37B)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def mdown(ctx, *, twitter_handle: str):
-    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+@bot.slash_command(
+    name="mdown",
+    description="no recommand project",
+    guild_ids=guild_ids
+)
+async def mdown(ctx: ApplicationContext,
+                twitter_handle: Option(str, "twitter handle", required=True)):
+    regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
-
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
-
-    embed=discord.Embed(title="", description="")
-
     if project_info is None:
-        embed = Embed(title="Error", description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ No project found for `{twitter_handle}`.\n "
+                                  f"Click `!mreg` to register the project.\n\n"
+                                  f"❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n "
+                                  f"`!mreg`를 눌러서 프로젝트를 등록해주세요.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
-
-        button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
-        button = discord.ui.Button(style=discord.ButtonStyle.green, label="Go to Registration", url=button_url)
-        view = discord.ui.View()
-        view.add_item(button)
-        await ctx.send(view=view)
-
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     project_id = project_info['id']
-
     previous_recommendation = Queries.add_recommendation(db, project_id, regUser, user_id, "DOWN")
-
     if previous_recommendation is None:
-        embed = Embed(title="Success", description=f":thumbdown: Successfully downvoted `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트를 비추천했습니다!", color=0x37E37B)
+        embed = Embed(title="Success",
+                      description=f":thumbdown: Successfully downvoted `{twitter_handle}` project!\n\n"
+                                  f":thumbdown: `{twitter_handle}` 프로젝트를 비추천했습니다!",
+                      color=0x37E37B)
     elif previous_recommendation == "DOWN":
-        embed = Embed(title="Warning", description=f"ℹ️ You have already downvoted `{twitter_handle}` project.\n\nℹ️ 이미 `{twitter_handle}` 프로젝트를 비추천하셨습니다.", color=0xffffff)
+        embed = Embed(title="Warning",
+                      description=f"ℹ️ You have already downvoted `{twitter_handle}` project.\n\n"
+                                  f"ℹ️ 이미 `{twitter_handle}` 프로젝트를 비추천하셨습니다.",
+                      color=0xffffff)
     else:
-        embed = Embed(title="Changed", description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!", color=0x37E37B)
+        embed = Embed(title="Changed",
+                      description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n"
+                                  f":thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!",
+                      color=0x37E37B)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def mylist(ctx):
+
+@bot.slash_command(
+    name="mylist",
+    description="project minting info (today / tmr) for me",
+    guild_ids=guild_ids
+)
+async def mylist(ctx: ApplicationContext):
     try:
-        regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+        regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
         user_id = ctx.author.id
         today = datetime.datetime.now().date()
         today_string = today.strftime("%Y-%m-%d")
         tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).date()
         tomorrow_string = tomorrow.strftime("%Y-%m-%d")
 
-        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
+        embed = discord.Embed(title=f"**Today {regUser} Mint List**", description="")
 
         my_up_list = Queries.select_my_up(db, user_id, today_string, tomorrow_string)
         before_date = ""
@@ -1150,7 +1159,7 @@ async def mylist(ctx):
                 if len(list_massage) > 900:
                     embed.add_field(name="", value=list_massage, inline=True)
                     await ctx.send(embed=embed)
-                    embed=discord.Embed(title="", description="")
+                    embed = discord.Embed(title="", description="")
                     list_massage = "\n"
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
@@ -1164,39 +1173,36 @@ async def mylist(ctx):
                     list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
-                # print(len(list_massage))
             list_massage = list_massage + ""
         else:
-            # update_channel = await bot.fetch_channel(1089590412164993044)
-            # mention_string = update_channel.mention
-            list_massage = list_massage + f"❌ No projects have been recommend.\nPlease press `!mup @twitter_handle` for the project you want to recommend.\n\n❌ 추천한 프로젝트가 없습니다.\n추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
-            embed=discord.Embed(title="", description="")
+            list_massage = list_massage + f"❌ No projects have been recommend.\n" \
+                                          f"Please press `!mup @twitter_handle` for the project you want to recommend.\n\n" \
+                                          f"❌ 추천한 프로젝트가 없습니다.\n" \
+                                          f"추천할 프로젝트는 `!mup @twitter_handle`을 눌러주세요."
+            embed = discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
     except Exception as e:
         print("Error:", e)
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def youlist(ctx, dc_id):
+
+@bot.slash_command(
+    name="youlist",
+    description="project minting info (today / tmr) for user",
+    guild_ids=guild_ids
+)
+async def youlist(ctx: ApplicationContext,
+                  user: Option(discord.Member, "tag user", required=True)):
     try:
-        print(dc_id[2:-1])
-        user_id = dc_id[2:-1]
-        user = await bot.fetch_user(user_id)
-        print(user)
-        if user is not None:
-            print(f"이름: {user.name}")
-            print(f"디스크리미네이터: {user.discriminator}")
-            regUser = user.name + "#" + user.discriminator
-        else:
-            regUser = dc_id
+        user_id = user.id
+        regUser = user.name + "#" + user.discriminator
 
-
-        embed=discord.Embed(title=f"**Today {regUser} Mint List**", description="")
+        embed = discord.Embed(title=f"**Today {regUser} Mint List**", description="")
 
         today = datetime.datetime.now().date()
         today_string = today.strftime("%Y-%m-%d")
@@ -1212,7 +1218,7 @@ async def youlist(ctx, dc_id):
                 if len(list_massage) > 900:
                     embed.add_field(name="", value=list_massage, inline=True)
                     await ctx.send(embed=embed)
-                    embed=discord.Embed(title="", description="")
+                    embed = discord.Embed(title="", description="")
                     list_massage = "\n"
                 item_date = f"{item['mintDay']}"
                 item_time = f"{item['mintTime24']}"
@@ -1226,37 +1232,37 @@ async def youlist(ctx, dc_id):
                     list_massage = list_massage + f"""<t:{int(item['unixMintDate'])}>\n"""
                     before_time = item_time
                 list_massage = list_massage + f"""> [{item['name']}]({item['twitterUrl']})  /  Supply: {item['supply']}  / WL: {item['wlPrice']} {item['blockchain']}  /  Public: {item['pubPrice']} {item['blockchain']}\n"""
-                # print(len(list_massage))
             list_massage = list_massage + ""
         else:
-            list_massage = list_massage + f"❌ `{regUser}` has no recommended project.\n\n`❌ {regUser}`가 추천한 프로젝트는 없습니다."
-            embed=discord.Embed(title="", description="")
+            list_massage = list_massage + f"❌ `{regUser}` has no recommended project.\n\n" \
+                                          f"❌ `{regUser}`가 추천한 프로젝트는 없습니다."
+            embed = discord.Embed(title="", description="")
             embed.add_field(name="", value=list_massage, inline=True)
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
     except Exception as e:
         print("Error:", e)
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def myrank(ctx, *, dc_id=None):
-    if dc_id == None:
-        user_id = ctx.author.id
+
+@bot.slash_command(
+    name="myrank",
+    description="My total Project in Top 50 rank",
+    guild_ids=guild_ids
+)
+async def myrank(ctx: ApplicationContext,
+                 user: Option(discord.Member, "tag user", required=False)):
+    if user:
+        user_id = user.id
     else:
-        user_id = int(dc_id[2:-1])
-
-    user = await bot.fetch_user(user_id)
-
-    buttonView = ButtonView(ctx, db, "")
+        user = ctx.author
+        user_id = ctx.author.id
     results = Queries.select_my_ranking(db, user_id)
-
     num_pages = (len(results) + 9) // 10
-
     pages = []
-
     if num_pages > 0:
         for page in range(num_pages):
             embed = Embed(title="", color=0x0061ff)
@@ -1280,52 +1286,43 @@ async def myrank(ctx, *, dc_id=None):
                     field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
-            try:
-                avatar_url = await buttonView.get_member_avatar(user_id)
-                if avatar_url == None:
-                    avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            avatar_url = await get_member_avatar(user_id)
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank",
+                             icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
-            cal = Page(content=f"", embed=embed)
-            pages.append(cal)
+            pages.append(embed)
     else:
         embed = Embed(title="", color=0x0061ff)
-        try:
-            avatar_url = await buttonView.get_member_avatar(user_id)
-            if avatar_url == None:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+        avatar_url = await get_member_avatar(user_id)
+        embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank",
+                         icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"", embed=embed)
-        pages.append(cal)
+        pages.append(embed)
 
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    paginator = Paginator(pages)
+    await paginator.respond(ctx.interaction, ephemeral=False)
 
-@bot.command()
-async def myup(ctx, *, dc_id=None):
-    if dc_id == None:
-        user_id = ctx.author.id
+
+@bot.slash_command(
+    name="myup",
+    description="can see tagged user's recommandation list. "
+                "if no user, only can see your recommandation",
+    guild_ids=guild_ids
+)
+async def myup(ctx: ApplicationContext,
+               user: Option(discord.Member, "tag user", required=False)):
+    if user:
+        user_id = user.id
     else:
-        user_id = int(dc_id[2:-1])
-
-    user = await bot.fetch_user(user_id)
-
-    buttonView = ButtonView(ctx, db, "")
+        user = ctx.author
+        user_id = ctx.author.id
     results = Queries.select_my_updown(db, user_id, 'UP')
-
     num_pages = (len(results) + 9) // 10
-
     pages = []
-
     if num_pages > 0:
         for page in range(num_pages):
             embed = Embed(title="", color=0x0061ff)
@@ -1349,52 +1346,41 @@ async def myup(ctx, *, dc_id=None):
                     field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
-            try:
-                avatar_url = await buttonView.get_member_avatar(user_id)
-                if avatar_url == None:
-                    avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            avatar_url = await get_member_avatar(user_id)
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank",
+                             icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
-            cal = Page(content=f"", embed=embed)
-            pages.append(cal)
+            pages.append(embed)
     else:
         embed = Embed(title="", color=0x0061ff)
-        try:
-            avatar_url = await buttonView.get_member_avatar(user_id)
-            if avatar_url == None:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        avatar_url = await get_member_avatar(user_id)
         embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"", embed=embed)
-        pages.append(cal)
+        pages.append(embed)
 
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    paginator = Paginator(pages)
+    await paginator.respond(ctx.interaction, ephemeral=False)
 
-@bot.command()
-async def mydown(ctx, *, dc_id=None):
-    if dc_id == None:
+
+@bot.slash_command(
+    name="mydown",
+    description="tagged user's no recommandtion list",
+    guild_ids=guild_ids
+)
+async def mydown(ctx: ApplicationContext,
+                 user: Option(discord.Member, "tag user", required=False)):
+    if user:
+        user_id = user.id
+    else:
+        user = ctx.author
         user_id = ctx.author.id
-    else:
-        user_id = int(dc_id[2:-1])
-
-    user = await bot.fetch_user(user_id)
-
-    buttonView = ButtonView(ctx, db, "")
     results = Queries.select_my_updown(db, user_id, 'DOWN')
-
     num_pages = (len(results) + 9) // 10
-
     pages = []
-
     if num_pages > 0:
         for page in range(num_pages):
             embed = Embed(title="", color=0x0061ff)
@@ -1418,88 +1404,88 @@ async def mydown(ctx, *, dc_id=None):
                     field_value = f"<t:{int(item['unixMintDate'])}>  |  {link_url}"
                 embed.add_field(name=field_name, value=field_value, inline=False)
 
-            try:
-                avatar_url = await buttonView.get_member_avatar(user_id)
-                if avatar_url == None:
-                    avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            except Exception as e:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank", icon_url=f"{avatar_url}")
+            avatar_url = await get_member_avatar(user_id)
+            embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} Project in Top 50 rank",
+                             icon_url=f"{avatar_url}")
             embed.set_thumbnail(url=avatar_url)
             embed.set_footer(text=f"by SearchFI Bot")
 
-            cal = Page(content=f"", embed=embed)
-            pages.append(cal)
+            pages.append(embed)
     else:
         embed = Embed(title="", color=0x0061ff)
-        try:
-            avatar_url = await buttonView.get_member_avatar(user_id)
-            if avatar_url == None:
-                avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
-        except Exception as e:
-            avatar_url = "https://pbs.twimg.com/profile_images/1544400407731900416/pmyhJIAx_400x400.jpg"
+        avatar_url = await get_member_avatar(user_id)
         embed.set_author(name=f"{user.name}#{user.discriminator}\n Total {len(results)} UP", icon_url=f"{avatar_url}")
         embed.set_thumbnail(url=avatar_url)
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"", embed=embed)
-        pages.append(cal)
+        pages.append(embed)
 
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    paginator = Paginator(pages)
+    await paginator.respond(ctx.interaction, ephemeral=False)
 
-@bot.command()
+
+@bot.slash_command(
+    name="mchecker",
+    description="regist project wallet checker URL",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
-async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = None):
-    if twitter_handle is None or wallet_checker_url is None:
-        embed = Embed(title="Error", description="❌ Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`\n\n❌ 사용방법: `!mchecker <트위터 핸들> <지갑체크 URL>`", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
-        return
-
-    # Validate the URL
+async def mchecker(ctx: ApplicationContext,
+                   twitter_handle: Option(str, "twitter handle", required=True),
+                   wallet_checker_url: Option(str, "wallet checker url", required=True)):
     parsed_url = urlparse(wallet_checker_url)
     if not parsed_url.scheme or not parsed_url.netloc:
-        embed = Embed(title="Error", description=f"❌ Please enter a `{wallet_checker_url}` valid URL format.\n\n❌ `{wallet_checker_url}`은 유효한 URL형식이 아닙니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ Please enter a `{wallet_checker_url}` valid URL format.\n\n"
+                                  f"❌ `{wallet_checker_url}`은 유효한 URL형식이 아닙니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
-    # Find the project ID using the Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
+
+    if project_info is None:
+        embed = Embed(title="Error",
+                      description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n"
+                                  f"❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
+                      color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.respond(embed=embed, ephemeral=True)
+        return
+
     project_id = project_info['id']
     wallet_checker_user_id = project_info['walletCheckerUserId']
     user_id = ctx.author.id
 
-    if project_info is None:
-        embed = Embed(title="Error", description="❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
-        return
-
     if wallet_checker_user_id is not None and wallet_checker_user_id != str(user_id):
-        embed = Embed(title="Error", description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n"
+                                  f"❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
-    # Update the Wallet Checker URL
     Queries.update_wallet_checker_url(db, project_id, wallet_checker_url, user_id)
 
-    embed = Embed(title="Success", description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!", color=0x37e37b)
+    embed = Embed(title="Success",
+                  description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n"
+                              f"✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!",
+                  color=0x37e37b)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
+
+@bot.slash_command(
+    name="mcall",
+    description="regist project wallet checker URL",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
-async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
-    if twitter_handle is None or call_url is None:
-        embed = Embed(title="Error", description="❌ Usage: `!mcall <Twitter_Handle> <Call_Massage_Link>`\n\n❌ 사용방법: `!mcall <트위터 핸들> <Call 메시지 링크>`", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
-        return
-
-    # Validate the URL
+async def mcall(ctx: ApplicationContext,
+                twitter_handle: Option(str, "twitter handle", required=True),
+                call_url: Option(str, "wallet checker url", required=True)):
     nft_alpha_channels = [
         "https://discord.com/channels/961242951504261130/1059449160262234153",
         "https://discord.com/channels/961242951504261130/1059431422349291530",
@@ -1514,23 +1500,26 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
             break
 
     if url_error:
-        embed = Embed(title="Error", description=f"❌ Only messages from the channel below can be registered for Call message link. \n\n"
-                                                 f"❌ Call 메시지 링크는 아래 채널의 메시지만 등록할 수 있습니다.\n\n"
-                                                 f"{nft_alpha_channels[0]}\n"
-                                                 f"{nft_alpha_channels[1]}\n"
-                                                 f"{nft_alpha_channels[2]}\n"
-                                                 f"{nft_alpha_channels[3]}\n", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ Only messages from the channel below can be registered for Call message link. \n\n"
+                                  f"❌ Call 메시지 링크는 아래 채널의 메시지만 등록할 수 있습니다.\n\n"
+                      # f"{nft_alpha_channels[0]}\n"
+                                  f"{nft_alpha_channels[1]}\n"
+                                  f"{nft_alpha_channels[2]}\n"
+                                  f"{nft_alpha_channels[3]}\n", color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
-    # Find the project ID using the Twitter handle
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
 
     if project_info is None:
-        embed = Embed(title="Error", description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n"
+                                  f"❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     project_id = project_info['id']
@@ -1538,37 +1527,64 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
     user_id = ctx.author.id
 
     if call_user_id is not None and call_user_id != str(user_id):
-        embed = Embed(title="Error", description=f"❌ This link is already registered by <@{call_user_id}>. Only <@{call_user_id}> can be changed.\n\n❌ 이미 <@{call_user_id}>의 의해 링크가 등록되어 있습니다. <@{call_user_id}>만 URL변경이 가능합니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description=f"❌ This link is already registered by <@{call_user_id}>. Only <@{call_user_id}> can be changed.\n\n"
+                                  f"❌ 이미 <@{call_user_id}>의 의해 링크가 등록되어 있습니다. <@{call_user_id}>만 URL변경이 가능합니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
-    # Update the Wallet Checker URL
     Queries.update_call_url(db, project_id, call_url, user_id)
 
-    embed = Embed(title="Success", description=f"✅ Call message link for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Call 메시지 링크가 업데이트되었습니다!", color=0x37e37b)
+    embed = Embed(title="Success",
+                  description=f"✅ Call message link for the `{twitter_handle}` project has been updated!\n\n"
+                              f"✅ `{twitter_handle}` 프로젝트의 Call 메시지 링크가 업데이트되었습니다!",
+                  color=0x37e37b)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
+
+@bot.slash_command(
+    name="mt",
+    description="can check the tier pic of search word. if option insert, can regist the tier pic",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
-async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
-    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+async def mt(ctx: ApplicationContext,
+             blockchain: Option(str, "twitter handle", required=True),
+             tier_url: Option(str, "tire url", required=False)):
+    regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
 
     if tier_url:
         update_result = Queries.update_tier_url(db, blockchain, tier_url, regUser, user_id)
         if int(update_result["lock_cnt"]) > 0:
-            embed = Embed(title="Error", description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ", color=0x37e37b)
+            embed = Embed(title="Error",
+                          description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n"
+                                      f"❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ",
+                          color=0xff0000)
             embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
-        embed = Embed(title="Success", description=f"✅ `{blockchain}` has been updated!\n\n✅ `{blockchain}` 내용이 업데이트되었습니다!", color=0x37e37b)
+        embed = Embed(title="Success",
+                      description=f"✅ `{blockchain}` has been updated!\n\n"
+                                  f"✅ `{blockchain}` 내용이 업데이트되었습니다!",
+                      color=0x37e37b)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
     else:
         result = Queries.get_tier_by_blockchain(db, blockchain)
-        await ctx.reply(f"{result['imageUrl']}", mention_author=True)
+        if not result:
+            embed = Embed(title="Error",
+                          description=f"❌ The `{blockchain}` keyword is not saved.\n\n"
+                                      f"❌ `{blockchain}` 키워드는 저장되어 있지 않습니다. ",
+                          color=0xff0000)
+            embed.set_footer(text="Powered by 으노아부지#2642")
+            await ctx.respond(embed=embed, ephemeral=True)
+            return
+        await ctx.respond(f"{result['imageUrl']}", ephemeral=False)
+
 
 def get_current_price(token):
     url = f"https://api.bithumb.com/public/ticker/{token}_KRW"
@@ -1581,8 +1597,14 @@ def get_current_price(token):
     else:
         return None
 
-@bot.command()
-async def lm(ctx, amount: float = 1):
+
+@bot.slash_command(
+    name="lm",
+    description="LM token price from Bithumb",
+    guild_ids=guild_ids
+)
+async def lm(ctx: ApplicationContext,
+             amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('LM')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -1590,18 +1612,32 @@ async def lm(ctx, amount: float = 1):
         total_price_rounded = round(total_price, 1)
 
         embed = Embed(title="LM Price", color=0x3498db)
-        embed.add_field(name="1 LM", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.add_field(name=f"{amount} LM", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
+        embed.add_field(name="1 LM",
+                        value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.add_field(name=f"{amount} LM",
+                        value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.set_footer(text="Data from Bithumb",
+                         icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
     else:
-        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description="❌ Could not fetch the price.\n\n"
+                                  "❌ 가격을 가져올 수 없습니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
 
-@bot.command()
-async def sui(ctx, amount: float = 1):
+
+@bot.slash_command(
+    name="sui",
+    description="SUI token price from Bithumb",
+    guild_ids=guild_ids
+)
+async def sui(ctx: ApplicationContext,
+              amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('SUI')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -1609,18 +1645,32 @@ async def sui(ctx, amount: float = 1):
         total_price_rounded = round(total_price, 1)
 
         embed = Embed(title="SUI Price", color=0x3498db)
-        embed.add_field(name="1 SUI", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.add_field(name=f"{amount} SUI", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
+        embed.add_field(name="1 SUI",
+                        value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.add_field(name=f"{amount} SUI",
+                        value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.set_footer(text="Data from Bithumb",
+                         icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
     else:
-        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description="❌ Could not fetch the price.\n\n"
+                                  "❌ 가격을 가져올 수 없습니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
 
-@bot.command()
-async def bnb(ctx, amount: float = 1):
+
+@bot.slash_command(
+    name="bnb",
+    description="BNB token price from Bithumb",
+    guild_ids=guild_ids
+)
+async def bnb(ctx: ApplicationContext,
+              amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('BNB')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -1628,15 +1678,24 @@ async def bnb(ctx, amount: float = 1):
         total_price_rounded = round(total_price, 1)
 
         embed = Embed(title="BNB Price", color=0x3498db)
-        embed.add_field(name="1 BNB", value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.add_field(name=f"{amount} BNB", value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```", inline=True)
-        embed.set_footer(text="Data from Bithumb", icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
+        embed.add_field(name="1 BNB",
+                        value=f"```\n{format(int(str(current_price_rounded).split('.')[0]), ',')}.{str(current_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.add_field(name=f"{amount} BNB",
+                        value=f"```\n{format(int(str(total_price_rounded).split('.')[0]), ',')}.{str(total_price_rounded).split('.')[1]} KRW\n```",
+                        inline=True)
+        embed.set_footer(text="Data from Bithumb",
+                         icon_url="https://content.bithumb.com/resources/img/comm/seo/favicon-96x96.png?v=bithumb.2.0.4")
 
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
     else:
-        embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description="❌ Could not fetch the price.\n\n"
+                                  "❌ 가격을 가져올 수 없습니다.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
+
 
 def format_time_difference(sale_time):
     # 현재 시간과 판매 시간의 차이를 계산
@@ -1653,9 +1712,8 @@ def format_time_difference(sale_time):
     else:  # show in hours
         return f"{total_seconds // 3600}시간 전"
 
-def fetch_and_format_sales(activities):
-    from datetime import datetime, timedelta, timezone
 
+def fetch_and_format_sales(activities):
     index = 1
     sales = []
     for sale in activities:
@@ -1666,9 +1724,9 @@ def fetch_and_format_sales(activities):
         except:
             name = f"Inscription #{sale['token']['inscriptionNumber']}"
         price = float(sale['listedPrice']) / 100000000
-        sale_time = datetime.strptime(sale['createdAt'], "%a, %d %b %Y %H:%M:%S GMT")
+        sale_time = datetime.datetime.strptime(sale['createdAt'], "%a, %d %b %Y %H:%M:%S GMT")
         sale_time = sale_time.replace(tzinfo=timezone.utc)
-        elapsed_time = datetime.now(tz=timezone.utc) - sale_time
+        elapsed_time = datetime.datetime.now(tz=timezone.utc) - sale_time
 
         if elapsed_time < timedelta(minutes=1):
             time_string = f"{elapsed_time.seconds} sec ago"
@@ -1690,10 +1748,11 @@ def fetch_and_format_sales(activities):
         index += 1
     return sales
 
+
 def create_table(formatted_sales):
     output = "```\n"
     output += "{:<24s}{:<10s}{:<10s}\n".format("Name", "Price", "Time")
-    output += "-"*44 + "\n"  # 24 characters + 10 characters + 10 characters
+    output += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
 
     for row in formatted_sales:
         # print(row, len(row.values()))  # 각 행과 그에 해당하는 값의 개수를 출력
@@ -1703,7 +1762,8 @@ def create_table(formatted_sales):
 
     return output
 
-async def me_btc(ctx, symbol):
+
+async def me_btc(ctx: ApplicationContext, symbol: str):
     api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
@@ -1718,14 +1778,11 @@ async def me_btc(ctx, symbol):
     data = json.loads(response)
     # print(data)
 
-    try:
-        if not data:
-            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
-            return
-    except:
-        pass
+    if not data:
+        embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.respond(embed=embed, ephemeral=True)
+        return
 
     projectName = data["name"]
     projectImg = data['imageURI']
@@ -1742,7 +1799,8 @@ async def me_btc(ctx, symbol):
         projectLinks += f" | [Twitter]({projectTwitter})"
 
     time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/stat?collectionSymbol={symbol}", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/stat?collectionSymbol={symbol}",
+                           headers=headers).text
     # print(response)
     data = json.loads(response)
 
@@ -1757,7 +1815,9 @@ async def me_btc(ctx, symbol):
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
     time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=20", headers=headers).text
+    response = scraper.get(
+        f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=20",
+        headers=headers).text
     data = json.loads(response)
 
     # 판매 데이터를 포맷팅합니다.
@@ -1765,16 +1825,14 @@ async def me_btc(ctx, symbol):
 
     # 포맷된 판매 데이터를 이용해 테이블을 만듭니다.
     sales_list = create_table(formatted_sales)
-
     embed.add_field(name="Activity Info", value=sales_list, inline=False)  # 판매 목록 추가
-
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-
     embed.set_footer(text="Powered by 으노아부지#2642")
 
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-async def me_sol(ctx, symbol):
+
+async def me_sol(ctx: ApplicationContext, symbol: str):
     api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
@@ -1789,14 +1847,11 @@ async def me_sol(ctx, symbol):
     data = json.loads(response)
     # print(data)
 
-    try:
-        if data['msg'] == "Invalid collection name.":
-            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
-            return
-    except:
-        pass
+    if data and data['msg'] == "Invalid collection name.":
+        embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.respond(embed=embed, respond=True)
+        return
 
     projectName = data["name"]
     projectImg = data['image']
@@ -1820,7 +1875,8 @@ async def me_sol(ctx, symbol):
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
     time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats",
+                           headers=headers).text
     # print(response)
     data = json.loads(response)
 
@@ -1839,9 +1895,10 @@ async def me_sol(ctx, symbol):
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
 
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-async def me_matic(ctx, symbol):
+
+async def me_matic(ctx: ApplicationContext, symbol: str):
     api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
@@ -1855,14 +1912,11 @@ async def me_matic(ctx, symbol):
     data = json.loads(response)
     # print(data)
 
-    try:
-        if data['detail'] == "Collection not found":
-            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
-            return
-    except:
-        pass
+    if data and data['detail'] == "Collection not found":
+        embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+        embed.set_footer(text="Powered by 으노아부지#2642")
+        await ctx.respond(embed=embed, ephemeral=True)
+        return
 
     projectName = data["name"]
     projectImg = data['media']
@@ -1879,7 +1933,8 @@ async def me_matic(ctx, symbol):
         projectLinks += f" | [Twitter]({projectTwitter})"
 
     time.sleep(0.1)
-    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats", headers=headers).text
+    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats",
+                           headers=headers).text
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 1000000000000000000
@@ -1894,14 +1949,26 @@ async def me_matic(ctx, symbol):
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
 
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def 메(ctx, keyword):
+
+@bot.slash_command(
+    name="메",
+    description="magic eden price checker",
+    guild_ids=guild_ids
+)
+async def 메(ctx: ApplicationContext,
+            keyword: Option(str, "keyword to search for in magic eden", required=True)):
     await me(ctx, keyword)
 
-@bot.command()
-async def me(ctx, keyword):
+
+@bot.slash_command(
+    name="me",
+    description="magic eden price checker",
+    guild_ids=guild_ids
+)
+async def me(ctx: ApplicationContext,
+             keyword: Option(str, "keyword to search for in magic eden", required=True)):
     result = Queries.select_keyword(db, keyword)
     print(result['blockchain'], result['symbol'])
 
@@ -1912,23 +1979,32 @@ async def me(ctx, keyword):
     elif result['blockchain'] == "MATIC":
         await me_matic(ctx, result['symbol'])
 
-@bot.command()
-async def 옾(ctx, keyword, count:int = 0):
+
+@bot.slash_command(
+    name="옾",
+    description="opensea price checker",
+    guild_ids=guild_ids
+)
+async def 옾(ctx: ApplicationContext,
+            keyword: Option(str, "keyword to search for in opensea", required=True),
+            count: int = 0):
     await os(ctx, keyword, count)
 
-@bot.command()
-async def os(ctx, keyword, count:int = 0):
-    time.sleep(2)
+
+@bot.slash_command(
+    name="os",
+    description="opensea price checker",
+    guild_ids=guild_ids
+)
+async def os(ctx: ApplicationContext,
+             keyword: Option(str, "keyword to search for in opensea", required=True),
+             count: int = 0):
+    time.sleep(1)
 
     result = Queries.select_keyword(db, keyword)
     symbol = result['symbol']
 
     api_key = operating_system.getenv("OPENSEA_API_KEY")
-    scraper = cloudscraper.create_scraper(delay=10, browser={
-        'browser': 'chrome',
-        'platform': 'android',
-        'desktop': False,
-    })
     headers = {"X-API-KEY": api_key}
     response = requests.get(f"https://api.opensea.io/api/v1/collection/{symbol}", headers=headers)
     results = json.loads(response.text)
@@ -1938,7 +2014,7 @@ async def os(ctx, keyword, count:int = 0):
         if not results['success']:
             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
             embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
     except:
         pass
@@ -1967,36 +2043,36 @@ async def os(ctx, keyword, count:int = 0):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    projectFloorPrice = round(float(data['stats']['floor_price']),3)
+    projectFloorPrice = round(float(data['stats']['floor_price']), 3)
     projectSupply = int(data['stats']['total_supply'])
     projectOwners = int(data['stats']['num_owners'])
 
     sales_list = "```\n"
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
-    sales_list += "-"*44 + "\n"  # 24 characters + 10 characters + 10 characters
+    sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Hour",
-        f"{round(float(data['stats']['one_hour_volume']),3)}",
+        f"{round(float(data['stats']['one_hour_volume']), 3)}",
         f"{int(data['stats']['one_hour_sales'])}",
-        f"{round(float(data['stats']['one_hour_average_price']),3)} {projectChain}",
+        f"{round(float(data['stats']['one_hour_average_price']), 3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Day",
-        f"{round(float(data['stats']['one_day_volume']),3)}",
+        f"{round(float(data['stats']['one_day_volume']), 3)}",
         f"{int(data['stats']['one_day_sales'])}",
-        f"{round(float(data['stats']['one_day_average_price']),3)} {projectChain}",
+        f"{round(float(data['stats']['one_day_average_price']), 3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "Last Week",
-        f"{round(float(data['stats']['seven_day_volume']),3)}",
+        f"{round(float(data['stats']['seven_day_volume']), 3)}",
         f"{int(data['stats']['seven_day_sales'])}",
-        f"{round(float(data['stats']['seven_day_average_price']),3)} {projectChain}",
+        f"{round(float(data['stats']['seven_day_average_price']), 3)} {projectChain}",
     )
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
         "All Time",
-        f"{round(float(data['stats']['total_volume']),3)}",
+        f"{round(float(data['stats']['total_volume']), 3)}",
         f"{int(data['stats']['total_sales'])}",
-        f"{round(float(data['stats']['average_price']),3)} {projectChain}",
+        f"{round(float(data['stats']['average_price']), 3)} {projectChain}",
     )
     sales_list += "```"
 
@@ -2011,18 +2087,29 @@ async def os(ctx, keyword, count:int = 0):
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
 
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def msave(ctx, blockchain, keyword, symbol):
-    reg_user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+@bot.slash_command(
+    name="msave",
+    description="mapping blockchain and search terms to magic eden symbols",
+    guild_ids=guild_ids
+)
+async def msave(ctx: ApplicationContext,
+                blockchain: Option(str, "eth, sol, matic, btc", required=True),
+                keyword: Option(str, "keyword to search for in opensea", required=True),
+                symbol: Option(str, "project symbol in opensea", required=True)):
+    reg_user = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
 
     Queries.update_keyword(db, blockchain, keyword, symbol, reg_user, user_id)
 
-    embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.", color=0x37E37B)
+    embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n"
+                                             f"✅ `{keyword}` 키워드가 저장되었습니다.",
+                  color=0x37E37B)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
+
 
 timezone_mapping = {tz: tz for tz in all_timezones}
 # Common abbreviations
@@ -2052,18 +2139,26 @@ timezone_mapping.update({
     'EEST': 'Europe/Bucharest',
     'WET': 'Europe/Western',
     'WEST': 'Europe/Western',
-    # Add more if needed
 })
 
-@bot.command()
-async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
-    from_tz_str = timezone_mapping.get(from_tz_param.upper())
-    to_tz_str = timezone_mapping.get(to_tz_str_param.upper())
+
+@bot.slash_command(
+    name="mtime",
+    description="timezone conversion",
+    guild_ids=guild_ids
+)
+async def mtime(ctx: ApplicationContext,
+                date_str: Option(str, "year month date: yyyy-mm-dd", required=True),
+                time_str: Option(str, "minutes and seconds: mi:ss", required=True),
+                from_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True),
+                to_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True)):
+    from_tz_str = timezone_mapping.get(from_timezone.upper())
+    to_tz_str = timezone_mapping.get(to_timezone.upper())
 
     if not from_tz_str or not to_tz_str:
         embed = Embed(title="Error", description=f"❌ Invalid timezone provided.\n\n❌ 시간대가 올바르지 않습니다.", color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     from_tz = pytz.timezone(from_tz_str)
@@ -2072,65 +2167,83 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
     datetime_str = date_str + ' ' + time_str
 
     try:
-        from datetime import datetime
-        datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+        datetime_obj = datetime.datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
     except ValueError:
-        embed = Embed(title="Error", description="❌ Invalid datetime format. Please use `YYYY-MM-DD HH:MM`\n\n❌ 날짜형식이 올바르지 않습니다. `YYYY-MM-DD HH:MM` 형식으로 입력해주세요.", color=0xff0000)
+        embed = Embed(title="Error",
+                      description="❌ Invalid datetime format. Please use `YYYY-MM-DD HH:MM`\n\n"
+                                  "❌ 날짜형식이 올바르지 않습니다. `YYYY-MM-DD HH:MM` 형식으로 입력해주세요.",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     datetime_obj = from_tz.localize(datetime_obj)
     datetime_in_to_tz = datetime_obj.astimezone(to_tz)
 
-    embed = Embed(title="Date Conversion", description=f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```", color=0xFEE501)
+    embed = Embed(title="Date Conversion",
+                  description=f"```"
+                              f"{datetime_str}({from_timezone.upper()})"
+                              f"\n\n🔄\n\n"
+                              f"{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_timezone.upper()})"
+                              f"```",
+                  color=0xFEE501)
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def 해외주식(ctx, stock_symbol: str):
-    user = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
 
-    if not(user == "일론마스크#1576" or user == "으노아부지#2642"):
-        embed = Embed(title="NO NO NO!", description="❌ Only for 일론마스크#1576\n\n❌ 오직 일론 형님만 조회 가능합니다!", color=0xff0000)
+# @bot.slash_command(
+#     name="해외주식",
+#     description="overseas stock",
+#     guild_ids=guild_ids
+# )
+async def 해외주식(ctx: ApplicationContext,
+               stock_symbol: Option(str, "overseas stock symbol", required=True)):
+    user = f"{ctx.author.name}#{ctx.author.discriminator}"
+
+    if not (user == "일론마스크#1576" or user == "으노아부지#2642"):
+        embed = Embed(title="NO NO NO!",
+                      description="❌ Only for 일론마스크#1576\n\n"
+                                  "❌ 오직 일론 형님만 조회 가능합니다!",
+                      color=0xff0000)
         embed.set_footer(text="Powered by 으노아부지#2642")
         await ctx.reply(embed=embed, mention_author=True)
         return
-
-    import matplotlib.pyplot as plt
-    import mplfinance as mpf
-    import pandas as pd
-    from datetime import datetime
-    from io import BytesIO
-    from matplotlib.dates import DateFormatter
 
     stock_key = operating_system.getenv("STOCK_KEY")
     BASE_URL = "https://www.alphavantage.co/query"
     params = {
         "function": "TIME_SERIES_DAILY_ADJUSTED",
         "symbol": stock_symbol,
-        "apikey": stock_key  # replace with your own API key
+        "apikey": stock_key
     }
 
     response = requests.get(BASE_URL, params=params)
     data = response.json()
+    print(data)
 
     if 'Time Series (Daily)' not in data:
-        embed = Embed(title="Warning", description="ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.", color=0xFFFFFF)
+        embed = Embed(title="Warning",
+                      description="ℹ️ Could not fetch the stock data. Please check the stock symbol. "
+                                  "This function can be used up to 5 times every 5 minutes.\n\n"
+                                  "ℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. "
+                                  "이 기능은 5분마다 최대 5회까지 사용 가능합니다.",
+                      color=0xFFFFFF)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     # Convert the time series data into a pandas DataFrame
     df = pd.DataFrame.from_dict(data['Time Series (Daily)'], orient='index', dtype=float)
     df.index = pd.to_datetime(df.index)  # convert index to datetime
-    df = df.rename(columns={'1. open': 'Open', '2. high': 'High', '3. low': 'Low', '4. close': 'Close', '6. volume': 'Volume'})  # rename columns
+    df = df.rename(columns={'1. open': 'Open', '2. high': 'High', '3. low': 'Low', '4. close': 'Close',
+                            '6. volume': 'Volume'})  # rename columns
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
 
     # Create the plot with the desired style and save it as an image file
     mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
-    s  = mpf.make_mpf_style(base_mpf_style='kenan', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
-    fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True, show_nontrading=True)
+    s = mpf.make_mpf_style(base_mpf_style='kenan', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
+    fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True,
+                         show_nontrading=True)
     axes[0].yaxis.tick_right()
     axes[0].yaxis.set_label_position("right")
     axes[0].xaxis_date()
@@ -2139,36 +2252,39 @@ async def 해외주식(ctx, stock_symbol: str):
     fig.savefig('stock_chart.png')
     plt.close(fig)
 
-    await ctx.reply(file=discord.File('stock_chart.png'), mention_author=True)
+    await ctx.respond(file=discord.File('stock_chart.png'), ephemeral=False)
 
-@bot.command()
-async def coin(ctx, coin_symbol: str, period: str = "1day"):
+
+@bot.slash_command(
+    name="coin",
+    description="coin price for search from binance",
+    guild_ids=guild_ids
+)
+async def coin(ctx: ApplicationContext,
+               coin_symbol: Option(str, "coin symbol", required=True),
+               period: Option(str, "search period", required=True) = "1day"):
     await 코인(ctx, coin_symbol, period)
 
-@bot.command()
-async def 코인(ctx, base_coin: str, period: str = "1day"):
-    import os
-    import discord
-    from discord.ext import commands
-    from binance.client import Client
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import mplfinance as mpf
-    from matplotlib.dates import DateFormatter
-    from datetime import datetime, timedelta
-    import re
-    from matplotlib.ticker import FuncFormatter
-    import pytz
 
-    base_coin = base_coin.upper()
+@bot.slash_command(
+    name="코인",
+    description="coin price for search from binance",
+    guild_ids=guild_ids
+)
+async def 코인(ctx: ApplicationContext,
+             coin_symbol: Option(str, "coin symbol", required=True),
+             period: Option(str, "search period", required=True) = "1day"):
+    base_coin = coin_symbol.upper()
     quote_coin = 'USDT'
 
     symbol = base_coin + quote_coin
 
     if not re.match('^[A-Z0-9-_.]{1,20}$', symbol):
-        embed = Embed(title="Warning", description=f"❌ '{symbol}' is not a valid coin symbol. \n\n❌ '{symbol}'은(는) 유효한 코인 심볼이 아닙니다.", color=0xFFFFFF)
+        embed = Embed(title="Warning",
+                      description=f"❌ '{symbol}' is not a valid coin symbol. \n\n❌ '{symbol}'은(는) 유효한 코인 심볼이 아닙니다.",
+                      color=0xFFFFFF)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     binance_api_key = operating_system.getenv("BINANCE_API_KEY")
@@ -2185,12 +2301,18 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     try:
         candles = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
     except:
-        embed = Embed(title="Warning", description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.", color=0xFFFFFF)
+        embed = Embed(title="Warning",
+                      description="❌ Invalid symbol. Please check the symbol and try again.\n\n"
+                                  "❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
+                      color=0xFFFFFF)
         embed.set_footer(text="Powered by 으노아부지#2642")
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
-    df = pd.DataFrame(candles, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
+    df = pd.DataFrame(candles,
+                      columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume',
+                               'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume',
+                               'Ignore'])
     df['Date'] = pd.to_datetime(df['Date'], unit='ms')
     df.set_index('Date', inplace=True)
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']].astype(float)
@@ -2201,7 +2323,7 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     end_date = df.index.max()
     if period is not None:
         if period == "3year":
-            start_date = end_date - timedelta(days=3*365)
+            start_date = end_date - timedelta(days=3 * 365)
             period_str = "3-Year"
         elif period == "1year":
             start_date = end_date - timedelta(days=365)
@@ -2222,9 +2344,12 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
             start_date = end_date - timedelta(minutes=120)
             period_str = "2-Hour (5min interval)"
         else:
-            embed = Embed(title="Warning", description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.", color=0xFFFFFF)
+            embed = Embed(title="Warning",
+                          description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\n"
+                                      "ℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.",
+                          color=0xFFFFFF)
             embed.set_footer(text="Powered by 으노아부지#2642")
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
     else:
         start_date = end_date - timedelta(days=90)
@@ -2248,17 +2373,9 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     fig.savefig('./static/coin_chart.png')
     plt.close(fig)
 
-    # response = requests.get('https://api.coingecko.com/api/v3/coins/list')
-    # coins = response.json()
-    #
-    # coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
     coin_name = f"{base_coin}/{quote_coin}"
-
-    # Get the latest ticker information
     ticker = binance_client.get_ticker(symbol=symbol)
 
-    # Extract the necessary information
-    last_price = float(ticker['lastPrice'])
     change_24h = float(ticker['priceChange'])
     change_24h_percent = float(ticker['priceChangePercent'])
     change_prefix = '+' if change_24h > 0 else ''
@@ -2270,23 +2387,30 @@ async def 코인(ctx, base_coin: str, period: str = "1day"):
     now_in_seconds = time.time()
     now_in_milliseconds = int(now_in_seconds * 1000)
 
-    # Now you can use these values in your code or embed message
-    embed = discord.Embed(title=f"{coin_name}", description=f"{coin_name} {period_str} Chart Based on Binance", color=0xEFB90A)
-    embed.add_field(name="24h Change", value=f"```diff\n{change_prefix}{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)```")
+    embed = discord.Embed(title=f"{coin_name}",
+                          description=f"{coin_name} {period_str} Chart Based on Binance",
+                          color=0xEFB90A)
+    embed.add_field(name="24h Change",
+                    value=f"```diff\n{change_prefix}{change_24h:,.2f} ({change_prefix}{change_24h_percent}%)```")
     embed.add_field(name="24h High", value=f"```{high_24h:,.2f}```")
     embed.add_field(name="24h Low", value=f"```{low_24h:,.2f}```")
     embed.add_field(name=f"24h Volume ({base_coin})", value=f"```{volume_24h_volume:,.2f}```")
     embed.add_field(name="24h Volume (USDT)", value=f"```{volume_24h_usdt:,.2f}```")
-    embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
+    embed.set_image(
+        url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={now_in_milliseconds}")
     embed.set_footer(text="Powered by 으노아부지#2642")
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
+
+@bot.slash_command(
+    name="addrole",
+    description="role add for user from google sheet",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
-async def addrole(ctx, sheet_name, role_name):
-    import gspread
-    from oauth2client.service_account import ServiceAccountCredentials
-
+async def addrole(ctx: ApplicationContext,
+                  sheet_name: Option(str, "google sheet name", required=True),
+                  role_name: Option(str, "role name", required=True)):
     # 결과를 저장할 문자열을 초기화합니다.
     result_str = ""
 
@@ -2337,13 +2461,19 @@ async def addrole(ctx, sheet_name, role_name):
 
     except Exception as e:
         print(e)
-        await ctx.send(f"오류가 발생했습니다: {str(e)}")
+        await ctx.respond(f"오류가 발생했습니다: {str(e)}", ephemeral=True)
 
-    await ctx.send("사용자 확인을 완료했습니다.")
+    await ctx.respond("사용자 확인을 완료했습니다.", ephemeral=False)
 
-@bot.command()
+
+@bot.slash_command(
+    name="removerole",
+    description="role remove for user",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def removerole(ctx, role_name):
+async def removerole(ctx: ApplicationContext,
+                     role_name: Option(str, "role name", required=True)):
     try:
         # 결과를 저장할 문자열을 초기화합니다.
         result_str = ""
@@ -2352,7 +2482,7 @@ async def removerole(ctx, role_name):
         role = discord.utils.get(guild.roles, name=role_name)  # 특정 역할을 가져옵니다.
 
         if role is None:
-            await ctx.send(f"{role_name} 역할은 서버에 없습니다.")
+            await ctx.respond(f"{role_name} 역할은 서버에 없습니다.", ephemeral=True)
             return
 
         member_count = len(guild.members)
@@ -2380,29 +2510,44 @@ async def removerole(ctx, role_name):
     except Exception as e:
         # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
         print(e)
-        await ctx.send(f"오류가 발생했습니다: {str(e)}")
+        await ctx.respond(f"오류가 발생했습니다: {str(e)}", ephemeral=True)
 
     # 완료 메시지를 보냅니다.
-    await ctx.send(f"{role_name} 역할 제거를 완료했습니다.")
+    await ctx.respond(f"{role_name} 역할 제거를 완료했습니다.", ephemeral=False)
 
-@bot.command()
-async def 나무(ctx):
+
+# @bot.slash_command(
+#     name="나무",
+#     description="namu wiki url",
+#     guild_ids=guild_ids
+# )
+async def 나무(ctx: ApplicationContext):
     embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/w/SearchFi", color=0xFFFFFF)
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
+
 
 openai.organization = "org-xZ19FcsARsvTdq3flptdn56l"
 openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
 
-@bot.command()
-async def ai(ctx, count = "0", *prompts):
-    await draw(ctx, count, *prompts)
 
-@bot.command()
-async def ai2(ctx):
-    import uuid
-    from PIL import Image
+@bot.slash_command(
+    name="ai",
+    description="drawing ai images with prompt text",
+    guild_ids=guild_ids
+)
+async def ai(ctx: ApplicationContext,
+             count: Option(int, "draw count", required=True, min_value=1, max_value=4),
+             prompts: Option(str, "prompts text", required=True)):
+    await draw(ctx, count, prompts)
 
-    if len(ctx.message.attachments) == 0:
+
+# @bot.slash_command(
+#     name="ai2",
+#     description="drawing ai images with existing image",
+#     guild_ids=guild_ids
+# )
+async def ai2(ctx: ApplicationContext):
+    if len(ctx.attachments) == 0:
         await ctx.reply("No image provided. Please attach an image.")
         return
 
@@ -2435,48 +2580,28 @@ async def ai2(ctx):
 
         embed = Embed(title="Image Edit", color=random_color)
         embed.set_image(url=image_url)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
 
     finally:
         # Remove the temporary image file after the new image has been created
         if operating_system.path.exists(image_path):
             operating_system.remove(image_path)
 
-def imageToString(img):
-    import io
-    import base64
 
+def imageToString(img):
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='PNG')
     my_encoded_img = base64.encodebytes(img_byte_arr.getvalue()).decode('ascii')
     return my_encoded_img
 
-@bot.command()
-async def draw(ctx, count = "0", *prompts):
-    import urllib
-    from PIL import Image
+
+async def draw(ctx: ApplicationContext, count: int, prompts: str):
+    await ctx.defer()
 
     random_color = random.randint(0, 0xFFFFFF)
-
-    try:
-        count = int(count)
-    except:
-        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    if count == 0 or count > 4:
-        error_embed = Embed(title="Error", description="Enter 1 to 4 images to create.\n\n생성할 이미지 개수를 1~4까지 입력하세요.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
-    if len(prompts) == 0:
-        error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
-        return
-
     embed = Embed(title="SearchFi AI Image Gen Bot", color=random_color)
     embed.set_footer(text="Generating images...")
+
     await ctx.send(embed=embed)
 
     prompt_text = " ".join(prompts)
@@ -2489,7 +2614,8 @@ async def draw(ctx, count = "0", *prompts):
         },
         {
             "role": "user",
-            "content": f"```{prompt_text}```\n\nPlease translate the above sentence directly into English.\n\nIf the sentence is English, please print it out as it is."
+            "content": f"```{prompt_text}```\n\nPlease translate the above sentence directly into English.\n\n"
+                       f"If the sentence is English, please print it out as it is."
         }
     ]
 
@@ -2499,7 +2625,7 @@ async def draw(ctx, count = "0", *prompts):
         messages=messages
     )
     answer = response['choices'][0]['message']['content']
-    print(answer)
+    # print(answer)
 
     try:
         # 프롬프트에 사용할 제시어
@@ -2516,7 +2642,7 @@ async def draw(ctx, count = "0", *prompts):
 
         r = requests.post(
             'https://api.kakaobrain.com/v2/inference/karlo/t2i',
-            json = {
+            json={
                 'prompt': prompt,
                 'width': 512,
                 'height': 512,
@@ -2526,7 +2652,7 @@ async def draw(ctx, count = "0", *prompts):
                 'num_inference_steps': 20,
                 'seed': seeds
             },
-            headers = {
+            headers={
                 'Authorization': f'KakaoAK {REST_API_KEY}',
                 'Content-Type': 'application/json'
             }
@@ -2543,12 +2669,12 @@ async def draw(ctx, count = "0", *prompts):
 
         r = requests.post(
             'https://api.kakaobrain.com/v2/inference/karlo/upscale',
-            json = {
+            json={
                 'images': img_arr,
                 'scale': 2,
                 'image_quality': 100
             },
-            headers = {
+            headers={
                 'Authorization': f'KakaoAK {REST_API_KEY}',
                 'Content-Type': 'application/json'
             }
@@ -2562,8 +2688,9 @@ async def draw(ctx, count = "0", *prompts):
         # image_urls = [img["image"] for img in response.get("images")]
     except Exception as e:
         print(str(e))
-        error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
+        error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.",
+                            color=0xFF0000)
+        await ctx.send(embed=error_embed)
         return
 
     index = 0
@@ -2575,28 +2702,44 @@ async def draw(ctx, count = "0", *prompts):
         await ctx.send(embed=embed)
 
     embed = Embed(title="All Image generation complete", color=random_color)
-    await ctx.reply(embed=embed, mention_author=True)
+    await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def 챗(ctx, *prompts):
-    await gpt(ctx, *prompts)
 
-@bot.command()
-async def gpt(ctx, *prompts):
-    user_id = ctx.message.author.id
+@bot.slash_command(
+    name="챗",
+    description="ai chatbot",
+    guild_ids=guild_ids
+)
+async def 챗(ctx: ApplicationContext,
+            prompts: Option(str, "prompts text", required=True)):
+    await chat_answer(ctx, prompts)
+
+
+@bot.slash_command(
+    name="gpt",
+    description="ai chatbot",
+    guild_ids=guild_ids
+)
+async def gpt(ctx: ApplicationContext,
+              prompts: Option(str, "prompts text", required=True)):
+    await chat_answer(ctx, prompts)
+
+
+async def chat_answer(ctx: ApplicationContext, prompts: str):
+    await ctx.defer()
+
+    user_id = ctx.author.id
 
     if len(prompts) == 0:
-        error_embed = Embed(title="Error", description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
+        error_embed = Embed(title="Error",
+                            description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.",
+                            color=0xFF0000)
+        await ctx.respond(embed=error_embed, ephemeral=True)
         return
 
     random_color = random.randint(0, 0xFFFFFF)
 
-    embed = Embed(title="SearchFi AI Chat Bot", color=random_color)
-    embed.set_footer(text="Waiting for an answer...")
-    await ctx.send(embed=embed)
-
-    prompt_text = " ".join(prompts)
+    prompt_text = prompts
 
     # Load previous context for the current user
     previous_context = Queries.select_message(db, user_id)
@@ -2608,8 +2751,11 @@ async def gpt(ctx, *prompts):
 
         # Check if the user is sending a query within 5 seconds
         if datetime.datetime.now() - last_message_time < datetime.timedelta(seconds=10):
-            error_embed = Embed(title="Error", description="You are sending queries too fast. Please wait a few seconds.\n\n질문을 너무 빠르게 보내고 있습니다. 몇 초 기다려 주세요.", color=0xFF0000)
-            await ctx.reply(embed=error_embed, mention_author=True)
+            error_embed = Embed(title="Error",
+                                description="You are sending queries too fast. Please wait a few seconds.\n\n"
+                                            "질문을 너무 빠르게 보내고 있습니다. 몇 초 기다려 주세요.",
+                                color=0xFF0000)
+            await ctx.respond(embed=error_embed, ephemeral=True)
             return
 
     try:
@@ -2617,17 +2763,26 @@ async def gpt(ctx, *prompts):
         messages_for_openai = [{"role": m["role"], "content": m["content"]} for m in messages_with_timestamps]
 
         messages = [
-                       { "role": "system", "content": "You are a helpful assistant in SearchFi Community." },
+                       {"role": "system", "content": "You are a helpful assistant in SearchFi Community."},
                    ] \
                    + [
-                       {"role": "user", "content": "서치파이는 NFT DAO 커뮤니티입니다.\n\n프로젝트 탐색 및 연구를 기반으로 생태계를 확장하는 것이 목표입니다.\n\n디스코드 내에서 서비스를 운영하고 있으며 한국어, 영어, 일본어, 중국어 채널이 따로 있을 만큼 해외 이용자 수가 많습니다.\n\n팀원은 12명으로 CEO는 이정진이며, 그의 트위터는 @eth_apple 입니다."}
+                       {"role": "user",
+                        "content": "서치파이는 NFT DAO 커뮤니티입니다.\n\n"
+                                   "프로젝트 탐색 및 연구를 기반으로 생태계를 확장하는 것이 목표입니다.\n\n"
+                                   "디스코드 내에서 서비스를 운영하고 있으며 한국어, 영어, 일본어, 중국어 채널이 따로 있을 만큼 해외 이용자 수가 많습니다.\n\n"
+                                   "팀원은 12명으로 CEO는 이정진이며, 그의 트위터는 @eth_apple 입니다."}
                    ] \
                    + [
-                       {"role": "user", "content": "SearchFi is an NFT DAO community.\n\nThe goal is to expand the ecosystem based on project exploration and research.\n\nWe operate the service within Discord and have a large number of overseas users, with separate Korean, English, Japanese, and Chinese channels.\n\nThere are 12 team members, CEO Lee Jung-jin, and his Twitter account is @eth_apple."}
+                       {"role": "user",
+                        "content": "SearchFi is an NFT DAO community.\n\n"
+                                   "The goal is to expand the ecosystem based on project exploration and research.\n\n"
+                                   "We operate the service within Discord and have a large number of overseas users, with separate Korean, English, Japanese, and Chinese channels.\n\n"
+                                   "There are 12 team members, CEO Lee Jung-jin, and his Twitter account is @eth_apple."}
                    ] \
                    + messages_for_openai \
                    + [
-                       { "role": "user", "content": f"{prompt_text}\n\nAnswers up to 600 characters."},
+                       {"role": "user", "content": f"{prompt_text}\n\n"
+                                                   f"Answers up to 600 characters."},
                    ]
 
         min = 3
@@ -2649,14 +2804,18 @@ async def gpt(ctx, *prompts):
         )
     except Exception as e:
         print(e)
-        error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
+        error_embed = Embed(title="Error",
+                            description="Failed to get a response from AI.\n\n"
+                                        "AI로부터 응답을 받지 못했습니다.",
+                            color=0xFF0000)
+        await ctx.respond(embed=error_embed, ephemeral=True)
         return
 
     if 'choices' in result and len(result['choices']) > 0:
-        assistant_response = result['choices'][0]['message']['content']
+        assistant_response = f"Q: {prompt_text}\n\n"
+        assistant_response += f"A: {result['choices'][0]['message']['content']}"
         embed = Embed(title="SearchFi AI Answer", description=assistant_response, color=random_color)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
 
         # Save user's message to the DB
         Queries.insert_message(db, user_id, "user", prompt_text)
@@ -2664,11 +2823,19 @@ async def gpt(ctx, *prompts):
         # Save AI's message to the DB
         Queries.insert_message(db, user_id, "assistant", assistant_response)
     else:
-        error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.", color=0xFF0000)
-        await ctx.reply(embed=error_embed, mention_author=True)
+        error_embed = Embed(title="Error",
+                            description="Failed to get a response from AI.\n\n"
+                                        "AI로부터 응답을 받지 못했습니다.",
+                            color=0xFF0000)
+        await ctx.respond(embed=error_embed, ephemeral=True)
 
-@bot.command()
-async def mstats(ctx):
+
+@bot.slash_command(
+    name="mstats",
+    description="mint info stats",
+    guild_ids=guild_ids
+)
+async def mstats(ctx: ApplicationContext):
     results = Queries.select_stats(db)
 
     num_pages = (len(results) + 9) // 10
@@ -2682,7 +2849,9 @@ async def mstats(ctx):
         description += "👍 : Project UP Count (0.1 Point)\n"
         description += "👎 : Project DOWN Count (0.1 Point)\n\n```"
 
-        embed = Embed(title=f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", description=f"{description}", color=0x00ff00)
+        embed = Embed(title=f"**🏆 Project REG / CHECKER / CALL / UP / DOWN Ranking 🏆**\n\n"
+                            f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", description=f"{description}",
+                      color=0x00ff00)
 
         field_value = "```\n"
 
@@ -2692,6 +2861,7 @@ async def mstats(ctx):
                 break
 
             item = results[index]
+            print(int(item['user_id']))
             user = bot.get_user(int(item['user_id']))
             field_value += "{:>4s}{:<6s}{:<6s}{:<6s}{:<6s}{:<6s}{:<20s}\n".format(
                 f"{item['ranking']}. ",
@@ -2707,30 +2877,39 @@ async def mstats(ctx):
         embed.add_field(name="", value=field_value, inline=False)
         embed.set_footer(text=f"by SearchFI Bot")
 
-        cal = Page(content=f"**🏆 Project REG / CHECKER / CALL / UP / DOWN Ranking 🏆**", embed=embed)
-        pages.append(cal)
+        # cal = Page(content=f"**🏆 Project REG / CHECKER / CALL / UP / DOWN Ranking 🏆**", embed=embed)
+        pages.append(embed)
 
-    paginator = Paginator(bot)
-    await paginator.send(ctx.channel, pages, type=NavigationType.Buttons)
+    paginator = Paginator(pages=pages)
+    await paginator.respond(ctx.interaction, ephemeral=False)
 
-@bot.command()
-async def 타로(ctx):
-    await tarot(ctx)
+
 def get_card_frame(index):
-    from PIL import Image, ImageSequence
-
     filepath = "tarot-cards-slide-show.gif"
     img = Image.open(filepath)
     if img.is_animated:
         frames = [frame.copy() for frame in ImageSequence.Iterator(img)]
         return frames[index]
     return None
-@bot.command()
-async def tarot(ctx):
-    import datetime
 
-    user_id = ctx.message.author.id
-    regUser = f"{ctx.message.author.name}#{ctx.message.author.discriminator}"
+
+@bot.slash_command(
+    name="타로",
+    description="tarot card selection",
+    guild_ids=guild_ids
+)
+async def 타로(ctx: ApplicationContext):
+    await tarot(ctx)
+
+
+@bot.slash_command(
+    name="tarot",
+    description="tarot card selection",
+    guild_ids=guild_ids
+)
+async def tarot(ctx: ApplicationContext):
+    user_id = ctx.author.id
+    regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     current_date = datetime.date.today()
 
     now_in_seconds = time.time()
@@ -2744,26 +2923,36 @@ async def tarot(ctx):
         # If the user has drawn today, just send the previous draw
         filename = f"{result['card_index']}.jpg"
 
-        embed = discord.Embed(title=f"{regUser} Today`s Tarot", description=f"{keyword['symbol']}", color=random.randint(0, 0xFFFFFF))
-        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
-        await ctx.reply(embed=embed, mention_author=True)
+        embed = discord.Embed(title=f"{regUser} Today`s Tarot", description=f"{keyword['symbol']}",
+                              color=random.randint(0, 0xFFFFFF))
+        embed.set_image(
+            url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
+        await ctx.respond(embed=embed, ephemeral=False)
     else:
         # Else, make a new draw
         random_color = random.randint(0, 0xFFFFFF)
-        frame_index = random.randint(0,77)
+        frame_index = random.randint(0, 77)
         filename = f"{frame_index}.jpg"
 
         keyword = Queries.select_keyword(db, f"tarot{frame_index}")
 
         embed = discord.Embed(title=f"{regUser} Today`s Tarot", description=f"{keyword['symbol']}", color=random_color)
-        embed.set_image(url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
+        embed.set_image(
+            url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{filename}?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
 
         Queries.insert_tarots(db, user_id, current_date, frame_index)
 
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=False)
 
-@bot.command()
-async def mp(ctx, symbol: str, amount: float):
+
+@bot.slash_command(
+    name="p",
+    description="the price according to the exchange rate",
+    guild_ids=guild_ids
+)
+async def p(ctx: ApplicationContext,
+             symbol: Option(str, "coin symbol", required=True),
+             quantity: Option(float, "quantity to check ", required=True)):
     ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")
     binance_api_url = "https://api.binance.com/api/v3/ticker/price"
     exchange_rate_api_url = f"https://v6.exchangerate-api.com/v6/{ex_api_key}/latest/USD"
@@ -2783,23 +2972,22 @@ async def mp(ctx, symbol: str, amount: float):
     exchange_rates = response.json()['conversion_rates']
 
     # Convert amount to different currencies
-    usd_amount = coin_price_in_usd * amount
+    usd_quantity = coin_price_in_usd * quantity
     result = {
-        "USD": usd_amount,
-        "KRW": usd_amount * exchange_rates['KRW'],
-        "CNY": usd_amount * exchange_rates['CNY'],
-        "JPY": usd_amount * exchange_rates['JPY']
+        "USD": usd_quantity,
+        "KRW": usd_quantity * exchange_rates['KRW'],
+        "CNY": usd_quantity * exchange_rates['CNY'],
+        "JPY": usd_quantity * exchange_rates['JPY']
     }
 
-    embed = discord.Embed(title=f"{amount} {symbol.upper()} is equal to:", color=0xEFB90A)
+    embed = discord.Embed(title=f"{quantity} {symbol.upper()} is equal to:", color=0xEFB90A)
 
     embed.add_field(name="🇺🇸 USA", value="```{:,.2f} USD```".format(result['USD']), inline=False)
     embed.add_field(name="🇰🇷 SOUTH KOREA", value="```{:,.2f} KRW```".format(result['KRW']), inline=False)
     embed.add_field(name="🇨🇳 CHINA", value="```{:,.2f} CNY```".format(result['CNY']), inline=False)
     embed.add_field(name="🇯🇵 JAPAN", value="```{:,.2f} JPY```".format(result['JPY']), inline=False)
 
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed, ephemeral=False)
 
 
 bot.run(bot_token)
-

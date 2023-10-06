@@ -2707,7 +2707,7 @@ async def tarot(ctx):
 
 
 @bot.command()
-async def p(ctx, symbol: str, amount: float):
+async def mp(ctx, symbol: str, amount: float):
     ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")
     binance_api_url = "https://api.binance.com/api/v3/ticker/price"
     exchange_rate_api_url = f"https://v6.exchangerate-api.com/v6/{ex_api_key}/latest/USD"
@@ -4739,11 +4739,11 @@ async def tarot_slash(ctx: ApplicationContext):
 
 
 @bot.slash_command(
-    name="p",
+    name="mp",
     description="the price according to the exchange rate",
     guild_ids=guild_ids
 )
-async def p(ctx: ApplicationContext,
+async def mp(ctx: ApplicationContext,
             symbol: Option(str, "coin symbol", required=True),
             quantity: Option(float, "quantity to check ", required=True)):
     ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")

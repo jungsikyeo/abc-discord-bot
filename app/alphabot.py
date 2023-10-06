@@ -7,7 +7,6 @@ import os as operating_system
 import openai
 import random
 import cloudscraper
-import cfscrape
 import json
 import pytz
 import urllib3

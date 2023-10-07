@@ -8,6 +8,9 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from discord.ui import View, button, Select, Modal, InputText
 from discord import Embed, ButtonStyle
+from discord.commands.context import ApplicationContext
+from discord.commands import Option
+from discord.interactions import Interaction
 from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
@@ -24,6 +27,7 @@ mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
 mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")
+guild_ids = list(map(int, os.getenv('GUILD_ID').split(',')))
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -55,7 +59,7 @@ class WelcomeView(View):
         self.db = db
 
     @button(label="Prizes", style=ButtonStyle.primary)
-    async def button_prizes(self, button, interaction):
+    async def button_prizes(self, _, interaction: Interaction):
         connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
@@ -83,7 +87,7 @@ class WelcomeView(View):
             connection.close()
 
     @button(label="My Tickets", style=ButtonStyle.danger)
-    async def button_my_tickets(self, button, interaction):
+    async def button_my_tickets(self, _, interaction: Interaction):
         user_id = str(interaction.user.id)
 
         connection = self.db.get_connection()
@@ -94,6 +98,7 @@ class WelcomeView(View):
                 from user_tickets u
                 inner join products p on u.product_id = p.id
                 where u.user_id = %s
+                and p.product_status = 'OPEN'
                 group by p.id, p.name, p.image, p.price
             """, user_id)
             all_user_tickets = cursor.fetchall()
@@ -120,7 +125,7 @@ class WelcomeView(View):
             connection.close()
 
     @button(label="My Tokens", style=ButtonStyle.green)
-    async def button_my_tokens(self, button, interaction):
+    async def button_my_tokens(self, _, interaction: Interaction):
         user_id = str(interaction.user.id)
 
         connection = self.db.get_connection()
@@ -153,7 +158,7 @@ class WelcomeView(View):
 
 
 class ProductSelectView(View):
-    def __init__(self, db, all_products, org_interaction):
+    def __init__(self, db, all_products, org_interaction: Interaction):
         super().__init__(timeout=view_timeout)
         self.db = db
         self.all_products = all_products
@@ -163,17 +168,18 @@ class ProductSelectView(View):
         self.add_item(ProductSelect(self.db, self.options, self.all_products, self.org_interaction))
 
     async def on_timeout(self):
-        await self.org_interaction.delete_original_message()
+        if self.org_interaction:
+            await self.org_interaction.delete_original_response()
 
 
 class ProductSelect(Select):
-    def __init__(self, db, options, all_products, org_interaction):
+    def __init__(self, db, options, all_products, org_interaction: Interaction):
         super().__init__(placeholder='Please choose a prize', min_values=1, max_values=1, options=options)
         self.db = db
         self.all_products = all_products
         self.org_interaction = org_interaction
 
-    async def callback(self, interaction):
+    async def callback(self, interaction: Interaction):
         selected_product = None
 
         for product in self.all_products:
@@ -189,21 +195,29 @@ class ProductSelect(Select):
         embed.add_field(name="Total Quantity", value=f"```{selected_product['quantity']}```", inline=True)
         embed.set_image(url=selected_product['image'])
 
-        await self.org_interaction.edit_original_message(
+        await self.org_interaction.delete_original_response()
+
+        await interaction.response.send_message(
             embed=embed,
-            view=buy_button_view
+            view=buy_button_view,
+            ephemeral=True
         )
+
+        # await self.org_interaction.edit_original_response(
+        #     embed=embed,
+        #     view=buy_button_view
+        # )
 
 
 class BuyButton(View):
-    def __init__(self, db, product, org_interaction):
+    def __init__(self, db, product, org_interaction: Interaction):
         super().__init__()
         self.db = db
         self.product = product
         self.org_interaction = org_interaction
 
     @button(label="Buy", style=discord.ButtonStyle.primary, custom_id="buy_button")
-    async def button_buy(self, button, interaction):
+    async def button_buy(self, _, interaction: Interaction):
         user_id = str(interaction.user.id)
         connection = self.db.get_connection()
         cursor = connection.cursor()
@@ -219,7 +233,7 @@ class BuyButton(View):
                 price = int(product['price'])
             else:
                 description = "```❌ 경품을 응모하는 중에 문제가 발생했습니다.\n\n❌ There was a problem applying for the prize.```"
-                await self.org_interaction.edit_original_message(
+                await self.org_interaction.edit_original_response(
                     content=description,
                     embed=None,
                     view=None
@@ -240,7 +254,7 @@ class BuyButton(View):
 
             if user_tokens < price:
                 description = "```❌ 토큰이 부족합니다.\n\n❌ Not enough tokens.```"
-                await self.org_interaction.edit_original_message(
+                await self.org_interaction.edit_original_response(
                     content=description,
                     embed=None,
                     view=None
@@ -262,14 +276,14 @@ class BuyButton(View):
                 description = f"✅ `{self.product['name']}` 경품에 응모하였습니다.\n\n" \
                               f"✅ You applied for the `{self.product['name']}` prize."
                 embed = Embed(title="", description=description, color=0xFFFFFF)
-                await self.org_interaction.edit_original_message(
+                await self.org_interaction.edit_original_response(
                     embed=embed,
                     view=None
                 )
             connection.commit()
         except Exception as e:
             description = "```❌ 경품을 응모하는 중에 문제가 발생했습니다.\n\n❌ There was a problem applying for the prize.```"
-            await self.org_interaction.edit_original_message(
+            await self.org_interaction.edit_original_response(
                 content=description,
                 embed=None,
                 view=None
@@ -286,7 +300,7 @@ class AddPrizeButton(View):
         super().__init__()
 
     @button(label="Add Prize", style=discord.ButtonStyle.primary, custom_id="add_prize_button")
-    async def button_add_prize(self, button, interaction):
+    async def button_add_prize(self, _, interaction: Interaction):
         await interaction.response.send_modal(modal=AddPrizeModal(db))
 
 
@@ -312,7 +326,7 @@ class AddPrizeModal(Modal):
         self.add_item(self.item_quantity)
         self.db = db
 
-    async def callback(self, interaction):
+    async def callback(self, interaction: Interaction):
         connection = self.db.get_connection()
         cursor = connection.cursor()
 
@@ -721,7 +735,7 @@ async def remove_ticket(ctx, user_tag, *, product_name):
             where p.product_status = 'OPEN'
             and a.user_id = %s
             and upper(replace(p.name,' ', '')) = upper(replace(%s, ' ', '')) 
-        """, (user_id, product_name, ))
+        """, (user_id, product_name,))
         user_ticket = cursor.fetchone()
 
         before_user_tickets = int(user_ticket.get('cnt'))
@@ -778,7 +792,7 @@ class RPSGameView(View):
             self.update_timer.stop()
             embed = Embed(
                 title='Response Timeout',
-                description=f"{self.opponent.name}님이 응답 시간을 초과하셨습니다.\n\n{self.opponent.name } has exceeded its response time.",
+                description=f"{self.opponent.name}님이 응답 시간을 초과하셨습니다.\n\n{self.opponent.name} has exceeded its response time.",
                 color=0xff0000,
             )
             await self.message.edit(embed=embed, view=None)
@@ -858,7 +872,7 @@ class RPSGameView(View):
         self.update_timer.stop()  # 타이머 중지
         embed = Embed(
             title='Opponent Reject',
-            description=f"❌ {self.opponent.name}님이 게임을 거부하셨습니다.\n\n❌ {self.opponent.name } rejected the game.",
+            description=f"❌ {self.opponent.name}님이 게임을 거부하셨습니다.\n\n❌ {self.opponent.name} rejected the game.",
             color=0xff0000,
         )
         await interaction.channel.send(embed=embed)
@@ -974,7 +988,7 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
 
         if result.get('success') > 0:
             description += f"Successfully gave `{params.get('token')}` tokens to {winner.mention}\n" \
-                          f"{winner.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`\n\n"
+                           f"{winner.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`\n\n"
 
         params = {
             'user_id': loser.id,
@@ -985,7 +999,7 @@ async def save_rps_tokens(interaction, winner, loser, amount, description):
 
         if result.get('success') > 0:
             description += f"Successfully removed `{params.get('token')}` tokens to {loser.mention}\n" \
-                          f"{loser.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+                           f"{loser.mention} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
 
             embed = Embed(
                 title='✅ RPS Result',
@@ -1013,7 +1027,7 @@ class RPSGame2View(View):
         embed = Embed(
             title='RPS Game 2',
             description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하신다면 아래 버튼을 선택해주세요.\n남은 시간: {self.time_left}초\n\n"
-                        f"{self.opponent.mention}! {self.challenger.name } has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
+                        f"{self.opponent.mention}! {self.challenger.name} has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
             color=0xFFFFFF,
         )
         self.message = await ctx.send(embed=embed, view=self)
@@ -1039,7 +1053,7 @@ class RPSGame2View(View):
         embed = Embed(
             title='RPS Game 2',
             description=f"{self.opponent.mention}! {self.challenger.name}님이 {self.amount}개 토큰을 걸고 가위바위보 게임을 신청하셨습니다. 수락하신다면 아래 버튼을 선택해주세요.\n남은 시간: {self.time_left}초\n\n"
-                        f"{self.opponent.mention}! {self.challenger.name } has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
+                        f"{self.opponent.mention}! {self.challenger.name} has signed up for rock-paper-scissors with {self.amount} tokens. If you accept, please select the button below.\nTime remaining: {self.time_left} seconds\n\n",
             color=0xFFFFFF,
         )
         await self.message.edit(embed=embed)
@@ -1114,7 +1128,9 @@ class RPSGame2View(View):
                 return
             self.opponent_choice = choice
 
-        await interaction.response.send_message(f"당신은 {choice}를 선택하셨습니다. 상대방의 선택을 기다려주세요.\n\nYou have selected {choice}. Please wait for opponent choice.", ephemeral=True)
+        await interaction.response.send_message(
+            f"당신은 {choice}를 선택하셨습니다. 상대방의 선택을 기다려주세요.\n\nYou have selected {choice}. Please wait for opponent choice.",
+            ephemeral=True)
         if self.author_choice and self.opponent_choice:
             await self.resolve_game()
 
@@ -1229,6 +1245,244 @@ class RPSGame2(commands.Cog):
 #         tokens_to_add = 10  # 예: 10토큰 지급
 #         channel = bot.get_channel(int(giveup_token_channel_id))
 #         await channel.send(f"{message.author.mention}, 축하합니다! {tokens_to_add}토큰을 받았습니다. ")
+
+
+@bot.slash_command(
+    name="shop_start",
+    description="shopping-fi shop main",
+    guild_ids=guild_ids
+)
+@commands.check(is_reservation_channel)
+async def shop_start(ctx: ApplicationContext):
+    description = "ShoppingFi에 오신 것을 환영합니다!\n\n" \
+                  "SearchFi가 준비한 경품 추첨에 SearchFi 토큰으로 참여할 수 있습니다.\n\n" \
+                  "`Prizes` 버튼을 클릭하면 경품이 표시됩니다.\n\n" \
+                  "`My Tickets` 버튼을 클릭하면 내가 참여한 경품을 확인할 수 있습니다.\n\n\n" \
+                  "Welcome to ShoppingFi!\n\n" \
+                  "You can participate in the raffle of prizes prepared by SearchFi with your SearchFi Token.\n\n" \
+                  "Click on the `Prizes` button to see the prize.\n\n" \
+                  "Click the `My Tickets` button to check out the prizes I participated in."
+
+    embed = Embed(title="🎁 SearchFi Shop 🎁", description=description, color=0xFFFFFF)
+    embed.set_image(
+        url="https://media.discordapp.net/attachments/1069466892101746740/1148837901422035006/3c914e942de4d39a.gif"
+            "?width=1920&height=1080")
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    view = WelcomeView(db)
+    await ctx.respond(embed=embed, view=view, ephemeral=False)
+
+
+@bot.slash_command(
+    name="add_prize",
+    description="prize registration",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def add_prize(ctx: ApplicationContext):
+    embed = Embed(title="Add Prize", description="🎁️ 아래 버튼으로 경품을 등록해주세요.\n\n"
+                                                 "🎁️ Please register the prize using the button below.", color=0xFFFFFF)
+    embed.set_footer(text="Powered by 으노아부지#2642")
+    view = AddPrizeButton()
+    await ctx.respond(embed=embed, view=view, ephemeral=True)
+
+
+@bot.slash_command(
+    name="giveaway_raffle",
+    description="draw prizes with tickets purchased by users",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def giveaway_raffle(ctx: ApplicationContext):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        result = start_raffle(db)
+
+        description = "Congratulations! " \
+                      "here is the winner list of last giveaway\n\n"
+        for product, users in result.items():
+            users_str = '\n'.join([f"<@{user}>" for user in users])
+            description += f"🏆 `{product}` winner:\n{users_str}\n\n"
+
+        embed = Embed(
+            title='🎉 Giveaway Winner 🎉',
+            description=description,
+            color=0xFFFFFF,
+        )
+
+        await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        logging.error(f'giveaway_raffle error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.slash_command(
+    name="giveaway_check",
+    description="check the user's tokens and tickets purchased",
+    guild_ids=guild_ids
+)
+async def giveaway_check(ctx: ApplicationContext,
+                         target_user: Option(discord.Member, "target user tag", required=True)):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        user_id = target_user.id
+
+        cursor.execute("""
+            select p.id, p.name, p.image, p.price, count(p.id) tickets
+            from user_tickets u
+            inner join products p on u.product_id = p.id
+            where u.user_id = %s
+            and p.product_status = 'OPEN'
+            group by p.id, p.name, p.image, p.price
+        """, user_id)
+        all_user_tickets = cursor.fetchall()
+
+        cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, str(user_id))
+        user = cursor.fetchone()
+        if not user:
+            user_tokens = 0
+        else:
+            user_tokens = user['tokens']
+
+        description = f"{target_user} tickets:\n\n"
+        for user_ticket in all_user_tickets:
+            description += f"""`{user_ticket['name']}`     x{user_ticket['tickets']}\n"""
+        if not all_user_tickets:
+            description += "No ticket.\n"
+
+        description += f"\n" \
+                       f"{target_user} tokens:\n\n" \
+                       f"""`{user_tokens}` tokens"""
+
+        embed = Embed(title="Giveaway Check", description=description)
+        await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        print("Error:", e)
+        return
+
+
+@bot.slash_command(
+    name="give_tokens",
+    description="check the user's tokens and tickets purchased",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def give_tokens(ctx: ApplicationContext,
+                      target_user: Option(discord.Member, "target user tag", required=True),
+                      quantity: Option(int, "token quantity", required=True)):
+    try:
+        params = {
+            'user_id': target_user.id,
+            'token': int(quantity),
+        }
+
+        result = await save_tokens(params)
+
+        if result.get('success') > 0:
+            description = f"Successfully gave `{params.get('token')}` tokens to {target_user}\n\n" \
+                          f"{target_user} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+            embed = Embed(
+                title='✅ Token Given',
+                description=description,
+                color=0xFFFFFF,
+            )
+            await ctx.respond(embed=embed, ephemeral=False)
+            channel = bot.get_channel(int(giveup_token_channel_id))
+            await channel.send(embed=embed)
+    except Exception as e:
+        logging.error(f'give_tokens error: {e}')
+
+
+@bot.slash_command(
+    name="remove_tokens",
+    description="check the user's tokens and tickets purchased",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def remove_tokens(ctx: ApplicationContext,
+                        target_user: Option(discord.Member, "target user tag", required=True),
+                        quantity: Option(int, "token quantity", required=True)):
+    try:
+        params = {
+            'user_id': target_user.id,
+            'token': int(quantity) * (-1),
+        }
+
+        result = await save_tokens(params)
+
+        if result.get('success') > 0:
+            description = f"Successfully removed `{params.get('token')}` tokens to {target_user}\n\n" \
+                          f"{target_user} tokens: `{result.get('before_user_tokens')}` -> `{result.get('after_user_tokens')}`"
+            embed = Embed(
+                title='✅ Token Removed',
+                description=description,
+                color=0xFFFFFF,
+            )
+            await ctx.respond(embed=embed, ephemeral=False)
+            channel = bot.get_channel(int(giveup_token_channel_id))
+            await channel.send(embed=embed)
+    except Exception as e:
+        logging.error(f'remove_tokens error: {e}')
+
+
+@bot.slash_command(
+    name="remove_ticket",
+    description="remove tickets purchased by users",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def remove_ticket(ctx: ApplicationContext,
+                        target_user: Option(discord.Member, "target user tag", required=True),
+                        prize_name: Option(str, "name of the prize to be deleted", required=True)):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        user_id = target_user.id
+
+        cursor.execute("""
+            select count(1) cnt, max(a.id) as user_ticket_id
+            from user_tickets a
+            inner join products p on a.product_id = p.id
+            where p.product_status = 'OPEN'
+            and a.user_id = %s
+            and upper(replace(p.name,' ', '')) = upper(replace(%s, ' ', '')) 
+        """, (user_id, prize_name,))
+        user_ticket = cursor.fetchone()
+
+        before_user_tickets = int(user_ticket.get('cnt'))
+        if before_user_tickets > 0:
+            user_ticket_id = int(user_ticket.get('user_ticket_id'))
+            cursor.execute("""
+                delete from user_tickets
+                where id = %s
+            """, (user_ticket_id,))
+            connection.commit()
+            after_user_tickets = before_user_tickets - 1
+        else:
+            after_user_tickets = 0
+
+        description = f"Successfully removed `{prize_name}` ticket to {target_user}\n\n" \
+                      f"{target_user} `{prize_name}` tickets: `{before_user_tickets}` -> `{after_user_tickets}`"
+        embed = Embed(
+            title='✅ Ticket Removed',
+            description=description,
+            color=0xFFFFFF,
+        )
+        await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        logging.error(f'save_tokens error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
 
 
 bot.add_cog(RPSGame(bot))

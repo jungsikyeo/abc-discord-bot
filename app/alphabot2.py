@@ -1699,10 +1699,10 @@ async def me_sol(ctx, symbol):
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}", headers=headers).text
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
     # print(response)
     data = json.loads(response)
-    # print(data)
+    print(data)
 
     try:
         if data['msg'] == "Invalid collection name.":
@@ -1727,17 +1727,17 @@ async def me_sol(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    time.sleep(0.1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats", headers=headers).text
-    # print(response)
+    time.sleep(1)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats").text
+    print("stats:", response)
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
-    time.sleep(0.1)
+    time.sleep(1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats",
-                           headers=headers).text
-    # print(response)
+                           ).text
+    print("holder_stats:", response)
     data = json.loads(response)
 
     try:

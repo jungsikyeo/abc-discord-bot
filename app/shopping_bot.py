@@ -195,18 +195,12 @@ class ProductSelect(Select):
         embed.add_field(name="Total Quantity", value=f"```{selected_product['quantity']}```", inline=True)
         embed.set_image(url=selected_product['image'])
 
-        await self.org_interaction.delete_original_response()
+        await interaction.response.defer(ephemeral=True)
 
-        await interaction.response.send_message(
+        await self.org_interaction.edit_original_response(
             embed=embed,
-            view=buy_button_view,
-            ephemeral=True
+            view=buy_button_view
         )
-
-        # await self.org_interaction.edit_original_response(
-        #     embed=embed,
-        #     view=buy_button_view
-        # )
 
 
 class BuyButton(View):

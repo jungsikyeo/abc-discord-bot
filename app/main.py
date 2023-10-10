@@ -251,7 +251,7 @@ class Queries:
                 noUpdate  
              FROM projects 
              WHERE 1=1 
-             AND CASE WHEN '{reg_user}' = '으노아부지#2642' then 1=1  else regUser = '{reg_user}' end
+#              AND CASE WHEN '{reg_user}' = '으노아부지#2642' then 1=1  else regUser = '{reg_user}' end
              ORDER BY name ASC 
         """
         with db.get_connection() as conn:

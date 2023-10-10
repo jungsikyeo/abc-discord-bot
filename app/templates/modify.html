@@ -130,15 +130,26 @@
             <input type="hidden" id="id" name="id" value=""/>
             <div>
                 <label for="name">Project Name</label>
-                <select id="name" name="name" onchange="setProject(this.selectedIndex)">
-                    <option value="">-- Select Project --</option>
-                </select>
+{#                <select id="name" name="name" onchange="setProject(this.selectedIndex)">#}
+{#                    <option value="">-- Select Project --</option>#}
+{#                </select>#}
+{#                <script>#}
+{#                    const select = document.getElementById("name");#}
+{#                    for (let i = 0; i < project_list.length; i++) {#}
+{#                        const option = document.createElement("option");#}
+{#                        option.text = project_list[i].name;#}
+{#                        select.add(option);#}
+{#                    }#}
+{#                </script>#}
+                <input type="text" list="project-names" id="name" name="name" onchange="setProjectByName(this.value)" placeholder="Type to search..." required>
+                <datalist id="project-names">
+                </datalist>
                 <script>
-                    const select = document.getElementById("name");
+                    const dataList = document.getElementById("project-names");
                     for (let i = 0; i < project_list.length; i++) {
                         const option = document.createElement("option");
-                        option.text = project_list[i].name;
-                        select.add(option);
+                        option.value = project_list[i].name;
+                        dataList.appendChild(option);
                     }
                 </script>
             </div>
@@ -230,7 +241,7 @@
                     document.getElementById("update").addEventListener("click", function(event) {
                         form = document.querySelector('form');
                         const input = document.querySelector('input');
-                        if(form.name.value == "") {
+                        if(form.id.value === "") {
                             form.name.focus()
                             event.preventDefault();
                         }
@@ -243,7 +254,7 @@
                     document.getElementById("delete").addEventListener("click", function(event) {
                         form = document.querySelector('form');
                         const input = document.querySelector('input');
-                        if(form.name.value == "") {
+                        if(form.id.value === "") {
                             form.name.focus()
                             event.preventDefault();
                         } else {
@@ -252,6 +263,13 @@
                             form.submit()
                         }
                     });
+                    function setProjectByName(name) {
+                        const project = project_list.find(p => p.name === name);
+                        if (project) {
+                            const index = project_list.indexOf(project) + 1; // 기존 로직에서 index는 1부터 시작
+                            setProject(index);
+                        }
+                    }
                 </script>
             </div>
         </form>

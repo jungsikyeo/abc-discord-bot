@@ -17,7 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        # logging.FileHandler(filename='bot.log', mode='a'),
+        logging.FileHandler(filename='app/logs/ama_bot.log', mode='a'),
         logging.StreamHandler()
     ]
 )

@@ -4512,7 +4512,7 @@ async def draw(ctx: ApplicationContext, count: int, prompts: str):
     description="ai chatbot",
     guild_ids=guild_ids
 )
-async def gpt(ctx: ApplicationContext,
+async def gpt_slash(ctx: ApplicationContext,
               prompts: Option(str, "prompts text", required=True)):
     await chat_answer(ctx, prompts)
 

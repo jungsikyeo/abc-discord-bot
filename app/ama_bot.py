@@ -4,6 +4,8 @@ import pandas as pd
 import logging
 from discord import Embed
 from discord.ext import commands, tasks
+from discord.commands import Option
+from discord.commands.context import ApplicationContext
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,6 +14,7 @@ bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 ama_vc_channel_id = int(os.getenv("AMA_VC_CHANNEL_ID"))
 ama_text_channel_id = int(os.getenv("AMA_TEXT_CHANNEL_ID"))
+guild_ids = list(map(int, os.getenv('GUILD_ID').split(',')))
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,29 +32,34 @@ async def on_ready():
     print(f"We have logged in as {bot.user}")
 
 
-@bot.command()
+@bot.slash_command(
+    name="start_ama",
+    description="ama monitoring start",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def start_ama(ctx, role_id: int):
+async def start_ama(ctx: ApplicationContext,
+                    role_id: Option(str, "ama project role ID", required=True)):
     global ama_role_id, ama_in_progress
     if ama_in_progress:
         embed = Embed(title="Error",
                       description=f"❌ An AMA session is already in progress.\n\n"
                                   f"❌ AMA 세션이 이미 진행 중입니다.",
                       color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
-        return
-
-    role = discord.utils.get(ctx.guild.roles, id=role_id)
-    if role is None:
-        embed = Embed(title="Error",
-                      description=f"❌ No role found with ID: {role_id}. Please provide a valid role ID.\n\n"
-                                  f"❌ {role_id} role을 찾을 수 없습니다. 올바른 role ID를 입력하십시오.",
-                      color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
 
     try:
-        ama_role_id = role_id
+        ama_role_id = int(role_id)
+        role = discord.utils.get(ctx.guild.roles, id=ama_role_id)
+        if role is None:
+            embed = Embed(title="Error",
+                          description=f"❌ No role found with ID: {role_id}. Please provide a valid role ID.\n\n"
+                                      f"❌ {role_id} role을 찾을 수 없습니다. 올바른 role ID를 입력하십시오.",
+                          color=0xff0000)
+            await ctx.respond(embed=embed, ephemeral=True)
+            return
+
         message_counts.clear()
         snapshots.clear()
         capture_loop.start()
@@ -60,25 +68,29 @@ async def start_ama(ctx, role_id: int):
                       description=f"✅ AMA session has started!\n\n"
                                   f"✅ AMA 세션이 시작되었습니다!",
                       color=0x37e37b)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed)
     except Exception as e:
         embed = Embed(title="Error",
                       description=f"An error occurred: {str(e)}",
                       color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
 
 
-@bot.command()
+@bot.slash_command(
+    name="end_ama",
+    description="ama monitoring end",
+    guild_ids=guild_ids
+)
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def end_ama(ctx):
+async def end_ama(ctx: ApplicationContext):
     global ama_role_id, ama_in_progress
     if not ama_in_progress:
         embed = Embed(title="Error",
                       description=f"❌ No AMA session is currently in progress.\n\n"
                                   f"❌ 현재 진행 중인 AMA 세션이 없습니다.",
                       color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
     try:
         capture_loop.cancel()
@@ -96,12 +108,12 @@ async def end_ama(ctx):
                       description=f"✅ AMA session has ended!\n\n"
                                   f"✅ AMA 세션이 종료되었습니다!",
                       color=0x37e37b)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed)
     except Exception as e:
         embed = Embed(title="Error",
                       description=f"An error occurred: {str(e)}",
                       color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
+        await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
 
 
@@ -157,13 +169,13 @@ async def assign_roles(ctx, role_id, members):
             embed = Embed(title="Error",
                           description=f"Failed to assign role to {member.name}. Check the bot's permissions.",
                           color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             logger.warning(f"Failed to assign role to {member.name}. Check the bot's permissions.")
         except discord.HTTPException as e:
             embed = Embed(title="Error",
                           description=f"HTTP exception while assigning role to {member.name}: {str(e)}",
                           color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             logger.warning(f"Failed to assign role to {member.name}. Check the bot's permissions.")
             logger.error(f"HTTP exception while assigning role to {member.name}: {str(e)}")
 
@@ -178,13 +190,13 @@ async def create_and_upload_excel(ctx, snapshots, role_name):
             df.to_excel(writer, sheet_name=f'{formatted_timestamp}', index=False)
     with open(file_name, 'rb') as f:
         try:
-            await ctx.reply(file=discord.File(f), mention_author=True)
+            await ctx.respond(file=discord.File(f))
             os.remove(file_name)
         except discord.HTTPException as e:
             embed = Embed(title="Error",
                           description=f"Failed to upload the file: {str(e)}",
                           color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
+            await ctx.respond(embed=embed, ephemeral=True)
             logger.error(f"Failed to upload the file: {str(e)}")
 
 bot.run(bot_token)

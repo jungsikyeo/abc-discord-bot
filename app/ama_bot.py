@@ -116,7 +116,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@tasks.loop(seconds=10)
+@tasks.loop(minutes=20)
 async def capture_loop():
     channel = bot.get_channel(ama_vc_channel_id)
     members = [member for member in channel.members if not member.bot]

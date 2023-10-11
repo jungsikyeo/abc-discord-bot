@@ -13,7 +13,15 @@ command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 ama_vc_channel_id = int(os.getenv("AMA_VC_CHANNEL_ID"))
 ama_text_channel_id = int(os.getenv("AMA_TEXT_CHANNEL_ID"))
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        # logging.FileHandler(filename='bot.log', mode='a'),
+        logging.StreamHandler()
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 intents = discord.Intents.all()

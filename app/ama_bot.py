@@ -63,7 +63,7 @@ async def start_ama(ctx, role_id: int):
         ama_role_id = role_id
         message_counts.clear()
         snapshots.clear()
-        capture_loop.start()
+        capture_loop.start(ctx)
         ama_in_progress = True
         embed = Embed(title="Success",
                       description=f"✅ AMA session has started!\n\n"
@@ -91,7 +91,7 @@ async def end_ama(ctx):
         return
     try:
         capture_loop.cancel()
-        await capture_final_snapshot()
+        await capture_final_snapshot(ctx)
 
         members_to_assign_role = [ctx.guild.get_member(member_id) for member_id in message_counts.keys()]
         await assign_roles(ctx, ama_role_id, members_to_assign_role)
@@ -126,28 +126,59 @@ async def on_message(message):
 
 
 @tasks.loop(minutes=20)
-async def capture_loop():
-    channel = bot.get_channel(ama_vc_channel_id)
-    members = [member for member in channel.members if not member.bot]
-    snapshot = {"Timestamp": pd.Timestamp.now()}
+async def capture_loop(ctx):
+    try:
+        channel = bot.get_channel(ama_vc_channel_id)
+        members = [member for member in channel.members if not member.bot]
+        now = pd.Timestamp.now()
+        snapshot = {"Timestamp": now}
+        for member in members:
+            msg_count = message_counts.get(member.id, 0)
+            snapshot[member.name] = msg_count
+        logger.info(snapshot)
+        snapshots.append(snapshot)
 
-    for member in members:
-        msg_count = message_counts.get(member.id, 0)
-        snapshot[member.name] = msg_count
+        embed = Embed(title="Success",
+                      description=f"✅ Snapshot `{now}` has been created.\n\n"
+                                  f"✅ `{now}` 스냅샷이 생성되었습니다.",
+                      color=0x37e37b)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        embed = Embed(title="Error",
+                      description=f"An error occurred: {str(e)}",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        logger.error(f"An error occurred: {str(e)}")
 
-    logger.info(snapshot)
-
-    snapshots.append(snapshot)
 
 
-async def capture_final_snapshot():
-    channel = bot.get_channel(ama_vc_channel_id)
-    members = [member for member in channel.members if not member.bot]
-    snapshot = {"Timestamp": pd.Timestamp.now()}
-    for member in members:
-        msg_count = message_counts.get(member.id, 0)
-        snapshot[member.name] = msg_count
-    snapshots.append(snapshot)
+async def capture_final_snapshot(ctx):
+    try:
+        channel = bot.get_channel(ama_vc_channel_id)
+        members = [member for member in channel.members if not member.bot]
+        now = pd.Timestamp.now()
+        snapshot = {"Timestamp": now}
+        for member in members:
+            msg_count = message_counts.get(member.id, 0)
+            snapshot[member.name] = msg_count
+        logger.info(snapshot)
+        snapshots.append(snapshot)
+
+        embed = Embed(title="Success",
+                      description=f"✅ Snapshot `{now}` has been created.\n"
+                                  f"Soon a role will be assigned and an Excel file will be created.\n"
+                                  f"Please wait a moment.\n\n"
+                                  f"✅ `{now}` 스냅샷이 생성되었습니다.\n"
+                                  f"곧 롤이 부여되고, 엑셀파일이 생성됩니다.\n"
+                                  f"잠시만 기다려주세요.",
+                      color=0x37e37b)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        embed = Embed(title="Error",
+                      description=f"An error occurred: {str(e)}",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        logger.error(f"An error occurred: {str(e)}")
 
 
 @bot.event

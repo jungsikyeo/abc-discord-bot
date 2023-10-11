@@ -4508,16 +4508,6 @@ async def draw(ctx: ApplicationContext, count: int, prompts: str):
 
 
 @bot.slash_command(
-    name="챗",
-    description="ai chatbot",
-    guild_ids=guild_ids
-)
-async def gpt_slash(ctx: ApplicationContext,
-                    prompts: Option(str, "prompts text", required=True)):
-    await chat_answer(ctx, prompts)
-
-
-@bot.slash_command(
     name="gpt",
     description="ai chatbot",
     guild_ids=guild_ids

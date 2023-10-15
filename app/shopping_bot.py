@@ -761,8 +761,9 @@ async def remove_ticket(ctx, user_tag, *, product_name):
 
 
 class RPSGameView(View):
-    def __init__(self, challenger, opponent, amount):
-        super().__init__(timeout=10)  # 5초 동안 버튼 응답을 기다립니다.
+    def __init__(self, bot, challenger, opponent, amount):
+        super().__init__(timeout=10)
+        self.bot = bot
         self.challenger = challenger
         self.opponent = opponent
         self.time_left = 10
@@ -790,6 +791,10 @@ class RPSGameView(View):
                 color=0xff0000,
             )
             await self.message.edit(embed=embed, view=None)
+
+            self.bot.get_cog('RPSGame').active_games[self.challenger.id] = False
+            self.bot.get_cog('RPSGame').active_games[self.opponent.id] = False
+
             return
         embed = Embed(
             title='RPS Game',
@@ -851,6 +856,9 @@ class RPSGameView(View):
                           f"{self.opponent.name}: {opponent_choice['emoji']}{opponent_choice['name']}\n\nResult: {result}\n\n"
             await save_rps_tokens(interaction, self.opponent, self.challenger, self.amount, description)
 
+        self.bot.get_cog('RPSGame').active_games[self.challenger.id] = False
+        self.bot.get_cog('RPSGame').active_games[self.opponent.id] = False
+
         self.stop()  # View를 중지하고 버튼을 비활성화
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
@@ -870,6 +878,10 @@ class RPSGameView(View):
             color=0xff0000,
         )
         await interaction.channel.send(embed=embed)
+
+        self.bot.get_cog('RPSGame').active_games[self.challenger.id] = False
+        self.bot.get_cog('RPSGame').active_games[self.opponent.id] = False
+
         self.stop()  # View를 중지하고 버튼을 비활성화
 
 
@@ -877,6 +889,7 @@ class RPSGame(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.last_played_date = {}  # user_id를 키로 하고 마지막으로 게임을 한 날짜를 값으로 가지는 딕셔너리
+        self.active_games = {}  # user_id를 키로 하고 게임 상태를 값으로 가지는 딕셔너리
 
     @commands.command()
     async def rps(self, ctx, opponent: discord.Member, amount=1):
@@ -895,6 +908,15 @@ class RPSGame(commands.Cog):
                 )
                 await ctx.reply(embed=embed, mention_author=True)
                 return
+
+        if self.active_games.get(ctx.author.id) or self.active_games.get(opponent.id):
+            embed = Embed(
+                title='Game Error',
+                description="❌ 이미 게임이 진행중인 유저가 있습니다.\n\n❌ There is a user who is already playing the game.",
+                color=0xff0000,
+            )
+            await ctx.reply(embed=embed, mention_author=True)
+            return
 
         if ctx.author.id == opponent.id:
             embed = Embed(
@@ -958,13 +980,18 @@ class RPSGame(commands.Cog):
                 await ctx.reply(embed=embed, mention_author=True)
                 return
 
-            game_view = RPSGameView(ctx.author, opponent, amount)
+            game_view = RPSGameView(self.bot, ctx.author, opponent, amount)
             await game_view.send_initial_message(ctx)
+
+            self.active_games[ctx.author.id] = True
+            self.active_games[opponent.id] = True
 
             if ctx.channel.id != int(gameroom_channel_id):
                 self.last_played_date[ctx.author.id] = datetime.utcnow().date()
         except Exception as e:
             logging.error(f'rps error: {e}')
+            self.active_games[ctx.author.id] = False
+            self.active_games[opponent.id] = False
             connection.rollback()
         finally:
             cursor.close()
@@ -1136,6 +1163,17 @@ class RPSGame2(commands.Cog):
 
     @commands.command()
     async def rps2(self, ctx, opponent: discord.Member, amount: int):
+        embed = Embed(
+            title='Game Error',
+            description=f"❌ 수동 RPS 게임은 당분간 중단됩니다.\n"
+                        f"자동 RPS 게임으로 진행해주세요.\n\n"
+                        f"❌ Manual RPS games will be suspended for a while.\n"
+                        f"Please proceed with the automatic RPS game.",
+            color=0xff0000,
+        )
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
         # gameroom_channel_id 채널에서는 제한 없이 게임 가능
         if ctx.channel.id != int(gameroom_channel_id):
             # 해당 유저가 마지막으로 게임을 한 날짜 가져오기

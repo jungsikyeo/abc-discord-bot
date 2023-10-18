@@ -1102,6 +1102,8 @@ async def remove_ticket(ctx: ApplicationContext,
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.run(bot_token)

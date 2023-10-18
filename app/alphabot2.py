@@ -4807,6 +4807,8 @@ async def rank(ctx, member: discord.Member = None):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.run(bot_token)

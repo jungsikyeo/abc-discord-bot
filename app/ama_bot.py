@@ -232,6 +232,8 @@ async def create_and_upload_excel(ctx, snapshots, role_name):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.run(bot_token)

@@ -625,6 +625,8 @@ class RPSGame2(commands.Cog):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.add_cog(RPSGame(bot))

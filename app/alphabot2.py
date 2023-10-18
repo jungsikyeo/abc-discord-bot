@@ -19,6 +19,7 @@ import gspread
 import uuid
 import io
 import base64
+import logging
 from datetime import timezone
 from pytz import all_timezones
 from discord.ext import commands
@@ -49,6 +50,18 @@ mysql_db = operating_system.getenv("MYSQL_DB")
 bot_domain = operating_system.getenv("SEARCHFI_BOT_DOMAIN")
 discord_client_id = operating_system.getenv("DISCORD_CLIENT_ID")
 guild_ids = list(map(int, operating_system.getenv('GUILD_ID').split(',')))
+bot_log_folder = operating_system.getenv("BOT_LOG_FOLDER")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(filename=f"{bot_log_folder}/alphabot2_bot.log", mode='a'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 
 async def get_member_avatar(user_id: int):
@@ -397,7 +410,7 @@ class Queries:
             return {"status": "OK"}
         except Exception as e:
             conn.rollback()
-            print(e)
+            logger.error(f"An error occurred: {str(e)}")
             return {"status": "ERROR", "msg": e}
 
     def select_my_up(self, user_id, today, tomorrow):
@@ -1164,7 +1177,7 @@ async def mylist(ctx):
             await ctx.reply(embed=embed, mention_author=True)
             return
     except Exception as e:
-        print("Error:", e)
+        logger.error(f"An error occurred: {str(e)}")
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
@@ -1224,7 +1237,7 @@ async def youlist(ctx, dc_id):
             await ctx.reply(embed=embed, mention_author=True)
             return
     except Exception as e:
-        print("Error:", e)
+        logger.error(f"An error occurred: {str(e)}")
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
@@ -2258,7 +2271,7 @@ async def addrole(ctx, sheet_name, role_name):
         await ctx.send(file=discord.File('result.txt'))
 
     except Exception as e:
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         await ctx.send(f"오류가 발생했습니다: {str(e)}")
 
     await ctx.send("사용자 확인을 완료했습니다.")
@@ -2301,8 +2314,7 @@ async def removerole(ctx, role_name):
         await ctx.send(file=discord.File('remove_result.txt'))
 
     except Exception as e:
-        # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         await ctx.send(f"오류가 발생했습니다: {str(e)}")
 
     # 완료 메시지를 보냅니다.
@@ -2485,7 +2497,7 @@ async def draw(ctx, count="0", *prompts):
         image_urls = [img for img in response.get("images")]
         # image_urls = [img["image"] for img in response.get("images")]
     except Exception as e:
-        print(str(e))
+        logger.error(f"An error occurred: {str(e)}")
         error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.",
                             color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
@@ -2581,7 +2593,7 @@ async def gpt(ctx, *prompts):
             messages=messages
         )
     except Exception as e:
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.",
                             color=0xFF0000)
         await ctx.reply(embed=error_embed, mention_author=True)
@@ -3021,7 +3033,7 @@ async def mylist(ctx: ApplicationContext):
             await ctx.respond(embed=embed, ephemeral=True)
             return
     except Exception as e:
-        print("Error:", e)
+        logger.error(f"An error occurred: {str(e)}")
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
@@ -3078,7 +3090,7 @@ async def youlist(ctx: ApplicationContext,
             await ctx.respond(embed=embed, ephemeral=True)
             return
     except Exception as e:
-        print("Error:", e)
+        logger.error(f"An error occurred: {str(e)}")
         return
 
     embed.add_field(name="", value=list_massage, inline=True)
@@ -4266,7 +4278,7 @@ async def addrole(ctx: ApplicationContext,
         await ctx.send(file=discord.File('result.txt'))
 
     except Exception as e:
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         await ctx.respond(f"오류가 발생했습니다: {str(e)}", ephemeral=True)
 
     await ctx.respond("사용자 확인을 완료했습니다.", ephemeral=False)
@@ -4314,8 +4326,7 @@ async def removerole(ctx: ApplicationContext,
         await ctx.send(file=discord.File('remove_result.txt'))
 
     except Exception as e:
-        # 에러가 발생하면 그 내용을 출력하고, 에러 메시지를 반환합니다.
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         await ctx.respond(f"오류가 발생했습니다: {str(e)}", ephemeral=True)
 
     # 완료 메시지를 보냅니다.
@@ -4489,7 +4500,7 @@ async def draw(ctx: ApplicationContext, count: int, prompts: str):
         image_urls = [img for img in response.get("images")]
         # image_urls = [img["image"] for img in response.get("images")]
     except Exception as e:
-        print(str(e))
+        logger.error(f"An error occurred: {str(e)}")
         error_embed = Embed(title="Error", description="An unexpected error occurred.\n\n예기치 않은 오류가 발생했습니다.",
                             color=0xFF0000)
         await ctx.send(embed=error_embed)
@@ -4595,7 +4606,7 @@ async def chat_answer(ctx: ApplicationContext, prompts: str):
             messages=messages
         )
     except Exception as e:
-        print(e)
+        logger.error(f"An error occurred: {str(e)}")
         error_embed = Embed(title="Error",
                             description="Failed to get a response from AI.\n\n"
                                         "AI로부터 응답을 받지 못했습니다.",
@@ -4771,6 +4782,31 @@ async def mp(ctx: ApplicationContext,
     embed.add_field(name="🇯🇵 JAPAN", value="```{:,.2f} JPY```".format(result['JPY']), inline=False)
 
     await ctx.respond(embed=embed, ephemeral=False)
+
+
+@bot.command()
+async def rank(ctx, member: discord.Member = None):
+    import rankcard
+    if member:
+        user = member
+    else:
+        user = ctx.author
+    username = user.name + "#" + user.discriminator
+    currentxp = 1
+    lastxp = 0
+    nextxp = 2
+    current_level = 1
+    current_rank = 1
+    background = None
+    image = await rankcard.rankcard(user=user, username=username, currentxp=currentxp, lastxp=lastxp, nextxp=nextxp, level=current_level, rank=current_rank, background=background)
+    file = discord.File(filename="rank.png", fp=image)
+    await ctx.send(file=file)
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
 
 
 bot.run(bot_token)

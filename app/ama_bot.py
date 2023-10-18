@@ -12,13 +12,13 @@ bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 ama_vc_channel_id = int(os.getenv("AMA_VC_CHANNEL_ID"))
 ama_text_channel_id = int(os.getenv("AMA_TEXT_CHANNEL_ID"))
-ama_bot_log_folder = os.getenv("AMA_BOT_LOG_FOLDER")
+bot_log_folder = os.getenv("BOT_LOG_FOLDER")
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(filename=f"{ama_bot_log_folder}/ama_bot.log", mode='a'),
+        logging.FileHandler(filename=f"{bot_log_folder}/ama_bot.log", mode='a'),
         logging.StreamHandler()
     ]
 )
@@ -226,5 +226,12 @@ async def create_and_upload_excel(ctx, snapshots, role_name):
                           color=0xff0000)
             await ctx.reply(embed=embed, mention_author=True)
             logger.error(f"Failed to upload the file: {str(e)}")
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+
 
 bot.run(bot_token)

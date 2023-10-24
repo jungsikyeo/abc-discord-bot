@@ -414,6 +414,7 @@ async def on_command_error(ctx, error):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def ama_info(ctx, role_name: str, member: discord.Member):
     try:
         # 데이터베이스에서 사용자 정보 조회

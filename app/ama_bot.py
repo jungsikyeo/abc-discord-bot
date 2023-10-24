@@ -2,9 +2,13 @@ import os
 import discord
 import pandas as pd
 import logging
+import time
+import pymysql
 from discord import Embed
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+from pymysql.cursors import DictCursor
+from dbutils.pooled_db import PooledDB
 
 load_dotenv()
 
@@ -13,6 +17,11 @@ command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 ama_vc_channel_id = int(os.getenv("AMA_VC_CHANNEL_ID"))
 ama_text_channel_id = int(os.getenv("AMA_TEXT_CHANNEL_ID"))
 bot_log_folder = os.getenv("BOT_LOG_FOLDER")
+mysql_ip = os.getenv("MYSQL_IP")
+mysql_port = os.getenv("MYSQL_PORT")
+mysql_id = os.getenv("MYSQL_ID")
+mysql_passwd = os.getenv("MYSQL_PASSWD")
+mysql_db = os.getenv("MYSQL_DB")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,12 +34,39 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=f"{command_flag}", intents=intents)
 message_counts = {}
+message_all_counts = {}
+voice_join_counts = {}
+voice_leave_counts = {}
+voice_channel_time_spent = {}
+voice_channel_join_times = {}
 ama_role_id = None
 ama_in_progress = False
 snapshots = []
+
+
+class Database:
+    def __init__(self, host, port, user, password, db):
+        self.pool = PooledDB(
+            creator=pymysql,
+            maxconnections=5,
+            mincached=2,
+            host=host,
+            port=int(port),
+            user=user,
+            password=password,
+            database=db,
+            charset='utf8mb4',
+            cursorclass=DictCursor
+        )
+
+    def get_connection(self):
+        return self.pool.connection()
+
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=f"{command_flag}", intents=intents)
+db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
 
 
 @bot.event
@@ -61,9 +97,22 @@ async def start_ama(ctx, role_id: int):
 
     try:
         ama_role_id = role_id
-        message_counts.clear()
         snapshots.clear()
+        message_counts.clear()
+        message_all_counts.clear()
+        voice_join_counts.clear()
+        voice_leave_counts.clear()
+        voice_channel_time_spent.clear()
+        voice_channel_join_times.clear()
         capture_loop.start(ctx)
+        # 현재 AMA 채널의 사용자 체크
+        voice_channel = bot.get_channel(ama_vc_channel_id)
+        current_members = voice_channel.members
+        current_time = time.time()
+        for member in current_members:
+            if not member.bot:  # 봇 제외
+                voice_join_counts[member.id] = 1
+                voice_channel_join_times[member.id] = current_time  # 입장 시간 설정
         ama_in_progress = True
         embed = Embed(title="Success",
                       description=f"✅ AMA session has started!\n\n"
@@ -99,6 +148,22 @@ async def end_ama(ctx):
         role_name = discord.utils.get(ctx.guild.roles, id=ama_role_id).name
         await create_and_upload_excel(ctx, snapshots, role_name)
 
+        # 데이터베이스에 데이터 저장
+        db_data = []
+        for member_id in voice_join_counts:
+            total_messages = message_all_counts.get(member_id, 0)
+            valid_messages = message_counts.get(member_id, 0)  # 유효한 메시지 수를 여기에 입력하세요
+            total_joins = voice_join_counts.get(member_id, 0)
+            total_leaves = voice_leave_counts.get(member_id, 0)
+            time_spent = int(voice_channel_time_spent.get(member_id, 0))  # 밀리초를 초로 변환
+
+            db_data.append((
+                str(ama_role_id), role_name, str(member_id),
+                total_messages, valid_messages, total_joins, total_leaves, time_spent
+            ))
+        # 데이터베이스에 데이터 저장
+        await save_data_to_db(ctx, db_data)
+
         ama_in_progress = False
 
         embed = Embed(title="Success",
@@ -106,12 +171,50 @@ async def end_ama(ctx):
                                   f"✅ AMA 세션이 종료되었습니다!",
                       color=0x37e37b)
         await ctx.reply(embed=embed, mention_author=True)
+
     except Exception as e:
         embed = Embed(title="Error",
                       description=f"An error occurred: {str(e)}",
                       color=0xff0000)
         await ctx.reply(embed=embed, mention_author=True)
         logger.error(f"An error occurred: {str(e)}")
+
+
+async def save_data_to_db(ctx, db_data):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        for data in db_data:
+            cursor.execute("""
+                INSERT INTO ama_users_summary (
+                    role_id,
+                    role_name,
+                    user_id,
+                    total_messages,
+                    valid_messages,
+                    total_joins,
+                    total_leaves,
+                    time_spent
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, data)
+
+        connection.commit()
+
+        embed = Embed(
+            title='DB Save Complete',
+            description="DB Save Complete!\n"
+                        "Please AMA Summary by User: `!ama_info \"<AMA Role name>\" <User Tag>`",
+            color=0xFFFFFF,
+        )
+
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logger.error(f'DB error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
 
 
 @bot.event
@@ -122,10 +225,15 @@ async def on_message(message):
             message_counts[user_id] += 1
         else:
             message_counts[user_id] = 1
+
+        if user_id in message_all_counts:
+            message_all_counts[user_id] += 1
+        else:
+            message_all_counts[user_id] = 1
     await bot.process_commands(message)
 
 
-@tasks.loop(minutes=20)
+@tasks.loop(minutes=10)
 async def capture_loop(ctx):
     try:
         channel = bot.get_channel(ama_vc_channel_id)
@@ -151,15 +259,18 @@ async def capture_loop(ctx):
         logger.error(f"An error occurred: {str(e)}")
 
 
-
 async def capture_final_snapshot(ctx):
     try:
         channel = bot.get_channel(ama_vc_channel_id)
         members = [member for member in channel.members if not member.bot]
         now = pd.Timestamp.now()
+        current_time = time.time()
         snapshot = {"Timestamp": now}
         for member in members:
             msg_count = message_counts.get(member.id, 0)
+            join_time = voice_channel_join_times[member.id]
+            time_spent = current_time - join_time
+            voice_channel_time_spent[member.id] = voice_channel_time_spent.get(member.id, 0) + time_spent
             snapshot[member.name] = msg_count
         logger.info(snapshot)
         snapshots.append(snapshot)
@@ -183,7 +294,34 @@ async def capture_final_snapshot(ctx):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if before.channel and before.channel.id == ama_vc_channel_id:
+    current_time = time.time()
+
+    # 사용자가 음성 채널에 들어왔는지 확인
+    if before.channel is None and after.channel is not None and after.channel.id == ama_vc_channel_id:
+        if member.id in voice_join_counts:
+            voice_join_counts[member.id] += 1
+        else:
+            voice_join_counts[member.id] = 1
+
+        # 사용자가 채널에 들어온 시간 기록
+        voice_channel_join_times[member.id] = current_time
+
+    # 사용자가 음성 채널에서 나갔는지 확인
+    if before.channel is not None and before.channel.id == ama_vc_channel_id and after.channel is None:
+        if member.id in voice_leave_counts:
+            voice_leave_counts[member.id] += 1
+        else:
+            voice_leave_counts[member.id] = 1
+
+        # 사용자가 채널에서 나간 시간 기록 및 머무른 시간 계산
+        if member.id in voice_channel_join_times:
+            join_time = voice_channel_join_times[member.id]
+            time_spent = current_time - join_time
+            voice_channel_time_spent[member.id] = voice_channel_time_spent.get(member.id, 0) + time_spent
+            # 사용자가 나간 후, join 시간 정보 삭제
+            del voice_channel_join_times[member.id]
+
+        # AMA 중에 음성 채널을 떠나면 해당 사용자의 message_counts를 제거
         if member.id in message_counts:
             del message_counts[member.id]
 
@@ -211,21 +349,60 @@ async def assign_roles(ctx, role_id, members):
 async def create_and_upload_excel(ctx, snapshots, role_name):
     file_name = f'ama_summary_{role_name}.xlsx'
     with pd.ExcelWriter(file_name, engine='xlsxwriter') as writer:
+        # 스냅샷 데이터를 엑셀에 기록
         for snapshot in snapshots:
             timestamp = snapshot["Timestamp"]
             formatted_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
             df = pd.DataFrame(list(snapshot.items())[1:], columns=['Member', 'Message_Count'])
             df.to_excel(writer, sheet_name=f'{formatted_timestamp}', index=False)
-    with open(file_name, 'rb') as f:
-        try:
+
+        # 사용자별 통계 데이터를 포함하는 새 데이터 프레임 생성
+        data = []
+        for member_id in message_all_counts:
+            try:
+                member = ctx.guild.get_member(member_id)
+                if member:  # 사용자가 여전히 서버에 있는 경우
+                    member_name = member.display_name  # 멤버의 디스플레이 이름 가져오기
+                else:  # 사용자가 서버를 떠난 경우
+                    member_name = str(member_id)  # 멤버의 ID를 문자열로 사용
+                    logger.warning(f"Member with ID {member_id} not found. They might have left the server.")
+            except Exception as e:  # 다른 예외 처리
+                member_name = "Unknown"
+                logger.error(f"An error occurred while getting member info: {str(e)}")
+
+            total_messages = message_all_counts.get(member_id, 0)
+            total_joins = voice_join_counts.get(member_id, 0)
+            total_leaves = voice_leave_counts.get(member_id, 0)
+            total_time_spent = int(voice_channel_time_spent.get(member_id, 0))  # 총 시간은 초 단위로 계산됩니다.
+
+            data.append({
+                'Member_ID': member_id,
+                'Member_Name': member_name,
+                'Total_Messages': total_messages,
+                'Total_Joins': total_joins,
+                'Total_Leaves': total_leaves,
+                'Total_Time_Spent_in_VC_(seconds)': total_time_spent,  # 초 단위의 시간
+            })
+
+        df_summary = pd.DataFrame(data)
+        df_summary.to_excel(writer, sheet_name='Summary', index=False)  # 'Summary' 시트에 데이터 기록
+
+    try:
+        with open(file_name, 'rb') as f:
             await ctx.reply(file=discord.File(f), mention_author=True)
-            os.remove(file_name)
-        except discord.HTTPException as e:
-            embed = Embed(title="Error",
-                          description=f"Failed to upload the file: {str(e)}",
-                          color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
-            logger.error(f"Failed to upload the file: {str(e)}")
+        os.remove(file_name)  # 파일 사용이 완료된 후 파일 삭제
+    except discord.HTTPException as e:
+        embed = Embed(title="Error",
+                      description=f"Failed to upload the file: {str(e)}",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        logger.error(f"Failed to upload the file: {str(e)}")
+    except FileNotFoundError as e:
+        embed = Embed(title="Error",
+                      description=f"Failed to delete the file. It might have been already deleted or not found: {str(e)}",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        logger.error(f"Failed to delete the file: {str(e)}")
 
 
 @bot.event
@@ -234,6 +411,67 @@ async def on_command_error(ctx, error):
         return
     else:
         logger.error(f"An error occurred: {str(error)}")
+
+
+@bot.command()
+async def ama_info(ctx, role_name: str, member: discord.Member):
+    try:
+        # 데이터베이스에서 사용자 정보 조회
+        user_summary = await get_user_summary_from_db(role_name, member.id)
+        if user_summary:
+            # 시간을 분과 초로 변환
+            total_seconds = user_summary['time_spent']
+            minutes, seconds = divmod(total_seconds, 60)
+            if minutes > 0:
+                time_spent_str = f"`{minutes}` minutes `{seconds}` seconds"
+            else:
+                time_spent_str = f"`{seconds}` seconds"
+
+            embed = Embed(title=f"{role_name} Summary for {member.display_name}",
+                          description=f"- Total Messages: `{user_summary['total_messages']}`\n"
+                                      f"- Valid Messages: `{user_summary['valid_messages']}`\n"
+                                      f"- AMA VC Joins: `{user_summary['total_joins']}`\n"
+                                      f"- AMA VC Leaves: `{user_summary['total_leaves']}`\n"
+                                      f"- Time Spent: {time_spent_str}",
+                          color=0x37e37b)
+        else:
+            embed = Embed(title="No Data Found",
+                          description=f"No summary data found for {member.display_name} in {role_name}.",
+                          color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        embed = Embed(title="Error",
+                      description=f"An error occurred: {str(e)}",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        logger.error(f"An error occurred: {str(e)}")
+
+
+async def get_user_summary_from_db(role_name, user_id):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    user_summary = None
+    try:
+        # 사용자 요약 정보 조회
+        cursor.execute("""
+            SELECT * FROM ama_users_summary
+            WHERE role_name = %s AND user_id = %s
+            """, (role_name, str(user_id)))
+        result = cursor.fetchone()
+        if result:
+            user_summary = {
+                'total_messages': result['total_messages'],
+                'valid_messages': result['valid_messages'],
+                'total_joins': result['total_joins'],
+                'total_leaves': result['total_leaves'],
+                'time_spent': result['time_spent']
+            }
+    except Exception as e:
+        logger.error(f'DB error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+    return user_summary
 
 
 bot.run(bot_token)

@@ -475,4 +475,264 @@ async def get_user_summary_from_db(role_name, user_id):
     return user_summary
 
 
+
+
+
+
+
+
+
+
+import json
+
+# 주어진 JSON 데이터
+usernames_data = '''
+{
+"kingrk": 9,
+"fallenleaf777": 9,
+"papason": 3,
+"justinjang": 14,
+"jinee.super": 27,
+"masque9807": 23,
+"972_": 1,
+"eth_apple": 14,
+"cherrycoco": 12,
+"wonseok1817": 4,
+".fashionpolice": 13,
+"navi.eth": 45,
+"insanelee": 13,
+"person.nice": 39,
+"darkk3164": 12,
+"top6735": 23,
+"richardsong": 1,
+"hanhsiang": 3,
+"zoozoo_": 9,
+"ohtani6861": 11,
+"pipimao": 3,
+"sanghoking": 33,
+"marie5931": 72,
+"kitty_0u0_cherry": 34,
+"sommie9417": 22,
+"t0xzhisheng": 1,
+"일론마스크": 24,
+"mr.kitkit": 41,
+"nicchun": 36,
+"aby123": 23,
+"potat0x": 19,
+"lina7328": 25,
+"debss0365": 47,
+"yunhyeok": 7,
+"yesakita": 6,
+"hunter_fka": 13,
+"0xnaldo": 34,
+"moon6800": 18,
+"im___winter": 59,
+"han0202": 5,
+"roseblackpink": 10,
+"harryc93": 7,
+"effzee": 7,
+"chevan.eth": 0,
+"royalfamily_eth": 5,
+"rangrang_.anotherworld": 35,
+"smart6609": 0,
+"poshbabe": 80,
+"aha.o": 63,
+"cyber_shu": 0,
+"junel": 26,
+"jjjjjuuuuu": 7,
+"itsjonr": 2,
+"eunhopapa": 2,
+"jambivert": 22,
+"haverland75": 16,
+"blueminions": 1,
+"porsche911": 11,
+"kolupu": 7,
+"mackenzzisteele1839": 80,
+"hillspearl": 7,
+"mathzin.eth": 15,
+"presh1210": 44,
+"kimmykim": 3,
+"slime5111": 20,
+"joshua_or_josh": 13,
+"brc_peter": 0,
+"ariel35.": 16,
+"tfortabasco": 0,
+"king_dele07": 29,
+"irene_ine": 16,
+"rockxxx": 8,
+"kimsw": 26,
+"liliwithlove": 16,
+"lovemushroom": 80,
+"aaliyah0030": 14,
+"hhisnothing": 14,
+"opyaansradiance": 16,
+"starboycrypto1": 0,
+"innocentzero": 5,
+"revjoy": 0,
+"eraserranora": 6,
+"chrisnico": 6,
+"vegeta_.sama": 13,
+"lys5566": 17,
+"duubemmm": 25,
+"payne21": 22,
+"jokergeee": 0,
+"shivam051": 6,
+"maimai4675": 1,
+"tomtom9169": 6,
+"daram.eth": 3,
+"nicolepaquin": 0,
+".bedas": 6,
+"treasure3818": 40,
+"justinagarrison": 0,
+"ibtissamkaraka": 0,
+"reust": 15,
+"cannongrayson": 0,
+"dog.player": 45,
+"wildchest": 11,
+"SuttonJack": 0,
+"SchulerAndreas": 0,
+"ezenku": 45,
+"ㅇEricaㅇ": 0,
+"julylove": 0,
+"야옹냐옹": 0,
+"cornelaci": 25,
+"GODSENT": 0,
+"마이프레셔스": 0,
+"oxygen222": 28,
+"머핀맨": 0,
+"조아핑": 0,
+"hayul_papa": 9,
+"roonygoal": 0,
+"Anna0315": 0,
+"애니오타쿠": 0,
+"십자가": 0,
+"구구콘": 0,
+".blackswan": 2,
+"팔이클하상": 0,
+"칠면죠": 0,
+"육개장": 0,
+"오지명": 0,
+"사랑꾼": 0,
+"삼삼해": 0,
+"chung_11": 9,
+"memall": 0,
+"lemam": 0,
+"gy_1212": 2,
+"seo._.o": 47,
+"kimchiii0319": 25,
+"lupin3th": 16,
+"tammy1728": 22,
+"0xjiahao": 0,
+"abigeal.": 5,
+"dashy5667": 0,
+"10nft.cat": 5,
+"hsientreepay": 3,
+"mrborger1": 1,
+"Bad influence😈": 13,
+"1_1pai": 5,
+"tbg0069": 10,
+"blaqoo": 0,
+"jatio": 49,
+"antone.": 0,
+"hemdy_classic": 11,
+"boyjay": 4,
+"darksaber_eth": 2,
+"_ghjkl": 11,
+"telles_dx": 20,
+"asunawon": 8,
+"d10.eth": 5,
+"kenji9359": 39,
+"Stars E 💙": 19,
+"Tunny": 9,
+"agent_pet": 5,
+"henry5604": 13,
+"chiyoyoyo": 12,
+"doosingod": 16,
+"sadcat9698": 8,
+"charlesjr9439": 23,
+"hanny": 8,
+"jj85_3920": 11,
+"juice": 6,
+"benben4751": 2,
+"songsong6059": 5,
+"gavinner66": 6,
+"melody.eth": 9,
+"jake4980": 4,
+"jackykao15": 26,
+"supra.btc": 10,
+"moonkz": 0,
+"GOLDIE🥀👻": 4,
+"jonggggg": 9,
+"xpsalmx": 8,
+"x_ayomide": 14,
+"stan4326": 4,
+"gguang_": 9,
+"dmddo77": 7,
+"𝐀𝐑𝐈𝐄𝐒𝐐𝐔𝐄𝐄𝐍 🎭": 11,
+"krister8516": 2,
+"rita2433": 1,
+"supercatsol": 1,
+"kevtw": 4,
+"xstchael": 7,
+"mrx2778": 0,
+"preshous": 5,
+"halosunny": 1,
+"boyuboyu": 1,
+"konstrvct": 0,
+"pablomannyotm": 0,
+"0xblonded": 0,
+"thewealthhunter": 2,
+"temie7012": 3,
+"itsnothing.": 0,
+"jay4orce": 3,
+"halima7406": 3,
+"darkryder01": 0,
+"carrotchan": 1,
+"0xdavidmaxeth": 0
+}
+'''
+
+usernames = json.loads(usernames_data)
+
+@bot.command()
+async def extract_ids(ctx):
+    id_mapping = {}
+
+    for display_name in usernames.keys():
+        # 주어진 디스플레이 이름으로 사용자를 찾습니다.
+        member = discord.utils.find(lambda m: m.display_name == display_name, ctx.guild.members)
+        if member:
+            id_mapping[display_name] = member.id
+
+    # 결과를 JSON 파일로 저장합니다.
+    file_name = "ids_mapping.json"
+    with open(file_name, 'w') as file:
+        json.dump(id_mapping, file)
+
+    # JSON 파일을 디스코드에 업로드합니다.
+    with open(file_name, 'rb') as file:
+        await ctx.send("Here's the extracted IDs:", file=discord.File(file))
+
+@bot.command()
+async def extract_active_ids(ctx):
+    id_mapping = {}
+
+    for display_name, value in usernames.items():
+        if value > 0:  # 값이 0보다 큰 사용자만 처리합니다.
+            # 주어진 디스플레이 이름으로 사용자를 찾습니다.
+            member = discord.utils.find(lambda m: m.display_name == display_name, ctx.guild.members)
+            if member:
+                id_mapping[display_name] = member.id
+
+    # 결과를 JSON 파일로 저장합니다.
+    file_name = "active_ids_mapping.json"
+    with open(file_name, 'w') as file:
+        json.dump(id_mapping, file)
+
+    # JSON 파일을 디스코드에 업로드합니다.
+    with open(file_name, 'rb') as file:
+        await ctx.send("Here's the extracted IDs of active users:", file=discord.File(file))
+
+
+
 bot.run(bot_token)

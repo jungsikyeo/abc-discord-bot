@@ -486,8 +486,7 @@ async def get_user_summary_from_db(role_name, user_id):
 import json
 
 # 주어진 JSON 데이터
-usernames_data = '''
-{
+data = {
 "kingrk": 9,
 "fallenleaf777": 9,
 "papason": 3,
@@ -690,49 +689,25 @@ usernames_data = '''
 "carrotchan": 1,
 "0xdavidmaxeth": 0
 }
-'''
-
-usernames = json.loads(usernames_data)
 
 @bot.command()
 async def extract_ids(ctx):
-    id_mapping = {}
+    guild = ctx.guild
+    result = {}
 
-    for display_name in usernames.keys():
-        # 주어진 디스플레이 이름으로 사용자를 찾습니다.
-        member = discord.utils.find(lambda m: m.display_name == display_name, ctx.guild.members)
-        if member:
-            id_mapping[display_name] = member.id
-
-    # 결과를 JSON 파일로 저장합니다.
-    file_name = "ids_mapping.json"
-    with open(file_name, 'w') as file:
-        json.dump(id_mapping, file)
-
-    # JSON 파일을 디스코드에 업로드합니다.
-    with open(file_name, 'rb') as file:
-        await ctx.send("Here's the extracted IDs:", file=discord.File(file))
-
-@bot.command()
-async def extract_active_ids(ctx):
-    id_mapping = {}
-
-    for display_name, value in usernames.items():
-        if value > 0:  # 값이 0보다 큰 사용자만 처리합니다.
-            # 주어진 디스플레이 이름으로 사용자를 찾습니다.
-            member = discord.utils.find(lambda m: m.display_name == display_name, ctx.guild.members)
+    for username, message_count in data.items():
+        if message_count > 0:
+            member = discord.utils.get(guild.members, name=username)
             if member:
-                id_mapping[display_name] = member.id
+                result[username] = member.id
+            else:
+                result[username] = "no search"
 
-    # 결과를 JSON 파일로 저장합니다.
-    file_name = "active_ids_mapping.json"
-    with open(file_name, 'w') as file:
-        json.dump(id_mapping, file)
+    # 결과를 JSON 파일로 저장
+    with open("extracted_ids.json", "w") as f:
+        json.dump(result, f, ensure_ascii=False, indent=4)
 
-    # JSON 파일을 디스코드에 업로드합니다.
-    with open(file_name, 'rb') as file:
-        await ctx.send("Here's the extracted IDs of active users:", file=discord.File(file))
-
+    await ctx.send("Extracted IDs have been saved to `extracted_ids.json`.", file=discord.File("extracted_ids.json"))
 
 
 bot.run(bot_token)

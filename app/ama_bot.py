@@ -372,6 +372,7 @@ async def capture_final_snapshot(ctx):
             join_time = voice_channel_join_times.get(member.id, current_time)
             time_spent = current_time - join_time
             total_time_spent = voice_channel_time_spent.get(member.id, 0) + time_spent
+            voice_channel_time_spent[member.id] = total_time_spent
 
             snapshot[member.id] = {
                 "Member_Name": member.name,

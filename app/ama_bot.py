@@ -9,6 +9,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
+from typing import Union
 
 load_dotenv()
 
@@ -16,6 +17,7 @@ bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 ama_vc_channel_id = int(os.getenv("AMA_VC_CHANNEL_ID"))
 ama_text_channel_id = int(os.getenv("AMA_TEXT_CHANNEL_ID"))
+ama_loop_time = int(os.getenv("AMA_LOOP_TIME"))
 bot_log_folder = os.getenv("BOT_LOG_FOLDER")
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
@@ -42,6 +44,7 @@ voice_channel_time_spent = {}
 voice_channel_join_times = {}
 ama_role_id = None
 ama_in_progress = False
+ama_end_progress = False
 snapshots = []
 
 
@@ -76,27 +79,36 @@ async def on_ready():
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def start_ama(ctx, role_id: int):
+async def start_ama(ctx, role: Union[discord.Role, int, str]):
     global ama_role_id, ama_in_progress
     if ama_in_progress:
         embed = Embed(title="Error",
-                      description=f"❌ An AMA session is already in progress.\n\n"
+                      description=f"❌ AMA session is already in progress.\n\n"
                                   f"❌ AMA 세션이 이미 진행 중입니다.",
                       color=0xff0000)
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    role = discord.utils.get(ctx.guild.roles, id=role_id)
-    if role is None:
+    # 입력값이 롤 객체인 경우
+    if isinstance(role, discord.Role):
+        role_found = role
+    # 입력값이 역할 ID인 경우
+    elif isinstance(role, int):
+        role_found = discord.utils.get(ctx.guild.roles, id=role)
+    # 입력값이 역할 이름인 경우
+    else:
+        role_found = discord.utils.get(ctx.guild.roles, name=role)
+
+    if role_found is None:
         embed = Embed(title="Error",
-                      description=f"❌ No role found with ID: {role_id}. Please provide a valid role ID.\n\n"
-                                  f"❌ {role_id} role을 찾을 수 없습니다. 올바른 role ID를 입력하십시오.",
+                      description=f"❌ Role not found for name, ID, or mention {role}. Please enter a valid role name, ID, or mention.\n\n"
+                                  f"❌ {role} 이름, ID 또는 멘션의 역할을 찾을 수 없습니다. 올바른 역할 이름, ID 또는 멘션을 입력해주세요.",
                       color=0xff0000)
         await ctx.reply(embed=embed, mention_author=True)
         return
 
     try:
-        ama_role_id = role_id
+        ama_role_id = role_found.id
         snapshots.clear()
         message_counts.clear()
         message_all_counts.clear()
@@ -130,7 +142,7 @@ async def start_ama(ctx, role_id: int):
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def end_ama(ctx):
-    global ama_role_id, ama_in_progress
+    global ama_role_id, ama_in_progress, ama_end_progress
     if not ama_in_progress:
         embed = Embed(title="Error",
                       description=f"❌ No AMA session is currently in progress.\n\n"
@@ -138,6 +150,18 @@ async def end_ama(ctx):
                       color=0xff0000)
         await ctx.reply(embed=embed, mention_author=True)
         return
+
+    # AMA가 이미 종료 중인지 확인
+    if ama_end_progress:
+        embed = Embed(title="Error",
+                      description=f"❌ AMA session is already ending. Please wait.\n\n"
+                                  f"❌ AMA 세션이 이미 종료 중입니다. 기다려 주세요.",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    ama_end_progress = True
+
     try:
         capture_loop.cancel()
         await capture_final_snapshot(ctx)
@@ -151,6 +175,17 @@ async def end_ama(ctx):
         # 데이터베이스에 데이터 저장
         db_data = []
         for member_id in voice_join_counts:
+            try:
+                member = ctx.guild.get_member(member_id)
+                if member:  # 사용자가 여전히 서버에 있는 경우
+                    member_name = member.name  # 멤버의 디스플레이 이름 가져오기
+                else:  # 사용자가 서버를 떠난 경우
+                    member_name = str(member_id)  # 멤버의 ID를 문자열로 사용
+                    logger.warning(f"Member with ID {member_id} not found. They might have left the server.")
+            except Exception as e:  # 다른 예외 처리
+                member_name = "Unknown"
+                logger.error(f"An error occurred while getting member info: {str(e)}")
+
             total_messages = message_all_counts.get(member_id, 0)
             valid_messages = message_counts.get(member_id, 0)  # 유효한 메시지 수를 여기에 입력하세요
             total_joins = voice_join_counts.get(member_id, 0)
@@ -159,6 +194,7 @@ async def end_ama(ctx):
 
             db_data.append((
                 str(ama_role_id), role_name, str(member_id),
+                member_name,
                 total_messages, valid_messages, total_joins, total_leaves, time_spent
             ))
         # 데이터베이스에 데이터 저장
@@ -179,6 +215,46 @@ async def end_ama(ctx):
         await ctx.reply(embed=embed, mention_author=True)
         logger.error(f"An error occurred: {str(e)}")
 
+    ama_end_progress = False
+
+
+async def save_snapshot_to_db(ctx, snapshot_data):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        timestamp = snapshot_data["Timestamp"]
+        ama_role_name = discord.utils.get(ctx.guild.roles, id=ama_role_id).name
+        for member_id, member_data in snapshot_data.items():
+            if member_id != "Timestamp":  # Ensure we don't process the "Timestamp" key as a member
+                cursor.execute("""
+                    INSERT INTO ama_users_summary_snapshot (
+                        role_id, role_name, user_id, user_name,
+                        total_messages, valid_messages,
+                        total_joins, total_leaves, time_spent, timestamp
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    str(ama_role_id),
+                    str(ama_role_name),
+                    str(member_id),
+                    member_data['Member_Name'],
+                    member_data['Total_Messages'],
+                    member_data['Valid_Messages'],
+                    member_data['Total_Joins'],
+                    member_data['Total_Leaves'],
+                    member_data['Total_Time_Spent_in_VC_(seconds)'],
+                    timestamp
+                ))
+
+        connection.commit()
+
+    except Exception as e:
+        logger.error(f'DB error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
 
 async def save_data_to_db(ctx, db_data):
     connection = db.get_connection()
@@ -190,13 +266,14 @@ async def save_data_to_db(ctx, db_data):
                     role_id,
                     role_name,
                     user_id,
+                    user_name,
                     total_messages,
                     valid_messages,
                     total_joins,
                     total_leaves,
                     time_spent
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, data)
 
         connection.commit()
@@ -233,18 +310,37 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@tasks.loop(minutes=10)
+@tasks.loop(minutes=ama_loop_time)
 async def capture_loop(ctx):
     try:
         channel = bot.get_channel(ama_vc_channel_id)
         members = [member for member in channel.members if not member.bot]
         now = pd.Timestamp.now()
+        current_time = time.time()
         snapshot = {"Timestamp": now}
         for member in members:
             msg_count = message_counts.get(member.id, 0)
-            snapshot[member.name] = msg_count
+            all_msg_count = message_all_counts.get(member.id, 0)
+            total_joins = voice_join_counts.get(member.id, 0)
+            total_leaves = voice_leave_counts.get(member.id, 0)
+
+            # time_spent 계산
+            join_time = voice_channel_join_times.get(member.id, current_time)
+            time_spent = current_time - join_time
+            total_time_spent = voice_channel_time_spent.get(member.id, 0) + time_spent
+
+            snapshot[member.id] = {
+                "Member_Name": member.name,
+                "Total_Messages": all_msg_count,
+                "Valid_Messages": msg_count,
+                "Total_Joins": total_joins,
+                "Total_Leaves": total_leaves,
+                "Total_Time_Spent_in_VC_(seconds)": total_time_spent
+            }
         logger.info(snapshot)
         snapshots.append(snapshot)
+
+        await save_snapshot_to_db(ctx, snapshot)
 
         embed = Embed(title="Success",
                       description=f"✅ Snapshot `{now}` has been created.\n\n"
@@ -268,12 +364,27 @@ async def capture_final_snapshot(ctx):
         snapshot = {"Timestamp": now}
         for member in members:
             msg_count = message_counts.get(member.id, 0)
-            join_time = voice_channel_join_times[member.id]
+            all_msg_count = message_all_counts.get(member.id, 0)
+            total_joins = voice_join_counts.get(member.id, 0)
+            total_leaves = voice_leave_counts.get(member.id, 0)
+
+            # time_spent 계산
+            join_time = voice_channel_join_times.get(member.id, current_time)
             time_spent = current_time - join_time
-            voice_channel_time_spent[member.id] = voice_channel_time_spent.get(member.id, 0) + time_spent
-            snapshot[member.name] = msg_count
+            total_time_spent = voice_channel_time_spent.get(member.id, 0) + time_spent
+
+            snapshot[member.id] = {
+                "Member_Name": member.name,
+                "Total_Messages": all_msg_count,
+                "Valid_Messages": msg_count,
+                "Total_Joins": total_joins,
+                "Total_Leaves": total_leaves,
+                "Total_Time_Spent_in_VC_(seconds)": total_time_spent
+            }
         logger.info(snapshot)
         snapshots.append(snapshot)
+
+        await save_snapshot_to_db(ctx, snapshot)
 
         embed = Embed(title="Success",
                       description=f"✅ Snapshot `{now}` has been created.\n"
@@ -415,8 +526,28 @@ async def on_command_error(ctx, error):
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def ama_info(ctx, role_name: str, member: discord.Member):
+async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Member):
     try:
+        # 입력값이 롤 객체인 경우
+        if isinstance(role, discord.Role):
+            role_found = role
+        # 입력값이 역할 ID인 경우
+        elif isinstance(role, int):
+            role_found = discord.utils.get(ctx.guild.roles, id=role)
+        # 입력값이 역할 이름인 경우
+        else:
+            role_found = discord.utils.get(ctx.guild.roles, name=role)
+
+        if role_found is None:
+            embed = Embed(title="Error",
+                          description=f"❌ Role not found for name, ID, or mention `{role}`. Please enter a valid role name, ID, or mention.\n\n"
+                                      f"❌ `{role}` 이름, ID 또는 멘션의 역할을 찾을 수 없습니다. 올바른 역할 이름, ID 또는 멘션을 입력해주세요.",
+                          color=0xff0000)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+
+        role_name = role_found.name
+
         # 데이터베이스에서 사용자 정보 조회
         user_summary = await get_user_summary_from_db(role_name, member.id)
         if user_summary:
@@ -473,241 +604,6 @@ async def get_user_summary_from_db(role_name, user_id):
         cursor.close()
         connection.close()
     return user_summary
-
-
-
-
-
-
-
-
-
-
-import json
-
-# 주어진 JSON 데이터
-data = {
-"kingrk": 9,
-"fallenleaf777": 9,
-"papason": 3,
-"justinjang": 14,
-"jinee.super": 27,
-"masque9807": 23,
-"972_": 1,
-"eth_apple": 14,
-"cherrycoco": 12,
-"wonseok1817": 4,
-".fashionpolice": 13,
-"navi.eth": 45,
-"insanelee": 13,
-"person.nice": 39,
-"darkk3164": 12,
-"top6735": 23,
-"richardsong": 1,
-"hanhsiang": 3,
-"zoozoo_": 9,
-"ohtani6861": 11,
-"pipimao": 3,
-"sanghoking": 33,
-"marie5931": 72,
-"kitty_0u0_cherry": 34,
-"sommie9417": 22,
-"t0xzhisheng": 1,
-"일론마스크": 24,
-"mr.kitkit": 41,
-"nicchun": 36,
-"aby123": 23,
-"potat0x": 19,
-"lina7328": 25,
-"debss0365": 47,
-"yunhyeok": 7,
-"yesakita": 6,
-"hunter_fka": 13,
-"0xnaldo": 34,
-"moon6800": 18,
-"im___winter": 59,
-"han0202": 5,
-"roseblackpink": 10,
-"harryc93": 7,
-"effzee": 7,
-"chevan.eth": 0,
-"royalfamily_eth": 5,
-"rangrang_.anotherworld": 35,
-"smart6609": 0,
-"poshbabe": 80,
-"aha.o": 63,
-"cyber_shu": 0,
-"junel": 26,
-"jjjjjuuuuu": 7,
-"itsjonr": 2,
-"eunhopapa": 2,
-"jambivert": 22,
-"haverland75": 16,
-"blueminions": 1,
-"porsche911": 11,
-"kolupu": 7,
-"mackenzzisteele1839": 80,
-"hillspearl": 7,
-"mathzin.eth": 15,
-"presh1210": 44,
-"kimmykim": 3,
-"slime5111": 20,
-"joshua_or_josh": 13,
-"brc_peter": 0,
-"ariel35.": 16,
-"tfortabasco": 0,
-"king_dele07": 29,
-"irene_ine": 16,
-"rockxxx": 8,
-"kimsw": 26,
-"liliwithlove": 16,
-"lovemushroom": 80,
-"aaliyah0030": 14,
-"hhisnothing": 14,
-"opyaansradiance": 16,
-"starboycrypto1": 0,
-"innocentzero": 5,
-"revjoy": 0,
-"eraserranora": 6,
-"chrisnico": 6,
-"vegeta_.sama": 13,
-"lys5566": 17,
-"duubemmm": 25,
-"payne21": 22,
-"jokergeee": 0,
-"shivam051": 6,
-"maimai4675": 1,
-"tomtom9169": 6,
-"daram.eth": 3,
-"nicolepaquin": 0,
-".bedas": 6,
-"treasure3818": 40,
-"justinagarrison": 0,
-"ibtissamkaraka": 0,
-"reust": 15,
-"cannongrayson": 0,
-"dog.player": 45,
-"wildchest": 11,
-"SuttonJack": 0,
-"SchulerAndreas": 0,
-"ezenku": 45,
-"ㅇEricaㅇ": 0,
-"julylove": 0,
-"야옹냐옹": 0,
-"cornelaci": 25,
-"GODSENT": 0,
-"마이프레셔스": 0,
-"oxygen222": 28,
-"머핀맨": 0,
-"조아핑": 0,
-"hayul_papa": 9,
-"roonygoal": 0,
-"Anna0315": 0,
-"애니오타쿠": 0,
-"십자가": 0,
-"구구콘": 0,
-".blackswan": 2,
-"팔이클하상": 0,
-"칠면죠": 0,
-"육개장": 0,
-"오지명": 0,
-"사랑꾼": 0,
-"삼삼해": 0,
-"chung_11": 9,
-"memall": 0,
-"lemam": 0,
-"gy_1212": 2,
-"seo._.o": 47,
-"kimchiii0319": 25,
-"lupin3th": 16,
-"tammy1728": 22,
-"0xjiahao": 0,
-"abigeal.": 5,
-"dashy5667": 0,
-"10nft.cat": 5,
-"hsientreepay": 3,
-"mrborger1": 1,
-"Bad influence😈": 13,
-"1_1pai": 5,
-"tbg0069": 10,
-"blaqoo": 0,
-"jatio": 49,
-"antone.": 0,
-"hemdy_classic": 11,
-"boyjay": 4,
-"darksaber_eth": 2,
-"_ghjkl": 11,
-"telles_dx": 20,
-"asunawon": 8,
-"d10.eth": 5,
-"kenji9359": 39,
-"Stars E 💙": 19,
-"Tunny": 9,
-"agent_pet": 5,
-"henry5604": 13,
-"chiyoyoyo": 12,
-"doosingod": 16,
-"sadcat9698": 8,
-"charlesjr9439": 23,
-"hanny": 8,
-"jj85_3920": 11,
-"juice": 6,
-"benben4751": 2,
-"songsong6059": 5,
-"gavinner66": 6,
-"melody.eth": 9,
-"jake4980": 4,
-"jackykao15": 26,
-"supra.btc": 10,
-"moonkz": 0,
-"GOLDIE🥀👻": 4,
-"jonggggg": 9,
-"xpsalmx": 8,
-"x_ayomide": 14,
-"stan4326": 4,
-"gguang_": 9,
-"dmddo77": 7,
-"𝐀𝐑𝐈𝐄𝐒𝐐𝐔𝐄𝐄𝐍 🎭": 11,
-"krister8516": 2,
-"rita2433": 1,
-"supercatsol": 1,
-"kevtw": 4,
-"xstchael": 7,
-"mrx2778": 0,
-"preshous": 5,
-"halosunny": 1,
-"boyuboyu": 1,
-"konstrvct": 0,
-"pablomannyotm": 0,
-"0xblonded": 0,
-"thewealthhunter": 2,
-"temie7012": 3,
-"itsnothing.": 0,
-"jay4orce": 3,
-"halima7406": 3,
-"darkryder01": 0,
-"carrotchan": 1,
-"0xdavidmaxeth": 0
-}
-
-@bot.command()
-async def extract_ids(ctx):
-    guild = ctx.guild
-    result = {}
-
-    for username, message_count in data.items():
-        if message_count > 0:
-            member = discord.utils.get(guild.members, name=username)
-            if member:
-                result[username] = member.id
-            else:
-                result[username] = "no search"
-
-    # 결과를 JSON 파일로 저장
-    with open("extracted_ids.json", "w") as f:
-        json.dump(result, f, ensure_ascii=False, indent=4)
-
-    await ctx.send("Extracted IDs have been saved to `extracted_ids.json`.", file=discord.File("extracted_ids.json"))
 
 
 bot.run(bot_token)

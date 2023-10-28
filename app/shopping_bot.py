@@ -1334,45 +1334,72 @@ class BidButtonView(View):
 
     async def auction_winners(self):
         for prize in self.prizes[self.market_id]:
-            bid = get_auction_bid(self.db, self.market_id, prize['prize_id'])
-            bid_users_sorted = sorted(bid.get('bid_users', []), key=lambda x: x['total_bid_price'], reverse=True)
-            non_winners = {bid_user['user_id']: bid_user['total_bid_price'] for bid_user in bid_users_sorted}
-            winners_count = 0
-            winners_list = []
+            winners_result = get_winners_result(db, self.market_id, prize['prize_id'])
+            if winners_result['result_yn'] == 'Y':
+                # 승자 출력
+                winners_mentions = ', '.join([f"<@{winner['user_id']}>" for winner in winners_result['winners_user']])
+                await self.org_interaction.channel.send(f"**Winners for {winners_result['prize_name']} - Top {winners_result['winners']}** : "
+                                                        f"{winners_mentions}")
+            else:
+                bid = get_auction_bid(self.db, self.market_id, prize['prize_id'])
+                bid_users_sorted = sorted(bid.get('bid_users', []), key=lambda x: x['total_bid_price'], reverse=True)
+                non_winners = {bid_user['user_id']: bid_user['total_bid_price'] for bid_user in bid_users_sorted}
+                winners_count = 0
+                winners_list = []
 
-            while winners_count < prize['winners'] and bid_users_sorted:
-                # 현재 최고 입찰 가격을 가진 사람들을 가져옴
-                current_top_price = bid_users_sorted[0]['total_bid_price']
-                same_price_bidders = [b for b in bid_users_sorted if b['total_bid_price'] == current_top_price]
+                while winners_count < prize['winners'] and bid_users_sorted:
+                    # 현재 최고 입찰 가격을 가진 사람들을 가져옴
+                    current_top_price = bid_users_sorted[0]['total_bid_price']
+                    same_price_bidders = [b for b in bid_users_sorted if b['total_bid_price'] == current_top_price]
 
-                # 만약 동률자 수가 남은 승자 수보다 많거나 같으면 랜덤 선택
-                if len(same_price_bidders) > prize['winners'] - winners_count:
-                    chosen_winners = random.sample(same_price_bidders, prize['winners'] - winners_count)
-                    winners_list.extend(chosen_winners)
-                    winners_count += len(chosen_winners)
-                else:
-                    winners_list.extend(same_price_bidders)
-                    winners_count += len(same_price_bidders)
+                    # 만약 동률자 수가 남은 승자 수보다 많거나 같으면 랜덤 선택
+                    if len(same_price_bidders) > prize['winners'] - winners_count:
+                        chosen_winners = random.sample(same_price_bidders, prize['winners'] - winners_count)
+                        winners_list.extend(chosen_winners)
+                        winners_count += len(chosen_winners)
+                    else:
+                        winners_list.extend(same_price_bidders)
+                        winners_count += len(same_price_bidders)
 
-                # 처리한 입찰자 제거
-                bid_users_sorted = [b for b in bid_users_sorted if b['total_bid_price'] != current_top_price]
+                    # 처리한 입찰자 제거
+                    bid_users_sorted = [b for b in bid_users_sorted if b['total_bid_price'] != current_top_price]
 
-            # 당첨자 목록에서 미당첨자 제거
-            for winner in winners_list:
-                if winner['user_id'] in non_winners:
-                    del non_winners[winner['user_id']]
+                # 당첨자 목록에서 미당첨자 제거
+                for winner in winners_list:
+                    if winner['user_id'] in non_winners:
+                        del non_winners[winner['user_id']]
 
-            # 승자 출력
-            winners_mentions = ', '.join([f"<@{winner['user_id']}>" for winner in winners_list])
-            await self.org_interaction.channel.send(f"**Winners for {prize['name']} - Top {prize['winners']}** : "
-                                                    f"{winners_mentions}")
+                for winner in winners_list:
+                    await self.winner_user(prize['prize_id'], winner)
 
-            # 미당첨자 환불 처리
-            for non_winner_id, total_bid_price in non_winners.items():
-                deduction = int(total_bid_price * 0.20)  # 20% 차감
-                refund_price = total_bid_price - deduction
-                # DB에서 환불 처리
-                await self.refund_user(prize['prize_id'], non_winner_id, total_bid_price, refund_price)
+                # 승자 출력
+                winners_mentions = ', '.join([f"<@{winner['user_id']}>" for winner in winners_list])
+                await self.org_interaction.channel.send(f"**Winners for {prize['name']} - Top {prize['winners']}** : "
+                                                        f"{winners_mentions}")
+
+                # 미당첨자 환불 처리
+                for non_winner_id, total_bid_price in non_winners.items():
+                    deduction = int(total_bid_price * 0.20)  # 20% 차감
+                    refund_price = total_bid_price - deduction
+                    # DB에서 환불 처리
+                    await self.refund_user(prize['prize_id'], non_winner_id, total_bid_price, refund_price)
+
+    async def winner_user(self, prize_id, winner):
+        connection = self.db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute("""
+                insert into auction_winners(market_id, prize_id, user_id, user_name, total_bid_price)
+                values (%s, %s, %s, %s, %s)
+            """, (self.market_id, prize_id, winner['user_id'], winner['user_name'], winner['total_bid_price']))
+
+            connection.commit()
+        except Exception as e:
+            logger.error(f'BidButtonView - winner_user error: {e}')
+            return
+        finally:
+            cursor.close()
+            connection.close()
 
     async def refund_user(self, prize_id, non_winner_id, total_bid_price, refund_price):
         connection = self.db.get_connection()
@@ -1788,6 +1815,65 @@ def get_my_auction_bid(db, market_id, prize_id, user_id):
         cursor.close()
         connection.close()
     return my_total_bid
+
+
+def get_winners_result(db, market_id, prize_id):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    winners_result = 0
+    try:
+        cursor.execute("""
+            select 
+                ap.market_id, 
+                ap.id as prize_id, 
+                ap.name as prize_name,
+                ap.winners,
+                count(aw.user_id) as winners_result,
+                if(ap.winners = count(aw.user_id), 'Y', 'N') as result_yn
+            from auction_prizes ap
+            left outer join auction_winners aw on ap.market_id = aw.market_id and ap.id = aw.prize_id
+            where ap.market_id = %s 
+            and ap.id = %s
+            group by ap.market_id, ap.id, ap.winners
+        """, (market_id, prize_id))
+        winners_result_db = cursor.fetchone()
+        winners_result = {
+            'market_id': winners_result_db['market_id'],
+            'prize_id': winners_result_db['prize_id'],
+            'prize_name': winners_result_db['prize_name'],
+            'winners': winners_result_db['winners'],
+            'winners_result': winners_result_db['winners_result'],
+            'result_yn': winners_result_db['result_yn'],
+            'winners_user': []
+        }
+        if winners_result['result_yn'] == 'Y':
+            cursor.execute("""
+                select
+                    ap.market_id,
+                    ap.id as prize_id,
+                    ap.winners,
+                    aw.user_id,
+                    aw.user_name,
+                    aw.total_bid_price
+                from auction_prizes ap
+                left outer join auction_winners aw on ap.market_id = aw.market_id and ap.id = aw.prize_id
+                where ap.market_id = %s
+                  and ap.id = %s
+            """, (market_id, prize_id))
+            winners_user_db = cursor.fetchall()
+            for user in winners_user_db:
+                winners_result['winners_user'].append({
+                    'user_id': user['user_id'],
+                    'user_name': user['user_name'],
+                    'total_bid_price': user['total_bid_price']
+                })
+    except Exception as e:
+        connection.rollback()
+        logger.error(f'get_winners_result db error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+    return winners_result
 
 
 @bot.command()

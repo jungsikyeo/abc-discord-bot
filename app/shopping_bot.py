@@ -1219,10 +1219,10 @@ class AuctionPrizeAddModal(Modal):
             embed = Embed(
                 title="Add Prize Complete",
                 description="✅ 경품이 성공적으로 추가되었습니다! 아래 명령어로 옥션 마켓을 오픈하세요.\n"
-                            "`!open_market`\n\n"
+                            "`!open_auction`\n\n"
                             "✅ Prize has been successfully added! "
                             "Open the auction market using the command below.\n"
-                            "`!open_market`"
+                            "`!open_auction`"
             )
             await interaction.response.send_message(embed=embed)
         except Exception as e:
@@ -1548,7 +1548,7 @@ class BidModal(Modal):
             cursor.execute("""
                 update user_tokens set tokens = %s
                 where user_id = %s
-            """, (user_tokens, self.user_id))
+            """, (user_tokens, str(self.user_id)))
 
             connection.commit()
 
@@ -1589,7 +1589,7 @@ class BidModal(Modal):
                                 value=f"{bid_users}"
                                       f"Min Bid: {prize['min_bid']} SF", inline=True)
 
-        view = BidButtonView(self.db, self.market_id, prizes, self.org_interaction)
+        view = BidButtonView(self.db, self.market_id, prizes, end_dt, self.org_interaction)
 
         await self.org_interaction.edit_original_response(
             embed=embed,

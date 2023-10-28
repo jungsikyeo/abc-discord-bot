@@ -1020,11 +1020,12 @@ async def on_command_error(ctx, error):
 
 
 # -----------------------------------------------
-# Bidding-pi
+# auction-pi
 
 class MarketCreateView(View):
     def __init__(self, db, markets):
-        super().__init__(timeout=view_timeout)
+        super().__init__()
+        self.timeout = None
         self.db = db
         self.markets = markets
         self.options = [
@@ -1158,7 +1159,8 @@ class MarketModal(Modal):
 
 class AuctionPrizeAddView(View):
     def __init__(self, db, markets):
-        super().__init__(timeout=view_timeout)
+        super().__init__()
+        self.timeout = None
         self.db = db
 
         # 마켓 선택을 위한 콤보박스 생성
@@ -1236,6 +1238,7 @@ class AuctionPrizeAddModal(Modal):
 class OpenMarketView(View):
     def __init__(self, db, markets, prizes):
         super().__init__()
+        self.timeout = None
         self.db = db
         self.markets = markets
         self.prizes = prizes

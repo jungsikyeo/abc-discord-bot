@@ -200,8 +200,10 @@ async def end_ama(ctx):
         ama_in_progress = False
 
         embed = Embed(title="Success",
-                      description=f"✅ AMA session has ended!\n\n"
-                                  f"✅ AMA 세션이 종료되었습니다!",
+                      description=f"✅ AMA session has ended!\n"
+                                  f"Run the `!bulk_assign_role <Role>` command to assign a role.\n\n"
+                                  f"✅ AMA 세션이 종료되었습니다!\n"
+                                  f"`!bulk_assign_role <Role>` 명령어를 실행하여 롤을 부여해주세요.",
                       color=0x37e37b)
         await ctx.reply(embed=embed, mention_author=True)
 
@@ -386,10 +388,10 @@ async def capture_final_snapshot(ctx):
 
         embed = Embed(title="Success",
                       description=f"✅ Snapshot `{now}` has been created.\n"
-                                  f"Soon a role will be assigned and an Excel file will be created.\n"
+                                  f"Soon an Excel file will be created.\n"
                                   f"Please wait a moment.\n\n"
                                   f"✅ `{now}` 스냅샷이 생성되었습니다.\n"
-                                  f"곧 롤이 부여되고, 엑셀파일이 생성됩니다.\n"
+                                  f"곧 엑셀파일이 생성됩니다.\n"
                                   f"잠시만 기다려주세요.",
                       color=0x37e37b)
         await ctx.reply(embed=embed, mention_author=True)

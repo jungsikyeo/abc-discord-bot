@@ -653,7 +653,14 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
             embed = Embed(title=f"{role_found.name} assigned",
                           description=f"Role assignment for Role `{role_found.name}` completed!",
                           color=0x37e37b)
-            await ctx.send(embed=embed)
+            await ctx.reply(embed=embed)
+        else:
+            embed = Embed(title="Error",
+                          description=f"❌ The target to assign {role} is not queried.\n\n"
+                                      f"❌ {role}을 부여할 대상이 조회되지 않습니다.",
+                          color=0xff0000)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:
@@ -710,7 +717,14 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
             embed = Embed(title=f"{role_found.name} removed",
                           description=f"Role remove for Role `{role_found.name}` completed!",
                           color=0x37e37b)
-            await ctx.send(embed=embed)
+            await ctx.reply(embed=embed)
+        else:
+            embed = Embed(title="Error",
+                          description=f"❌ The target to remove {role} is not queried.\n\n"
+                                      f"❌ {role}을 제거할 대상이 조회되지 않습니다.",
+                          color=0xff0000)
+            await ctx.reply(embed=embed, mention_author=True)
+            return
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:

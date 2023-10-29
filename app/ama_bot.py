@@ -636,21 +636,21 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
             limit 10
             """, role_found.name)
         result = cursor.fetchall()
-        if result:
-            user_ids.append(result['user_id'])
+        for user_id in result:
+            user_ids.append(user_id['user_id'])
         if len(user_ids) > 0:
             for user_id in user_ids:
-                member = ctx.guild.get_member(user_id)
+                member = ctx.guild.get_member(int(user_id))
                 if member is not None:
                     try:
                         await member.add_roles(role_found)
-                        await ctx.send(f"Role {role_found.name} has been assigned to {member.display_name}.")
+                        await ctx.send(f"Role `{role_found.name}` has been assigned to `{member.name}`.")
                     except discord.Forbidden:
-                        await ctx.send(f"Failed to assign role to {member.display_name}. Check the bot's permissions.")
+                        await ctx.send(f"Failed to assign role to `{member.name}`. Check the bot's permissions.")
                     except discord.HTTPException as e:
-                        await ctx.send(f"HTTP exception while assigning role to {member.display_name}: {str(e)}")
+                        await ctx.send(f"HTTP exception while assigning role to `{member.name}`: {str(e)}")
                 else:
-                    await ctx.send(f"Member with ID {user_id} not found.")
+                    await ctx.send(f"Member with ID `{user_id}` not found.")
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:
@@ -693,17 +693,17 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
             user_ids.append(result['user_id'])
         if len(user_ids) > 0:
             for user_id in user_ids:
-                member = ctx.guild.get_member(user_id)
+                member = ctx.guild.get_member(int(user_id))
                 if member is not None:
                     try:
                         await member.remove_roles(role_found)
-                        await ctx.send(f"Role {role_found.name} has been removed from {member.display_name}.")
+                        await ctx.send(f"Role `{role_found.name}` has been removed from `{member.name}`.")
                     except discord.Forbidden:
-                        await ctx.send(f"Failed to remove role from {member.display_name}. Check the bot's permissions.")
+                        await ctx.send(f"Failed to remove role from `{member.name}`. Check the bot's permissions.")
                     except discord.HTTPException as e:
-                        await ctx.send(f"HTTP exception while removing role from {member.display_name}: {str(e)}")
+                        await ctx.send(f"HTTP exception while removing role from `{member.name}`: {str(e)}")
                 else:
-                    await ctx.send(f"Member with ID {user_id} not found.")
+                    await ctx.send(f"Member with ID `{user_id}` not found.")
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:

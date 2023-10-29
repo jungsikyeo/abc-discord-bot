@@ -633,7 +633,6 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
             from ama_users_summary
             where role_name = %s
             and valid_messages > 0
-            limit 10
             """, role_found.name)
         result = cursor.fetchall()
         for user_id in result:
@@ -651,6 +650,10 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
                         await ctx.send(f"HTTP exception while assigning role to `{member.name}`: {str(e)}")
                 else:
                     await ctx.send(f"Member with ID `{user_id}` not found.")
+            embed = Embed(title=f"{role_found.name} assigned",
+                          description=f"Role assignment for Role `{role_found.name}` completed!",
+                          color=0x37e37b)
+            await ctx.send(embed=embed)
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:
@@ -704,6 +707,10 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
                         await ctx.send(f"HTTP exception while removing role from `{member.name}`: {str(e)}")
                 else:
                     await ctx.send(f"Member with ID `{user_id}` not found.")
+            embed = Embed(title=f"{role_found.name} removed",
+                          description=f"Role remove for Role `{role_found.name}` completed!",
+                          color=0x37e37b)
+            await ctx.send(embed=embed)
     except Exception as e:
         logger.error(f'DB error: {e}')
     finally:

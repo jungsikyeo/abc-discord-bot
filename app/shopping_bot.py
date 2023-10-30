@@ -1289,13 +1289,14 @@ class OpenMarketSelect(Select):
                 if len(bid.get('bid_users', [])) > 0:
                     index = 1
                     for bid_user in bid.get('bid_users', []):
-                        if index <= 2:
+                        if index <= 10:
                             user_name = f"{bid_user['user_name'][0:1]} * * * *"
-                        elif index > 10:
-                            break
-                        else:
-                            user_name = bid_user['user_name']
-                        bid_users += f"{user_name} - {bid_user['total_bid_price']} SF\n"
+                            bid_price = str(bid_user['total_bid_price'])
+                            masked_price = bid_price[0] + '*' * (len(bid_price) - 1)
+                            bid_users += f"{user_name} - `{masked_price}` SF\n"
+                        elif index == len(bid.get('bid_users', [])):
+                            user_name = f"... {index - 10} bid history in additionally"
+                            bid_users += f"{user_name}\n"
                         index += 1
                 embed.add_field(name=f"""🎁️  {prize['name']}  -  Top {prize['winners']}  🎁️""",
                                 value=f"{bid_users}"
@@ -1604,13 +1605,14 @@ class BidModal(Modal):
                 if len(bid.get('bid_users', [])) > 0:
                     index = 1
                     for bid_user in bid.get('bid_users', []):
-                        if index <= 2:
+                        if index <= 10:
                             user_name = f"{bid_user['user_name'][0:1]} * * * *"
-                        elif index > 10:
-                            break
-                        else:
-                            user_name = bid_user['user_name']
-                        bid_users += f"{user_name} - {bid_user['total_bid_price']} SF\n"
+                            bid_price = str(bid_user['total_bid_price'])
+                            masked_price = bid_price[0] + '*' * (len(bid_price) - 1)
+                            bid_users += f"{user_name} - `{masked_price}` SF\n"
+                        elif index == len(bid.get('bid_users', [])):
+                            user_name = f"... {index - 10} bid history in additionally"
+                            bid_users += f"{user_name}\n"
                         index += 1
                 embed.add_field(name=f"""🎁️  {prize['name']}  -  Top {prize['winners']}  🎁️""",
                                 value=f"{bid_users}"

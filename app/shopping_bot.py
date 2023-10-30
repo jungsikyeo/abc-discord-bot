@@ -1333,6 +1333,60 @@ class BidButtonView(View):
         view = BidPrizeView(self.db, self.market_id, self.prizes, user_id, self.org_interaction)
         await interaction.response.send_message(view=view, ephemeral=True)
 
+    @button(label='refresh', style=ButtonStyle.secondary)
+    async def refresh_market_view(self, _, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        markets = get_auction_market(self.db)
+        market = markets[self.market_id]
+
+        # 지정된 날짜와 시간
+        date_format = "%Y-%m-%d %H:%M"
+
+        # 날짜와 시간을 datetime 객체로 변환
+        start_dt = datetime.strptime(market['start_time'], date_format)
+        end_dt = datetime.strptime(market['end_time'], date_format)
+
+        # 유닉스 타임스탬프로 변환 (초 단위)
+        start_timestamp = int(start_dt.timestamp())
+        end_timestamp = int(end_dt.timestamp())
+
+        embed = Embed(title=market['name'], description=market['description'])
+        embed.add_field(name="START TIME", value=f"<t:{start_timestamp}>", inline=True)
+        embed.add_field(name="END TIME", value=f"<t:{end_timestamp}:R>", inline=True)
+        embed.add_field(name="", value="----------------------------------------------------------------------",
+                        inline=False)
+
+        prizes = get_auction_prizes(self.db)
+
+        # 해당 마켓의 경품들을 동적으로 추가
+        if self.market_id in prizes:
+            for prize in prizes[self.market_id]:
+                bid = get_auction_bid(self.db, self.market_id, prize['prize_id'])
+                bid_users = ""
+                if len(bid.get('bid_users', [])) > 0:
+                    index = 1
+                    for bid_user in bid.get('bid_users', []):
+                        if index <= 10:
+                            user_name = f"{bid_user['user_name'][0:1]} * * * *"
+                            bid_price = str(bid_user['total_bid_price'])
+                            masked_price = bid_price[0] + '*' * (len(bid_price) - 1)
+                            bid_users += f"{user_name} - `{masked_price}` SF\n"
+                        elif index == len(bid.get('bid_users', [])):
+                            user_name = f"... {index - 10} bid history in additionally"
+                            bid_users += f"{user_name}\n"
+                        index += 1
+                embed.add_field(name=f"""🎁️  {prize['name']}  -  Top {prize['winners']}  🎁️""",
+                                value=f"{bid_users}"
+                                      f"Min Bid: {prize['min_bid']} SF", inline=True)
+
+        view = BidButtonView(self.db, self.market_id, prizes, end_dt, self.org_interaction)
+
+        await self.org_interaction.edit_original_response(
+            embed=embed,
+            view=view
+        )
+
     async def auction_winners(self):
         for prize in self.prizes[self.market_id]:
             winners_result = get_winners_result(db, self.market_id, prize['prize_id'])

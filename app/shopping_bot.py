@@ -598,6 +598,7 @@ async def giveaway_check(ctx, user_tag):
                        tokens,
                        DENSE_RANK() OVER (ORDER BY tokens DESC) AS ranking
                 from user_tokens
+                where user_id not in ('951420547584110613','941010057406079046')
                 order by ranking
             )
             select main.user_id,

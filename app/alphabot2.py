@@ -2207,6 +2207,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     # Now you can use these values in your code or embed message
     embed = discord.Embed(title=f"{coin_name}", description=f"{coin_name} {period_str} Chart Based on Binance",
                           color=0xEFB90A)
+    embed.add_field(name="Last Price", value=f"```{last_price:,.4f}```")
     embed.add_field(name="24h Change",
                     value=f"```diff\n{change_prefix}{change_24h:,.4f} ({change_prefix}{change_24h_percent}%)```")
     embed.add_field(name="24h High", value=f"```{high_24h:,.2f}```")

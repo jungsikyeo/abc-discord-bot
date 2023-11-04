@@ -12,6 +12,7 @@ from discord import Embed, ButtonStyle
 from discord.commands.context import ApplicationContext
 from discord.commands import Option
 from discord.interactions import Interaction
+from discord.ext.pages import Paginator
 from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
@@ -592,25 +593,60 @@ async def giveaway_check(ctx, user_tag):
         all_user_tickets = cursor.fetchall()
 
         cursor.execute("""
-                select tokens
+            with main as (
+                select user_id,
+                       tokens,
+                       DENSE_RANK() OVER (ORDER BY tokens DESC) AS ranking
                 from user_tokens
-                where user_id = %s
-            """, str(user_id))
+                order by ranking
+            )
+            select main.user_id,
+                   main.tokens,
+                   ifnull(sum_ut.use_price, 0) as total_use_price,
+                   main.ranking
+            from main
+            left outer join (
+                select use_tokens.user_id,
+                       sum(use_tokens.use_price) as use_price
+                from (
+                    select ut.user_id,
+                           p.price as use_price
+                    from user_tickets ut
+                    inner join products p on ut.product_id = p.id
+                    union all
+                    select aw.user_id,
+                           aw.total_bid_price as use_price
+                    from auction_winners aw
+                    union all
+                    select ar.user_id,
+                           (ar.total_bid_price - ar.refund_price) as use_price
+                    from auction_refunds ar
+                ) as use_tokens
+                group by use_tokens.user_id
+            ) as sum_ut on sum_ut.user_id = main.user_id
+            where main.user_id = %s
+        """, str(user_id))
         user = cursor.fetchone()
         if not user:
             user_tokens = 0
+            sf_ranking = 0
+            total_use_price = 0
         else:
             user_tokens = user['tokens']
+            sf_ranking = user['ranking']
+            total_use_price = user['total_use_price']
 
-        description = f"{user_tag} tickets:\n\n"
+
+        description = f"- {user_tag} held tickets:\n"
         for user_ticket in all_user_tickets:
             description += f"""`{user_ticket['name']}`     x{user_ticket['tickets']}\n"""
         if not all_user_tickets:
             description += "No ticket.\n"
 
         description += f"\n" \
-                       f"{user_tag} tokens:\n\n" \
-                       f"""`{user_tokens}` tokens"""
+                       f"""- SF Ranking: `{sf_ranking}` rank\n""" \
+                       f"""- held tokens: `{user_tokens}` SF\n""" \
+                       f"""- Total use tokens: `{total_use_price}` SF\n"""
 
         embed = Embed(title="Giveaway Check", description=description)
         await ctx.reply(embed=embed, mention_author=True)
@@ -767,6 +803,76 @@ async def remove_ticket(ctx, user_tag, *, product_name):
         await ctx.reply(embed=embed, mention_author=True)
     except Exception as e:
         logger.error(f'save_tokens error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def sf_rank_leaderboard(ctx):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+            with main as (
+                select user_id,
+                       tokens,
+                       DENSE_RANK() OVER (ORDER BY tokens DESC) AS ranking
+                from user_tokens
+                where user_id not in ('951420547584110613','941010057406079046')
+                order by ranking
+            )
+            select main.user_id,
+                   main.tokens,
+                   ifnull(sum_ut.use_price, 0) as total_use_price,
+                   main.ranking
+            from main
+            left outer join (
+                select use_tokens.user_id,
+                       sum(use_tokens.use_price) as use_price
+                from (
+                    select ut.user_id,
+                           p.price as use_price
+                    from user_tickets ut
+                    inner join products p on ut.product_id = p.id
+                    union all
+                    select aw.user_id,
+                           aw.total_bid_price as use_price
+                    from auction_winners aw
+                    union all
+                    select ar.user_id,
+                           (ar.total_bid_price - ar.refund_price) as use_price
+                    from auction_refunds ar
+                ) as use_tokens
+                group by use_tokens.user_id
+            ) as sum_ut on sum_ut.user_id = main.user_id
+        """)
+        user_sf_rank = cursor.fetchall()
+        num_pages = (len(user_sf_rank) + 9) // 10
+        pages = []
+        for page in range(num_pages):
+            embed = Embed(title=f"**🏆 SF Tokens Ranking 🏆**\n\n"
+                                f"Top {page * 10 + 1} ~ {page * 10 + 10} Rank\n", color=0x00ff00)
+            for i in range(10):
+                index = page * 10 + i
+                if index >= len(user_sf_rank):
+                    break
+                user = user_sf_rank[index]
+                try:
+                    user_name = bot.get_user(int(user['user_id']))
+                    if not user_name:
+                        user_name = "no_find_user"
+                except:
+                    user_name = f"{user['user_id']}"
+                field_name = f"`{user['ranking']}.` {user_name}: `{user['tokens']}` SF (total used: `{user['total_use_price']}` SF)"
+                embed.add_field(name=field_name, value="", inline=False)
+            pages.append(embed)
+        paginator = Paginator(pages)
+        await paginator.send(ctx, mention_author=True)
+    except Exception as e:
+        logger.error(f'sf_rank_leaderboard error: {e}')
         connection.rollback()
     finally:
         cursor.close()
@@ -1021,6 +1127,8 @@ async def on_command_error(ctx, error):
 
 # -----------------------------------------------
 # auction-pi
+
+market_view = None
 
 class MarketCreateView(View):
     def __init__(self, db, markets):
@@ -1286,7 +1394,7 @@ class OpenMarketSelect(Select):
             for prize in self.prizes[market_id]:
                 bid = get_auction_bid(self.db, market_id, prize['prize_id'])
                 bid_users = ""
-                if len(bid.get('bid_users', [])) > 0:
+                if datetime.now() > end_dt and len(bid.get('bid_users', [])) > 0:
                     index = 1
                     for bid_user in bid.get('bid_users', []):
                         if index <= 10:
@@ -1302,8 +1410,9 @@ class OpenMarketSelect(Select):
                                 value=f"{bid_users}"
                                       f"Min Bid: {prize['min_bid']} SF", inline=True)
 
-        view = BidButtonView(self.db, market_id, self.prizes, end_dt, interaction)
-        await interaction.response.send_message(embed=embed, view=view)
+        global market_view
+        market_view = BidButtonView(self.db, market_id, self.prizes, end_dt, interaction)
+        await interaction.response.send_message(embed=embed, view=market_view)
 
 
 class BidButtonView(View):
@@ -1332,60 +1441,6 @@ class BidButtonView(View):
         user_id = interaction.user.id
         view = BidPrizeView(self.db, self.market_id, self.prizes, user_id, self.org_interaction)
         await interaction.response.send_message(view=view, ephemeral=True)
-
-    @button(label='refresh', style=ButtonStyle.secondary)
-    async def refresh_market_view(self, _, interaction: Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        markets = get_auction_market(self.db)
-        market = markets[self.market_id]
-
-        # 지정된 날짜와 시간
-        date_format = "%Y-%m-%d %H:%M"
-
-        # 날짜와 시간을 datetime 객체로 변환
-        start_dt = datetime.strptime(market['start_time'], date_format)
-        end_dt = datetime.strptime(market['end_time'], date_format)
-
-        # 유닉스 타임스탬프로 변환 (초 단위)
-        start_timestamp = int(start_dt.timestamp())
-        end_timestamp = int(end_dt.timestamp())
-
-        embed = Embed(title=market['name'], description=market['description'])
-        embed.add_field(name="START TIME", value=f"<t:{start_timestamp}>", inline=True)
-        embed.add_field(name="END TIME", value=f"<t:{end_timestamp}:R>", inline=True)
-        embed.add_field(name="", value="----------------------------------------------------------------------",
-                        inline=False)
-
-        prizes = get_auction_prizes(self.db)
-
-        # 해당 마켓의 경품들을 동적으로 추가
-        if self.market_id in prizes:
-            for prize in prizes[self.market_id]:
-                bid = get_auction_bid(self.db, self.market_id, prize['prize_id'])
-                bid_users = ""
-                if len(bid.get('bid_users', [])) > 0:
-                    index = 1
-                    for bid_user in bid.get('bid_users', []):
-                        if index <= 10:
-                            user_name = f"{bid_user['user_name'][0:1]} * * * *"
-                            bid_price = str(bid_user['total_bid_price'])
-                            masked_price = bid_price[0] + '*' * (len(bid_price) - 1)
-                            bid_users += f"{user_name} - `{masked_price}` SF\n"
-                        elif index == len(bid.get('bid_users', [])):
-                            user_name = f"... {index - 10} bid history in additionally"
-                            bid_users += f"{user_name}\n"
-                        index += 1
-                embed.add_field(name=f"""🎁️  {prize['name']}  -  Top {prize['winners']}  🎁️""",
-                                value=f"{bid_users}"
-                                      f"Min Bid: {prize['min_bid']} SF", inline=True)
-
-        view = BidButtonView(self.db, self.market_id, prizes, end_dt, self.org_interaction)
-
-        await self.org_interaction.edit_original_response(
-            embed=embed,
-            view=view
-        )
 
     async def auction_winners(self):
         for prize in self.prizes[self.market_id]:
@@ -1460,7 +1515,7 @@ class BidButtonView(View):
         connection = self.db.get_connection()
         cursor = connection.cursor()
         try:
-            user = bot.get_user(non_winner_id)
+            user = bot.get_user(int(non_winner_id))
             if user:
                 user_name = user.name
             else:
@@ -1536,6 +1591,8 @@ class BidModal(Modal):
         self.org_interaction = org_interaction
 
     async def callback(self, interaction: Interaction):
+        # await interaction.response.defer(ephemeral=True)
+
         connection = self.db.get_connection()
         cursor = connection.cursor()
 
@@ -1548,10 +1605,6 @@ class BidModal(Modal):
         # 날짜와 시간을 datetime 객체로 변환
         start_dt = datetime.strptime(market['start_time'], date_format)
         end_dt = datetime.strptime(market['end_time'], date_format)
-
-        # 유닉스 타임스탬프로 변환 (초 단위)
-        start_timestamp = int(start_dt.timestamp())
-        end_timestamp = int(end_dt.timestamp())
 
         if datetime.now() < start_dt:
             print(datetime.now(), start_dt)
@@ -1634,50 +1687,19 @@ class BidModal(Modal):
 
             connection.commit()
 
+            embed = Embed(
+                title="Bidding Complete",
+                description="✅ 입찰이 완료되었습니다.\n\n"
+                            "✅ Bidding has been completed. "
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
         except Exception as e:
             logger.error(f'BidModal error: {e}')
             return
         finally:
             cursor.close()
             connection.close()
-
-        await interaction.response.defer(ephemeral=True)
-
-        embed = Embed(title=market['name'], description=market['description'])
-        embed.add_field(name="START TIME", value=f"<t:{start_timestamp}>", inline=True)
-        embed.add_field(name="END TIME", value=f"<t:{end_timestamp}:R>", inline=True)
-        embed.add_field(name="", value="----------------------------------------------------------------------",
-                        inline=False)
-
-        prizes = get_auction_prizes(self.db)
-
-        # 해당 마켓의 경품들을 동적으로 추가
-        if self.market_id in prizes:
-            for prize in prizes[self.market_id]:
-                bid = get_auction_bid(self.db, self.market_id, prize['prize_id'])
-                bid_users = ""
-                if len(bid.get('bid_users', [])) > 0:
-                    index = 1
-                    for bid_user in bid.get('bid_users', []):
-                        if index <= 10:
-                            user_name = f"{bid_user['user_name'][0:1]} * * * *"
-                            bid_price = str(bid_user['total_bid_price'])
-                            masked_price = bid_price[0] + '*' * (len(bid_price) - 1)
-                            bid_users += f"{user_name} - `{masked_price}` SF\n"
-                        elif index == len(bid.get('bid_users', [])):
-                            user_name = f"... {index - 10} bid history in additionally"
-                            bid_users += f"{user_name}\n"
-                        index += 1
-                embed.add_field(name=f"""🎁️  {prize['name']}  -  Top {prize['winners']}  🎁️""",
-                                value=f"{bid_users}"
-                                      f"Min Bid: {prize['min_bid']} SF", inline=True)
-
-        view = BidButtonView(self.db, self.market_id, prizes, end_dt, self.org_interaction)
-
-        await self.org_interaction.edit_original_response(
-            embed=embed,
-            view=view
-        )
 
 
 def get_auction_market(db):

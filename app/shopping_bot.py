@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 from discord.ext import commands
 from discord.ui import View, button, Select, Modal, InputText
-from discord import Embed, ButtonStyle
+from discord import Embed, ButtonStyle, InputTextStyle
 from discord.commands.context import ApplicationContext
 from discord.commands import Option
 from discord.interactions import Interaction
@@ -1183,6 +1183,7 @@ class MarketModal(Modal):
         self.market_description = InputText(label="Market Description",
                                             value=market.get('description'),
                                             placeholder='Enter Market Description',
+                                            style=InputTextStyle.long,
                                             min_length=1,
                                             max_length=1000)
 

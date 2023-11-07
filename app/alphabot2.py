@@ -2144,28 +2144,36 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     df.index = df.index.tz_localize('UTC').tz_convert('Asia/Seoul')
 
     end_date = df.index.max()
+    text_space = 1
     if period is not None:
         if period == "3year":
             start_date = end_date - timedelta(days=3 * 365)
             period_str = "3-Year"
+            text_space = 50
         elif period == "1year":
             start_date = end_date - timedelta(days=365)
             period_str = "1-Year"
+            text_space = 15
         elif period == "1mon":
             start_date = end_date - timedelta(days=30)
             period_str = "1-Month"
+            text_space = 2
         elif period == "3mon":
             start_date = end_date - timedelta(days=90)
             period_str = "3-Month"
+            text_space = 5
         elif period == "1week":
             start_date = end_date - timedelta(days=7)
             period_str = "1-Week"
+            text_space = 0
         elif period == "1day":
             start_date = end_date - timedelta(days=1)
             period_str = "1-Day (5min interval)"
+            text_space = 5
         elif period == "5min":
             start_date = end_date - timedelta(minutes=120)
             period_str = "2-Hour (5min interval)"
+            text_space = 1
         else:
             embed = Embed(title="Warning",
                           description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.",
@@ -2198,7 +2206,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
 
     # Draw current price
     axes[0].axhline(y=float(ticker['lastPrice']), color='white', linestyle='--', linewidth=1)
-    axes[0].text(len(df.index)+1,
+    axes[0].text(len(df.index)+text_space,
                  float(ticker['lastPrice']),
                  f"{np.format_float_positional(float(ticker['lastPrice']))}",
                  color="white",
@@ -2207,12 +2215,12 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
                  bbox=dict(facecolor='red', alpha=0.5))
 
     axes[0].yaxis.tick_right()
-    axes[0].yaxis.set_label_position("right")
+    axes[0].yaxis.set_label_position("left")
     axes[0].xaxis_date()
     axes[0].set_ylabel('PRICE (USDT)')
     fig.tight_layout()
 
-    fig.savefig('./static/coin_chart.png')
+    fig.savefig('./static/coin_chart.png', bbox_inches='tight')
     plt.close(fig)
 
     # response = requests.get('https://api.coingecko.com/api/v3/coins/list')

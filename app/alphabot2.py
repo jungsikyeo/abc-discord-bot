@@ -1847,6 +1847,57 @@ async def me(ctx, keyword):
         await me_matic(ctx, result['symbol'])
 
 
+# 함수 정의: API에서 거래 데이터 가져오기
+async def fetch_asset_events(collection_slug):
+    api_key = operating_system.getenv("OPENSEA_API_KEY")
+    headers = {"X-API-KEY": api_key}
+    url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}"
+    response = requests.get(url, headers=headers)
+    return json.loads(response.text)
+
+
+# 함수 정의: 거래 데이터를 DataFrame으로 변환
+def process_asset_events(asset_events):
+    # 빈 리스트를 생성하여 각 거래마다 필요한 정보를 저장
+    processed_data = []
+    for event in asset_events:
+        # Unix 타임스탬프를 datetime으로 변환
+        date = datetime.datetime.fromtimestamp(event['closing_date'])
+        # ETH로 환산 (quantity가 Wei로 제공되므로)
+        price = float(event['payment']['quantity']) / 10**18
+        processed_data.append({'date': date, 'price': price})
+    # DataFrame 생성
+    df = pd.DataFrame(processed_data)
+    df.set_index('date', inplace=True)
+    return df
+
+
+# 함수 정의: 차트 생성 및 이미지 파일로 저장
+async def create_price_chart(df, collection_name):
+    plt.figure(figsize=(10, 5))
+    plt.plot(df.index, df['price'], linestyle='-')
+    # plt.title(f'{collection_name} Price Over Time')
+    # plt.xlabel('Time')
+    plt.ylabel('Price (ETH)')
+    plt.grid(True)
+
+    # 차트 보더라인 제거
+    # plt.box(False)
+
+    # 날짜 포맷 설정: 예를 들어, "Nov 1", "Nov 2" 형식으로 변경
+    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))  # %b는 월 약자, %d는 일을 나타냄
+    # plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+
+    # X축 레이블의 각도 조정 (가독성 향상을 위해)
+    plt.xticks(rotation=45)
+
+    # 차트를 이미지 파일로 저장
+    chart_filename = f"./static/{collection_name.replace(' ', '_')}_price_chart.png"
+    plt.savefig(chart_filename, bbox_inches='tight')  # bbox_inches='tight'는 여백을 최소화
+    plt.close()
+    return chart_filename
+
+
 @bot.command()
 async def 옾(ctx, keyword, count: int = 0):
     await os(ctx, keyword, count)
@@ -1946,6 +1997,18 @@ async def os(ctx, keyword, count: int = 0):
 
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
+
+    try:
+        data = await fetch_asset_events(symbol)
+        df = process_asset_events(data['asset_events'])
+        chart_image = await create_price_chart(df, symbol)
+        now_in_seconds = time.time()
+        now_in_milliseconds = int(now_in_seconds * 1000)
+        embed.set_image(
+            url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
+    except Exception as e:
+        logger.error(f"os set_image error: {e}")
+        pass
 
     await ctx.reply(embed=embed, mention_author=True)
 

@@ -2068,8 +2068,18 @@ async def 해외주식(ctx, stock_symbol: str):
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']]  # rearrange columns
 
     # Create the plot with the desired style and save it as an image file
-    mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
-    s = mpf.make_mpf_style(base_mpf_style='kenan', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
+    # mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
+    # s = mpf.make_mpf_style(base_mpf_style='kenan', marketcolors=mc, rc={'xtick.major.pad': 10, 'ytick.major.pad': 5})
+    mc = mpf.make_marketcolors(up='#2e7871', down='#e84752', inherit=True)
+    s = mpf.make_mpf_style(
+        base_mpf_style='nightclouds',
+        y_on_right=True,
+        marketcolors=mc,
+        facecolor='#131722',
+        edgecolor='#4a4e59',
+        figcolor='#131722',
+        gridstyle='solid',
+        gridcolor='#1d202b')
     fig, axes = mpf.plot(df, style=s, type='candle', volume=True, title=f"{stock_symbol} Stock Chart", returnfig=True,
                          show_nontrading=True)
     axes[0].yaxis.tick_right()
@@ -2167,8 +2177,18 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     df = df.loc[(df.index >= start_date) & (df.index <= end_date)]
     df.index = df.index.to_pydatetime()
 
-    mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
-    s = mpf.make_mpf_style(marketcolors=mc)
+    # mc = mpf.make_marketcolors(up='g', down='r', volume='b', inherit=True)
+    # s = mpf.make_mpf_style(marketcolors=mc)
+    mc = mpf.make_marketcolors(up='#2e7871', down='#e84752', inherit=True)
+    s = mpf.make_mpf_style(
+        base_mpf_style='nightclouds',
+        y_on_right=True,
+        marketcolors=mc,
+        facecolor='#131722',
+        edgecolor='#4a4e59',
+        figcolor='#131722',
+        gridstyle='solid',
+        gridcolor='#1d202b')
     fig, axes = mpf.plot(df, type='candle', style=s, volume=True, returnfig=True)
 
     fig.suptitle(f"{base_coin} Coin Chart", fontsize=20)

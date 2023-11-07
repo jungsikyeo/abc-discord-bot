@@ -1998,17 +1998,17 @@ async def os(ctx, keyword, count: int = 0):
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
 
-    try:
-        data = await fetch_asset_events(symbol)
-        df = process_asset_events(data['asset_events'])
-        chart_image = await create_price_chart(df, symbol)
-        now_in_seconds = time.time()
-        now_in_milliseconds = int(now_in_seconds * 1000)
-        embed.set_image(
-            url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
-    except Exception as e:
-        logger.error(f"os set_image error: {e}")
-        pass
+    # try:
+    #     data = await fetch_asset_events(symbol)
+    #     df = process_asset_events(data['asset_events'])
+    #     chart_image = await create_price_chart(df, symbol)
+    #     now_in_seconds = time.time()
+    #     now_in_milliseconds = int(now_in_seconds * 1000)
+    #     embed.set_image(
+    #         url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
+    # except Exception as e:
+    #     logger.error(f"os set_image error: {e}")
+    #     pass
 
     await ctx.reply(embed=embed, mention_author=True)
 

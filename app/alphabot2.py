@@ -1892,8 +1892,8 @@ async def create_price_chart(df, collection_name):
     plt.xticks(rotation=45)
 
     # 차트를 이미지 파일로 저장
-    chart_filename = f"./static/{collection_name.replace(' ', '_')}_price_chart.png"
-    plt.savefig(chart_filename, bbox_inches='tight')  # bbox_inches='tight'는 여백을 최소화
+    chart_filename = f"{collection_name.replace(' ', '_')}_price_chart.png"
+    plt.savefig(f"./static/{chart_filename}", bbox_inches='tight')  # bbox_inches='tight'는 여백을 최소화
     plt.close()
     return chart_filename
 

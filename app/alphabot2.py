@@ -20,6 +20,7 @@ import uuid
 import io
 import base64
 import logging
+import numpy as np
 from datetime import timezone
 from pytz import all_timezones
 from discord.ext import commands
@@ -2121,6 +2122,8 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
 
     try:
         candles = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        # Get the latest ticker information
+        ticker = binance_client.get_ticker(symbol=symbol)
     except:
         embed = Embed(title="Warning",
                       description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
@@ -2191,7 +2194,17 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
         gridcolor='#1d202b')
     fig, axes = mpf.plot(df, type='candle', style=s, volume=True, returnfig=True)
 
-    fig.suptitle(f"{base_coin} Coin Chart", fontsize=20)
+    # fig.suptitle(f"{base_coin} Coin Chart", fontsize=20)
+
+    # Draw current price
+    axes[0].axhline(y=float(ticker['lastPrice']), color='white', linestyle='--', linewidth=1)
+    axes[0].text(len(df.index)+1,
+                 float(ticker['lastPrice']),
+                 f"{np.format_float_positional(float(ticker['lastPrice']))}",
+                 color="white",
+                 ha="left",
+                 va="center",
+                 bbox=dict(facecolor='red', alpha=0.5))
 
     axes[0].yaxis.tick_right()
     axes[0].yaxis.set_label_position("right")
@@ -2208,8 +2221,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     # coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
     coin_name = f"{base_coin}/{quote_coin}"
 
-    # Get the latest ticker information
-    ticker = binance_client.get_ticker(symbol=symbol)
+
 
     # Extract the necessary information
     last_price = float(ticker['lastPrice'])

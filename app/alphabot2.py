@@ -2012,6 +2012,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
             now_in_milliseconds = int(now_in_seconds * 1000)
             embed.set_image(
                 url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
+            logger.info(f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
         except Exception as e:
             logger.error(f"os set_image error: {e}")
             pass

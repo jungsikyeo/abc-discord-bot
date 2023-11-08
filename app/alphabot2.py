@@ -1899,12 +1899,17 @@ async def create_price_chart(df, collection_name):
 
 
 @bot.command()
-async def 옾(ctx, keyword, search_type: int = 1, count: int = 0):
+async def 옾(ctx, keyword, count: int = 0):
     await os(ctx, keyword, 1, count)
 
 
 @bot.command()
-async def 옾2(ctx, keyword, search_type: int = 1, count: int = 0):
+async def 옾2(ctx, keyword, count: int = 0):
+    await os(ctx, keyword, 2, count)
+
+
+@bot.command()
+async def os2(ctx, keyword, count: int = 0):
     await os(ctx, keyword, 2, count)
 
 

@@ -21,6 +21,7 @@ import io
 import base64
 import logging
 import numpy as np
+import matplotlib.dates as mdates
 from datetime import timezone
 from pytz import all_timezones
 from discord.ext import commands
@@ -1875,25 +1876,24 @@ def process_asset_events(asset_events):
 # 함수 정의: 차트 생성 및 이미지 파일로 저장
 async def create_price_chart(df, collection_name):
     plt.figure(figsize=(10, 5))
-    plt.plot(df.index, df['price'], linestyle='-')
-    # plt.title(f'{collection_name} Price Over Time')
-    # plt.xlabel('Time')
+    ax = plt.gca()  # 현재의 Axes 객체를 가져옵니다.
+
+    # 보더라인 제거
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+
+    # x축 눈금을 45도 회전하여 레이블이 겹치지 않도록 설정
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+
+    plt.scatter(df.index, df['price'], color='#1E81E2', s=30)
+    plt.title(f'{collection_name} sales')
+    plt.xlabel('Time')
     plt.ylabel('Price (ETH)')
-    plt.grid(True)
-
-    # 차트 보더라인 제거
-    # plt.box(False)
-
-    # 날짜 포맷 설정: 예를 들어, "Nov 1", "Nov 2" 형식으로 변경
-    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))  # %b는 월 약자, %d는 일을 나타냄
-    # plt.gca().xaxis.set_major_locator(mdates.DayLocator())
-
-    # X축 레이블의 각도 조정 (가독성 향상을 위해)
-    plt.xticks(rotation=45)
-
-    # 차트를 이미지 파일로 저장
-    chart_filename = f"{collection_name.replace(' ', '_')}_price_chart.png"
-    plt.savefig(f"./static/{chart_filename}", bbox_inches='tight')  # bbox_inches='tight'는 여백을 최소화
+    plt.grid(visible=True, axis="y")
+    chart_filename = f"./static/{collection_name.replace(' ', '_')}_price_chart.png"
+    plt.savefig(chart_filename)
     plt.close()
     return chart_filename
 

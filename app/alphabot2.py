@@ -1899,12 +1899,17 @@ async def create_price_chart(df, collection_name):
 
 
 @bot.command()
-async def 옾(ctx, keyword, count: int = 0):
-    await os(ctx, keyword, count)
+async def 옾(ctx, keyword, search_type: int = 1, count: int = 0):
+    await os(ctx, keyword, 1, count)
 
 
 @bot.command()
-async def os(ctx, keyword, count: int = 0):
+async def 옾2(ctx, keyword, search_type: int = 1, count: int = 0):
+    await os(ctx, keyword, 2, count)
+
+
+@bot.command()
+async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     time.sleep(1)
 
     result = Queries.select_keyword(db, keyword)
@@ -1993,22 +1998,23 @@ async def os(ctx, keyword, count: int = 0):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
-    embed.add_field(name="Activity Info", value=sales_list, inline=False)
+    if search_type == 2:
+        try:
+            data = await fetch_asset_events(symbol)
+            df = process_asset_events(data['asset_events'])
+            chart_image = await create_price_chart(df, symbol)
+            now_in_seconds = time.time()
+            now_in_milliseconds = int(now_in_seconds * 1000)
+            embed.set_image(
+                url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
+        except Exception as e:
+            logger.error(f"os set_image error: {e}")
+            pass
+    else:
+        embed.add_field(name="Activity Info", value=sales_list, inline=False)
 
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
     embed.set_footer(text="Powered by 으노아부지#2642")
-
-    # try:
-    #     data = await fetch_asset_events(symbol)
-    #     df = process_asset_events(data['asset_events'])
-    #     chart_image = await create_price_chart(df, symbol)
-    #     now_in_seconds = time.time()
-    #     now_in_milliseconds = int(now_in_seconds * 1000)
-    #     embed.set_image(
-    #         url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
-    # except Exception as e:
-    #     logger.error(f"os set_image error: {e}")
-    #     pass
 
     await ctx.reply(embed=embed, mention_author=True)
 

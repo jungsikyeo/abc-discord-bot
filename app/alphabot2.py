@@ -1892,8 +1892,8 @@ async def create_price_chart(df, collection_name):
     plt.xlabel('Time')
     plt.ylabel('Price (ETH)')
     plt.grid(visible=True, axis="y")
-    chart_filename = f"./static/{collection_name.replace(' ', '_')}_price_chart.png"
-    plt.savefig(chart_filename)
+    chart_filename = f"{collection_name.replace(' ', '_')}_price_chart.png"
+    plt.savefig(f"./static/{chart_filename}")
     plt.close()
     return chart_filename
 
@@ -2012,7 +2012,6 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
             now_in_milliseconds = int(now_in_seconds * 1000)
             embed.set_image(
                 url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
-            logger.info(f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
         except Exception as e:
             logger.error(f"os set_image error: {e}")
             pass

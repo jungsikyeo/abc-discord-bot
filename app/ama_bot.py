@@ -543,9 +543,9 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
             total_seconds = int(row['time_spent'])
             minutes, seconds = divmod(total_seconds, 60)
             if minutes > 0:
-                time_spent_str = f"`{minutes}` m `{seconds}` s"
+                time_spent_str = f"{minutes}m {seconds}s"
             else:
-                time_spent_str = f"`{seconds}` s"
+                time_spent_str = f"{seconds}s"
             all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(
                 f"{snap}", row["ama_status"], row["total_msg"], row["valid_msg"],
                 row["total_joins"], row["total_leaves"], time_spent_str)

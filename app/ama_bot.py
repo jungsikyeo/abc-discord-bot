@@ -437,26 +437,6 @@ async def on_voice_state_update(member, before, after):
             del message_counts[member.id]
 
 
-async def assign_roles(ctx, role_id, members):
-    role = discord.utils.get(ctx.guild.roles, id=role_id)
-    for member in members:
-        try:
-            await member.add_roles(role)
-        except discord.Forbidden:
-            embed = Embed(title="Error",
-                          description=f"Failed to assign role to {member.name}. Check the bot's permissions.",
-                          color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
-            logger.warning(f"Failed to assign role to {member.name}. Check the bot's permissions.")
-        except discord.HTTPException as e:
-            embed = Embed(title="Error",
-                          description=f"HTTP exception while assigning role to {member.name}: {str(e)}",
-                          color=0xff0000)
-            await ctx.reply(embed=embed, mention_author=True)
-            logger.warning(f"Failed to assign role to {member.name}. Check the bot's permissions.")
-            logger.error(f"HTTP exception while assigning role to {member.name}: {str(e)}")
-
-
 async def create_and_upload_excel(ctx, snapshots, role_name):
     file_name = f'ama_summary_{role_name}.xlsx'
     with pd.ExcelWriter(file_name, engine='xlsxwriter') as writer:
@@ -549,7 +529,13 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
         role_name = role_found.name
 
         # 데이터베이스에서 사용자 정보 조회
-        user_summary = await get_user_summary_from_db(role_name, member.id)
+        user_summary, all_snapshot = await get_user_summary_from_db(role_name, member.id)
+        all_snapshot_description = "{:<20s}{:<5s}{:<3s}{:<3s}{:<3s}{:<3s}{:<10s}\n".format(
+            "snap_time", "ama_status", "total_msg", "valid_msg", "total_joins", "total_leaves", "time_spent")
+        for row in all_snapshot:
+            all_snapshot_description += "{:<20s}{:<5s}{:<3s}{:<3s}{:<3s}{:<3s}{:<10s}\n".format(
+                row["snap_time"], row["ama_status"], row["total_msg"], row["valid_msg"],
+                row["total_joins"], row["total_leaves"], row["time_spent"])
         if user_summary:
             # 시간을 분과 초로 변환
             total_seconds = user_summary['time_spent']
@@ -564,11 +550,15 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
                                       f"- Valid Messages: `{user_summary['valid_messages']}`\n"
                                       f"- AMA VC Joins: `{user_summary['total_joins']}`\n"
                                       f"- AMA VC Leaves: `{user_summary['total_leaves']}`\n"
-                                      f"- Time Spent: {time_spent_str}",
+                                      f"- Time Spent: {time_spent_str}\n\n"
+                                      f"- All Snapshot\n"
+                                      f"{all_snapshot_description}",
                           color=0x37e37b)
         else:
             embed = Embed(title="No Data Found",
-                          description=f"No summary data found for {member.display_name} in {role_name}.",
+                          description=f"No summary data found for {member.display_name} in {role_name}.\n\n"
+                                      f"- All Snapshot\n"
+                                      f"{all_snapshot_description}",
                           color=0xff0000)
         await ctx.reply(embed=embed, mention_author=True)
     except Exception as e:
@@ -583,6 +573,7 @@ async def get_user_summary_from_db(role_name, user_id):
     connection = db.get_connection()
     cursor = connection.cursor()
     user_summary = None
+    all_snapshot = []
     try:
         # 사용자 요약 정보 조회
         cursor.execute("""
@@ -598,12 +589,55 @@ async def get_user_summary_from_db(role_name, user_id):
                 'total_leaves': result['total_leaves'],
                 'time_spent': result['time_spent']
             }
+
+        cursor.execute("""
+            with all_snapshot as (
+                select role_id, role_name, timestamp
+                from ama_users_summary_snapshot
+                where role_name = %s
+                group by role_id, role_name, timestamp
+                union all
+                select role_id, role_name, 'final_snapshot'
+                from ama_users_summary
+                where role_name = %s
+                group by role_id, role_name
+            )
+            select main.role_id,
+                   main.role_name,
+                   main.timestamp,
+                   IF(user_snapshot.user_id is null, 'OUT', 'IN') ama_status,
+                   user_snapshot.*
+            from all_snapshot as main
+            left outer join (
+                select *
+                from ama_users_summary_snapshot
+                where role_name = %s
+                and user_id = %s
+                union all
+                select *, 'final_snapshot'
+                from ama_users_summary
+                where role_name = %s
+                and user_id = %s
+            ) as user_snapshot on main.timestamp = user_snapshot.timestamp
+            order by main.timestamp
+        """, (role_name, role_name, role_name, str(user_id), role_name, str(user_id)))
+        result = cursor.fetchall()
+        for row in result:
+            all_snapshot.append({
+                'snap_time': row['snapshot_time'],
+                'ama_status': row['ama_status'],
+                'total_messages': row['total_messages'],
+                'valid_messages': row['valid_messages'],
+                'total_joins': row['total_joins'],
+                'total_leaves': row['total_leaves'],
+                'time_spent': row['time_spent']
+            })
     except Exception as e:
-        logger.error(f'DB error: {e}')
+        logger.error(f'get_user_summary_from_db DB error: {e}')
     finally:
         cursor.close()
         connection.close()
-    return user_summary
+    return user_summary, all_snapshot
 
 
 @bot.command()

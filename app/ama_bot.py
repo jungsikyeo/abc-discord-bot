@@ -530,12 +530,21 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
 
         # 데이터베이스에서 사용자 정보 조회
         user_summary, all_snapshot = await get_user_summary_from_db(role_name, member.id)
-        all_snapshot_description = "{:<20s}{:<5s}{:<3s}{:<3s}{:<3s}{:<3s}{:<10s}\n".format(
-            "snap_time", "ama_status", "total_msg", "valid_msg", "total_joins", "total_leaves", "time_spent")
+        all_snapshot_description = "```\n"
+        all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(
+            "snap", "status", "total", "valid", "joins", "leaves", "time_spent")
+        all_snapshot_description += "-" * 48 + "\n"
+        index = 1
         for row in all_snapshot:
-            all_snapshot_description += "{:<20s}{:<5s}{:<3s}{:<3s}{:<3s}{:<3s}{:<10s}\n".format(
-                row["snap_time"], row["ama_status"], row["total_msg"], row["valid_msg"],
+            if row["snap_time"] == "final_snapshot":
+                snap = "final"
+            else:
+                snap = index
+            all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(
+                f"{snap}", row["ama_status"], row["total_msg"], row["valid_msg"],
                 row["total_joins"], row["total_leaves"], row["time_spent"])
+            index += 1
+        all_snapshot_description += "```"
         if user_summary:
             # 시간을 분과 초로 변환
             total_seconds = user_summary['time_spent']
@@ -624,13 +633,13 @@ async def get_user_summary_from_db(role_name, user_id):
         result = cursor.fetchall()
         for row in result:
             all_snapshot.append({
-                'snap_time': row['snapshot_time'],
-                'ama_status': row['ama_status'],
-                'total_messages': row['total_messages'],
-                'valid_messages': row['valid_messages'],
-                'total_joins': row['total_joins'],
-                'total_leaves': row['total_leaves'],
-                'time_spent': row['time_spent']
+                'snap_time': str(row['timestamp']),
+                'ama_status': str(row['ama_status']),
+                'total_msg': str(row['total_messages']),
+                'valid_msg': str(row['valid_messages']),
+                'total_joins': str(row['total_joins']),
+                'total_leaves': str(row['total_leaves']),
+                'time_spent': str(row['time_spent'])
             })
     except Exception as e:
         logger.error(f'get_user_summary_from_db DB error: {e}')

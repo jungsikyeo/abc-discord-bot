@@ -21,10 +21,9 @@ import io
 import base64
 import logging
 import numpy as np
-import matplotlib.dates as mdates
 from datetime import timezone
 from pytz import all_timezones
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.commands import Option
 from discord.commands.context import ApplicationContext
 from discord import Embed
@@ -924,7 +923,22 @@ async def on_ready():
     print("다음으로 로그인합니다: ")
     print(bot.user.name)
     print("connection was succesful")
+    member_count_update.start()
     await bot.change_presence(status=discord.Status.online, activity=None)
+
+
+@tasks.loop(minutes=60)
+async def member_count_update():
+    super_count_channel_id = int(operating_system.getenv("SUPER_COUNT_CHANNEL_ID"))
+    for guild in bot.guilds:
+        role = discord.utils.get(guild.roles, name="SF.Super")
+        member_count = sum(1 for member in guild.members if role in member.roles and not member.bot)
+        channel = discord.utils.get(guild.channels, id=super_count_channel_id)
+        if channel:
+            await channel.edit(name=f'SUPER: {member_count}')
+            logger.info("Changed SF.Super member count!")
+        else:
+            logger.error("Channel not found")
 
 
 @bot.command()
@@ -2872,6 +2886,7 @@ async def mp(ctx, symbol: str, amount: float):
     await ctx.send(embed=embed)
 
 
+#########################################
 # Slash Command start #
 @bot.slash_command(
     name="mint",

@@ -615,15 +615,33 @@ async def get_user_summary_from_db(role_name, user_id):
                    main.role_name,
                    main.timestamp,
                    IF(user_snapshot.user_id is null, 'OUT', 'IN') ama_status,
-                   user_snapshot.*
+                   user_snapshot.total_messages,
+                   user_snapshot.valid_messages,
+                   user_snapshot.total_joins,
+                   user_snapshot.total_leaves,
+                   user_snapshot.time_spent
             from all_snapshot as main
             left outer join (
-                select *
+                select 
+                    user_id,
+                    total_messages,
+                    valid_messages,
+                    total_joins,
+                    total_leaves,
+                    time_spent,
+                    timestamp
                 from ama_users_summary_snapshot
                 where role_name = %s
                 and user_id = %s
                 union all
-                select *, 'final_snapshot'
+                select 
+                    user_id,
+                    total_messages,
+                    valid_messages,
+                    total_joins,
+                    total_leaves,
+                    time_spent,
+                    'final_snapshot'
                 from ama_users_summary
                 where role_name = %s
                 and user_id = %s

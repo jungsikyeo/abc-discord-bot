@@ -4481,14 +4481,14 @@ async def 나무(ctx: ApplicationContext):
 async def ai(ctx: ApplicationContext,
              count: Option(int, "draw count", required=True, min_value=1, max_value=4),
              prompts: Option(str, "prompts text", required=True)):
-    await draw(ctx, count, prompts)
+    await draw_slash(ctx, count, prompts)
 
 
-# @bot.slash_command(
-#     name="ai2",
-#     description="drawing ai images with existing image",
-#     guild_ids=guild_ids
-# )
+@bot.slash_command(
+    name="ai2",
+    description="drawing ai images with existing image",
+    guild_ids=guild_ids
+)
 async def ai2(ctx: ApplicationContext):
     if len(ctx.attachments) == 0:
         await ctx.reply("No image provided. Please attach an image.")
@@ -4538,7 +4538,7 @@ def imageToString(img):
     return my_encoded_img
 
 
-async def draw(ctx: ApplicationContext, count: int, prompts: str):
+async def draw_slash(ctx: ApplicationContext, count: int, prompts: str):
     await ctx.defer()
 
     random_color = random.randint(0, 0xFFFFFF)

@@ -677,6 +677,7 @@ async def get_user_summary_from_db(role_name, user_id):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
     # 입력값이 롤 객체인 경우
     if isinstance(role, discord.Role):
@@ -741,6 +742,7 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
     # 입력값이 롤 객체인 경우
     if isinstance(role, discord.Role):
@@ -805,6 +807,7 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
     # 입력값이 롤 객체인 경우
     if isinstance(role, discord.Role):

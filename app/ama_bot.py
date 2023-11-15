@@ -715,15 +715,15 @@ async def bulk_assign_role(ctx, role: Union[discord.Role, int, str]):
                 if member is not None:
                     try:
                         await member.add_roles(role_found)
-                        await ctx.send(f"Role `{role_found.name}` has been assigned to `{member.name}`.")
+                        await ctx.send(f"🟢 Role `{role_found.name}` has been assigned to `{member.name}`.")
                     except discord.Forbidden:
-                        await ctx.send(f"Failed to assign role to `{member.name}`. Check the bot's permissions.")
+                        await ctx.send(f"🔴 Failed to assign role to `{member.name}`. Check the bot's permissions.")
                     except discord.HTTPException as e:
-                        await ctx.send(f"HTTP exception while assigning role to `{member.name}`: {str(e)}")
+                        await ctx.send(f"🔴 HTTP exception while assigning role to `{member.name}`: {str(e)}")
                 else:
-                    await ctx.send(f"Member with ID `{user_id}` not found.")
+                    await ctx.send(f"🔴 Member with ID `{user_id}` not found.")
             embed = Embed(title=f"{role_found.name} assigned",
-                          description=f"Role assignment for Role `{role_found.name}` completed!",
+                          description=f"✅ Role assignment for Role `{role_found.name}` completed!",
                           color=0x37e37b)
             await ctx.reply(embed=embed)
         else:
@@ -779,15 +779,15 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
                 if member is not None:
                     try:
                         await member.remove_roles(role_found)
-                        await ctx.send(f"Role `{role_found.name}` has been removed from `{member.name}`.")
+                        await ctx.send(f"🟢 Role `{role_found.name}` has been removed from `{member.name}`.")
                     except discord.Forbidden:
-                        await ctx.send(f"Failed to remove role from `{member.name}`. Check the bot's permissions.")
+                        await ctx.send(f"🔴 Failed to remove role from `{member.name}`. Check the bot's permissions.")
                     except discord.HTTPException as e:
-                        await ctx.send(f"HTTP exception while removing role from `{member.name}`: {str(e)}")
+                        await ctx.send(f"🔴 HTTP exception while removing role from `{member.name}`: {str(e)}")
                 else:
-                    await ctx.send(f"Member with ID `{user_id}` not found.")
+                    await ctx.send(f"🔴 Member with ID `{user_id}` not found.")
             embed = Embed(title=f"{role_found.name} removed",
-                          description=f"Role remove for Role `{role_found.name}` completed!",
+                          description=f"✅ Role remove for Role `{role_found.name}` completed!",
                           color=0x37e37b)
             await ctx.reply(embed=embed)
         else:
@@ -802,6 +802,77 @@ async def bulk_remove_role(ctx, role: Union[discord.Role, int, str]):
     finally:
         cursor.close()
         connection.close()
+
+
+@bot.command()
+async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
+    # 입력값이 롤 객체인 경우
+    if isinstance(role, discord.Role):
+        role_found = role
+    # 입력값이 역할 ID인 경우
+    elif isinstance(role, int):
+        role_found = discord.utils.get(ctx.guild.roles, id=role)
+    # 입력값이 역할 이름인 경우
+    else:
+        role_found = discord.utils.get(ctx.guild.roles, name=role)
+
+    if role_found is None:
+        embed = Embed(title="Error",
+                      description=f"❌ Role not found for name, ID, or mention {role}. Please enter a valid role name, ID, or mention.\n\n"
+                                  f"❌ {role} 이름, ID 또는 멘션의 역할을 찾을 수 없습니다. 올바른 역할 이름, ID 또는 멘션을 입력해주세요.",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    # 컨텍스트가 스레드인지 확인
+    if not isinstance(ctx.channel, discord.Thread):
+        embed = discord.Embed(title="Error",
+                              description="❌ 이 명령어는 스레드 내에서만 사용할 수 있습니다.\n\n"
+                                          "❌ This command can only be used within a thread.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
+        return
+
+    # 스레드가 특정 카테고리에 속하는지 확인
+    category_id = int(os.getenv("AMA_PROOF_CATEGORY_ID"))  # 카테고리 ID 설정
+    if ctx.channel.parent_id != category_id:
+        embed = discord.Embed(title="Error",
+                              description=f"❌ 이 스레드는 <#{category_id}> 카테고리에 속하지 않습니다.\n\n"
+                                          f"❌ This thread does not belong to <#{category_id}> category.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
+        return
+
+    user_ids = []
+    try:
+        # 스레드의 모든 메시지를 가져와 각 메시지의 작성자 ID를 수집합니다.
+        async for message in ctx.channel.history(limit=None):
+            if message.author != ctx.bot.user:  # 봇은 제외
+                user_ids.append(message.author.id)
+
+        # 수집된 사용자 ID에서 중복을 제거합니다.
+        unique_user_ids = set(user_ids)
+
+        # 각 사용자에게 역할을 부여합니다.
+        for user_id in unique_user_ids:
+            member = ctx.guild.get_member(user_id)
+            if member is not None:
+                await member.add_roles(role_found)
+                await ctx.send(f"🟢 Role `{role_found.name}` has been assigned to <@{member.id}>.")
+
+        embed = discord.Embed(title=f"{role_found.name} assigned",
+                              description=f"✅ 총 {len(unique_user_ids)}명의 사용자에게 `{role_found.name}` 역할이 부여되었습니다.\n\n"
+                                          f"✅ The `{role_found.name}` role has been assigned to {len(unique_user_ids)} users.",
+                              color=0x00ff00)
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+        logger.error(f'Error: {e}')
+        embed = discord.Embed(title="Error",
+                              description="🔴 명령어 처리 중 오류가 발생했습니다.\n\n"
+                                          "🔴 An error occurred while processing the command.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
 
 
 bot.run(bot_token)

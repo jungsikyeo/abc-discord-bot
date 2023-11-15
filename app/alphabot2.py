@@ -2893,7 +2893,7 @@ async def mp(ctx, symbol: str, amount: float):
     description="project minting info (today / tmr) ",
     guild_ids=guild_ids
 )
-async def mint(ctx: ApplicationContext,
+async def mint_slash(ctx: ApplicationContext,
                mint_date: Option(str, "yyyy-mm-dd", required=False) = "today"):
     if mint_date == "today":
         target_date = datetime.datetime.now()
@@ -2942,7 +2942,7 @@ async def mint(ctx: ApplicationContext,
     description="<searching> using this to searching the project of name, twitter",
     guild_ids=guild_ids
 )
-async def msearch(ctx: ApplicationContext,
+async def msearch_slash(ctx: ApplicationContext,
                   searching: Option(str, "project name or twitter handle", required=True)):
     buttonView = PageButtonView(ctx)
     pages = []
@@ -2971,7 +2971,7 @@ async def msearch(ctx: ApplicationContext,
     description="top 50 project recommanded by users",
     guild_ids=guild_ids
 )
-async def mrank(ctx: ApplicationContext):
+async def mrank_slash(ctx: ApplicationContext):
     results = Queries.select_ranking(db)
     num_pages = (len(results) + 9) // 10
     pages = []
@@ -3005,7 +3005,7 @@ async def mrank(ctx: ApplicationContext):
     description="register project ",
     guild_ids=guild_ids
 )
-async def mreg(ctx: ApplicationContext):
+async def mreg_slash(ctx: ApplicationContext):
     embed = Embed(title="Warning",
                   description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.",
                   color=0xFFFFFF)
@@ -3020,7 +3020,7 @@ async def mreg(ctx: ApplicationContext):
     description="edit project (only your registration can edit)",
     guild_ids=guild_ids
 )
-async def mmod(ctx: ApplicationContext):
+async def mmod_slash(ctx: ApplicationContext):
     embed = Embed(title="Warning",
                   description="ℹ️ Please correct the project with the button below.\n\n"
                               "ℹ️ 아래 버튼으로 프로젝트를 수정해주세요.",
@@ -3036,7 +3036,7 @@ async def mmod(ctx: ApplicationContext):
     description="recommand project",
     guild_ids=guild_ids
 )
-async def mup(ctx: ApplicationContext,
+async def mup_slash(ctx: ApplicationContext,
               twitter_handle: Option(str, "twitter handle", required=True)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
@@ -3076,7 +3076,7 @@ async def mup(ctx: ApplicationContext,
     description="no recommand project",
     guild_ids=guild_ids
 )
-async def mdown(ctx: ApplicationContext,
+async def mdown_slash(ctx: ApplicationContext,
                 twitter_handle: Option(str, "twitter handle", required=True)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
@@ -3118,7 +3118,7 @@ async def mdown(ctx: ApplicationContext,
     description="project minting info (today / tmr) for me",
     guild_ids=guild_ids
 )
-async def mylist(ctx: ApplicationContext):
+async def mylist_slash(ctx: ApplicationContext):
     try:
         regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
         user_id = ctx.author.id
@@ -3175,7 +3175,7 @@ async def mylist(ctx: ApplicationContext):
     description="project minting info (today / tmr) for user",
     guild_ids=guild_ids
 )
-async def youlist(ctx: ApplicationContext,
+async def youlist_slash(ctx: ApplicationContext,
                   user: Option(discord.Member, "tag user", required=True)):
     try:
         user_id = user.id
@@ -3232,7 +3232,7 @@ async def youlist(ctx: ApplicationContext,
     description="My total Project in Top 50 rank",
     guild_ids=guild_ids
 )
-async def myrank(ctx: ApplicationContext,
+async def myrank_slash(ctx: ApplicationContext,
                  user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
@@ -3292,7 +3292,7 @@ async def myrank(ctx: ApplicationContext,
                 "if no user, only can see your recommandation",
     guild_ids=guild_ids
 )
-async def myup(ctx: ApplicationContext,
+async def myup_slash(ctx: ApplicationContext,
                user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
@@ -3350,7 +3350,7 @@ async def myup(ctx: ApplicationContext,
     description="tagged user's no recommandtion list",
     guild_ids=guild_ids
 )
-async def mydown(ctx: ApplicationContext,
+async def mydown_slash(ctx: ApplicationContext,
                  user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
@@ -3409,7 +3409,7 @@ async def mydown(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
-async def mchecker(ctx: ApplicationContext,
+async def mchecker_slash(ctx: ApplicationContext,
                    twitter_handle: Option(str, "twitter handle", required=True),
                    wallet_checker_url: Option(str, "wallet checker url", required=True)):
     parsed_url = urlparse(wallet_checker_url)
@@ -3462,7 +3462,7 @@ async def mchecker(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
-async def mcall(ctx: ApplicationContext,
+async def mcall_slash(ctx: ApplicationContext,
                 twitter_handle: Option(str, "twitter handle", required=True),
                 call_url: Option(str, "wallet checker url", required=True)):
     nft_alpha_channels = [
@@ -3530,7 +3530,7 @@ async def mcall(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
-async def mt(ctx: ApplicationContext,
+async def mt_slash(ctx: ApplicationContext,
              blockchain: Option(str, "twitter handle", required=True),
              tier_url: Option(str, "tire url", required=False)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
@@ -3582,7 +3582,7 @@ def get_current_price(token):
     description="LM token price from Bithumb",
     guild_ids=guild_ids
 )
-async def lm(ctx: ApplicationContext,
+async def lm_slash(ctx: ApplicationContext,
              amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('LM')
     if current_price is not None:
@@ -3615,7 +3615,7 @@ async def lm(ctx: ApplicationContext,
     description="SUI token price from Bithumb",
     guild_ids=guild_ids
 )
-async def sui(ctx: ApplicationContext,
+async def sui_slash(ctx: ApplicationContext,
               amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('SUI')
     if current_price is not None:
@@ -3648,7 +3648,7 @@ async def sui(ctx: ApplicationContext,
     description="BNB token price from Bithumb",
     guild_ids=guild_ids
 )
-async def bnb(ctx: ApplicationContext,
+async def bnb_slash(ctx: ApplicationContext,
               amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('BNB')
     if current_price is not None:
@@ -3936,7 +3936,7 @@ async def me_matic_slash(ctx: ApplicationContext, symbol: str):
     description="magic eden price checker",
     guild_ids=guild_ids
 )
-async def 메(ctx: ApplicationContext,
+async def 메_slash(ctx: ApplicationContext,
             keyword: Option(str, "keyword to search for in magic eden", required=True)):
     await me_slash(ctx, keyword)
 
@@ -3964,7 +3964,7 @@ async def me_slash(ctx: ApplicationContext,
     description="opensea price checker",
     guild_ids=guild_ids
 )
-async def 옾(ctx: ApplicationContext,
+async def 옾_slash(ctx: ApplicationContext,
             keyword: Option(str, "keyword to search for in opensea", required=True),
             count: int = 0):
     await os_slash(ctx, keyword, count)
@@ -4074,7 +4074,7 @@ async def os_slash(ctx: ApplicationContext,
     description="mapping blockchain and search terms to magic eden symbols",
     guild_ids=guild_ids
 )
-async def msave(ctx: ApplicationContext,
+async def msave_slash(ctx: ApplicationContext,
                 blockchain: Option(str, "eth, sol, matic, btc", required=True),
                 keyword: Option(str, "keyword to search for in opensea", required=True),
                 symbol: Option(str, "project symbol in opensea", required=True)):
@@ -4095,7 +4095,7 @@ async def msave(ctx: ApplicationContext,
     description="timezone conversion",
     guild_ids=guild_ids
 )
-async def mtime(ctx: ApplicationContext,
+async def mtime_slash(ctx: ApplicationContext,
                 date_str: Option(str, "year month date: yyyy-mm-dd", required=True),
                 time_str: Option(str, "minutes and seconds: mi:ss", required=True),
                 from_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True),
@@ -4139,12 +4139,12 @@ async def mtime(ctx: ApplicationContext,
     await ctx.respond(embed=embed, ephemeral=False)
 
 
-# @bot.slash_command(
-#     name="해외주식",
-#     description="overseas stock",
-#     guild_ids=guild_ids
-# )
-async def 해외주식(ctx: ApplicationContext,
+@bot.slash_command(
+    name="해외주식",
+    description="overseas stock",
+    guild_ids=guild_ids
+)
+async def 해외주식_slash(ctx: ApplicationContext,
                stock_symbol: Option(str, "overseas stock symbol", required=True)):
     user = f"{ctx.author.name}#{ctx.author.discriminator}"
 
@@ -4208,10 +4208,10 @@ async def 해외주식(ctx: ApplicationContext,
     description="coin price for search from binance",
     guild_ids=guild_ids
 )
-async def coin(ctx: ApplicationContext,
+async def coin_slash(ctx: ApplicationContext,
                coin_symbol: Option(str, "coin symbol", required=True),
                period: Option(str, "search period", required=True) = "1day"):
-    await 코인(ctx, coin_symbol, period)
+    await 코인_slash(ctx, coin_symbol, period)
 
 
 @bot.slash_command(
@@ -4219,7 +4219,7 @@ async def coin(ctx: ApplicationContext,
     description="coin price for search from binance",
     guild_ids=guild_ids
 )
-async def 코인(ctx: ApplicationContext,
+async def 코인_slash(ctx: ApplicationContext,
              coin_symbol: Option(str, "coin symbol", required=True),
              period: Option(str, "search period", required=True) = "1day"):
     base_coin = coin_symbol.upper()
@@ -4356,7 +4356,7 @@ async def 코인(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
-async def addrole(ctx: ApplicationContext,
+async def addrole_slash(ctx: ApplicationContext,
                   sheet_name: Option(str, "google sheet name", required=True),
                   role_name: Option(str, "role name", required=True)):
     # 결과를 저장할 문자열을 초기화합니다.
@@ -4420,7 +4420,7 @@ async def addrole(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def removerole(ctx: ApplicationContext,
+async def removerole_slash(ctx: ApplicationContext,
                      role_name: Option(str, "role name", required=True)):
     try:
         # 결과를 저장할 문자열을 초기화합니다.
@@ -4463,12 +4463,12 @@ async def removerole(ctx: ApplicationContext,
     await ctx.respond(f"{role_name} 역할 제거를 완료했습니다.", ephemeral=False)
 
 
-# @bot.slash_command(
-#     name="나무",
-#     description="namu wiki url",
-#     guild_ids=guild_ids
-# )
-async def 나무(ctx: ApplicationContext):
+@bot.slash_command(
+    name="나무",
+    description="namu wiki url",
+    guild_ids=guild_ids
+)
+async def 나무_slash(ctx: ApplicationContext):
     embed = Embed(title="SearchFi 나무위키", description="https://namu.wiki/w/SearchFi", color=0xFFFFFF)
     await ctx.respond(embed=embed, ephemeral=False)
 
@@ -4478,7 +4478,7 @@ async def 나무(ctx: ApplicationContext):
     description="drawing ai images with prompt text",
     guild_ids=guild_ids
 )
-async def ai(ctx: ApplicationContext,
+async def ai_slash(ctx: ApplicationContext,
              count: Option(int, "draw count", required=True, min_value=1, max_value=4),
              prompts: Option(str, "prompts text", required=True)):
     await draw_slash(ctx, count, prompts)
@@ -4489,7 +4489,7 @@ async def ai(ctx: ApplicationContext,
     description="drawing ai images with existing image",
     guild_ids=guild_ids
 )
-async def ai2(ctx: ApplicationContext):
+async def ai2_slash(ctx: ApplicationContext):
     if len(ctx.attachments) == 0:
         await ctx.reply("No image provided. Please attach an image.")
         return
@@ -4768,7 +4768,7 @@ async def chat_answer(ctx: ApplicationContext, prompts: str):
     description="mint info stats",
     guild_ids=guild_ids
 )
-async def mstats(ctx: ApplicationContext):
+async def mstats_slash(ctx: ApplicationContext):
     results = Queries.select_stats(db)
 
     num_pages = (len(results) + 9) // 10
@@ -4822,7 +4822,7 @@ async def mstats(ctx: ApplicationContext):
     description="tarot card selection",
     guild_ids=guild_ids
 )
-async def 타로(ctx: ApplicationContext):
+async def 타로_slash(ctx: ApplicationContext):
     await tarot_slash(ctx)
 
 
@@ -4874,7 +4874,7 @@ async def tarot_slash(ctx: ApplicationContext):
     description="the price according to the exchange rate",
     guild_ids=guild_ids
 )
-async def mp(ctx: ApplicationContext,
+async def mp_slash(ctx: ApplicationContext,
              symbol: Option(str, "coin symbol", required=True),
              quantity: Option(float, "quantity to check ", required=True)):
     ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")

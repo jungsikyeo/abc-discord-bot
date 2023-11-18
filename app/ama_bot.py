@@ -888,8 +888,8 @@ async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
             await ctx.send("채널을 찾을 수 없습니다.")
             return
 
-        start = datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.strptime(end_date, "%Y-%m-%d")
+        start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
         messages = []
         async for message in voice_channel.history(after=start, before=end):

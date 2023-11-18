@@ -893,14 +893,15 @@ async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
 
         messages = []
         async for message in voice_channel.history(after=start, before=end):
-            messages.append((message.created_at.strftime("%Y-%m-%d"), message.author.id, message.content))
+            user_name = message.author.name  # 유저의 이름을 얻습니다.
+            messages.append((message.created_at.strftime("%Y-%m-%d"), user_name, message.author.id, message.content))
 
         if not messages:
             await ctx.send("지정된 기간 동안 메시지가 없습니다.")
             return
 
-        df = pd.DataFrame(messages, columns=['Date', 'User ID', 'Message'])
-        message_count = df.groupby(['Date', 'User ID']).size().reset_index(name='Message Count')
+        df = pd.DataFrame(messages, columns=['Date', 'User Name', 'User ID', 'Message'])
+        message_count = df.groupby(['Date', 'User Name', 'User ID']).size().reset_index(name='Message Count')
 
         filename = f"voice_channel_messages_{channel_id}_{start_date}_to_{end_date}.xlsx"
         message_count.to_excel(filename, index=False)

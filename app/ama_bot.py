@@ -879,14 +879,6 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
         await ctx.send(embed=embed)
 
 
-import discord
-from discord.ext import commands
-import pandas as pd
-from datetime import datetime
-import os
-
-bot = commands.Bot(command_prefix='!')
-
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):

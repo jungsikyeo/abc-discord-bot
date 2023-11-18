@@ -892,7 +892,7 @@ async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
         end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
         messages = []
-        async for message in voice_channel.history(after=start, before=end):
+        async for message in voice_channel.history(limit=None, after=start, before=end):
             user_name = message.author.name  # 유저의 이름을 얻습니다.
             messages.append((message.created_at.strftime("%Y-%m-%d"), user_name, message.author.id, message.content))
 

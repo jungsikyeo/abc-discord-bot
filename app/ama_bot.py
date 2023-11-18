@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 import time
 import pymysql
+import datetime
 from discord import Embed
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -877,5 +878,36 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
                               color=0xff0000)
         await ctx.send(embed=embed)
 
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
+    try:
+        voice_channel = bot.get_channel(channel_id)
+        if not voice_channel:
+            await ctx.send("채널을 찾을 수 없습니다.")
+            return
+
+        start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+
+        messages = []
+        async for message in voice_channel.history(after=start, before=end):
+            messages.append((message.created_at.strftime("%Y-%m-%d"), message.author.id, message.content))
+
+        if not messages:
+            await ctx.send("지정된 기간 동안 메시지가 없습니다.")
+            return
+
+        df = pd.DataFrame(messages, columns=['Date', 'User ID', 'Message'])
+        message_count = df.groupby(['Date', 'User ID']).size().reset_index(name='Message Count')
+
+        filename = f"voice_channel_messages_{channel_id}_{start_date}_to_{end_date}.xlsx"
+        message_count.to_excel(filename, index=False)
+
+        await ctx.send(f"데이터가 {filename} 파일로 저장되었습니다.")
+
+    except Exception as e:
+        await ctx.send(f'Error: {e}')
 
 bot.run(bot_token)

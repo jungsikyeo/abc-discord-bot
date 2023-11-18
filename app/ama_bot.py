@@ -879,6 +879,14 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
         await ctx.send(embed=embed)
 
 
+import discord
+from discord.ext import commands
+import pandas as pd
+from datetime import datetime
+import os
+
+bot = commands.Bot(command_prefix='!')
+
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
@@ -888,8 +896,8 @@ async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
             await ctx.send("채널을 찾을 수 없습니다.")
             return
 
-        start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
 
         messages = []
         async for message in voice_channel.history(after=start, before=end):
@@ -905,9 +913,26 @@ async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
         filename = f"voice_channel_messages_{channel_id}_{start_date}_to_{end_date}.xlsx"
         message_count.to_excel(filename, index=False)
 
-        await ctx.send(f"데이터가 {filename} 파일로 저장되었습니다.")
+        # 파일 업로드
+        try:
+            with open(filename, 'rb') as f:
+                await ctx.reply(file=discord.File(f), mention_author=True)
+            os.remove(filename)  # 파일 사용 후 삭제
+        except discord.HTTPException as e:
+            embed = discord.Embed(title="Error",
+                                  description=f"Failed to upload the file: {str(e)}",
+                                  color=0xff0000)
+            await ctx.reply(embed=embed, mention_author=True)
+            logger.error(f"Failed to upload the file: {str(e)}")
+        except FileNotFoundError as e:
+            embed = discord.Embed(title="Error",
+                                  description=f"Failed to delete the file. It might have been already deleted or not found: {str(e)}",
+                                  color=0xff0000)
+            await ctx.reply(embed=embed, mention_author=True)
+            logger.error(f"Failed to delete the file: {str(e)}")
 
     except Exception as e:
         await ctx.send(f'Error: {e}')
+
 
 bot.run(bot_token)

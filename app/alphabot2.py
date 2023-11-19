@@ -1797,7 +1797,7 @@ async def me_matic(ctx, symbol):
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
-    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}", headers=headers).text
+    response = requests.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}").text
     data = json.loads(response)
     # print(data)
 

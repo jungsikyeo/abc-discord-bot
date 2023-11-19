@@ -930,10 +930,12 @@ async def on_ready():
 @tasks.loop(minutes=60)
 async def member_count_update():
     super_count_channel_id = int(operating_system.getenv("SUPER_COUNT_CHANNEL_ID"))
+    self_guild_id = int(operating_system.getenv("SELF_GUILD_ID"))
     channel = None
     member_count = 0
     for guild in bot.guilds:
-        print(guild.id, guild.name)
+        if guild.id != self_guild_id:
+            continue
         role = discord.utils.get(guild.roles, name="SF.Super")
         member_count = sum(1 for member in guild.members if role in member.roles and not member.bot)
         channel = discord.utils.get(guild.channels, id=super_count_channel_id)

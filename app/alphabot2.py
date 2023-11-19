@@ -930,7 +930,6 @@ async def on_ready():
 @tasks.loop(minutes=60)
 async def member_count_update():
     super_count_channel_id = int(operating_system.getenv("SUPER_COUNT_CHANNEL_ID"))
-    searchfi_guild = int(operating_system.getenv("GUILD_ID"))
     channel = None
     member_count = 0
     for guild in bot.guilds:

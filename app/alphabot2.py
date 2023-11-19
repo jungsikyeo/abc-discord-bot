@@ -1728,7 +1728,7 @@ async def me_sol(ctx, symbol):
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
+    response = requests.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
     # print(response)
     data = json.loads(response)
     print(data)

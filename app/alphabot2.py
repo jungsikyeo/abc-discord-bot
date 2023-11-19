@@ -1967,9 +1967,12 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         pass
 
     data = results['collection']
+    # print(data)
 
     projectName = data["name"]
     projectImg = data['image_url']
+    if projectImg == "None":
+        projectImg = data["featured_image_url"]
     projectTwitter = f"https://twitter.com/{data['twitter_username']}"
     projectDiscord = data['discord_url']
     projectWebsite = data['external_url']
@@ -2016,7 +2019,8 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     sales_list += "```"
 
     embed = Embed(title=f"{projectName}", color=0x2081E2, url=f"https://opensea.io/collection/{symbol}")
-    embed.set_thumbnail(url=f"{projectImg}")
+    if projectImg and projectImg != "None":
+        embed.set_thumbnail(url=f"{projectImg}")
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)

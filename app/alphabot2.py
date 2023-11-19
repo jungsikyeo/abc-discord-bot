@@ -933,6 +933,7 @@ async def member_count_update():
     channel = None
     member_count = 0
     for guild in bot.guilds:
+        print(guild.id, guild.name)
         role = discord.utils.get(guild.roles, name="SF.Super")
         member_count = sum(1 for member in guild.members if role in member.roles and not member.bot)
         channel = discord.utils.get(guild.channels, id=super_count_channel_id)

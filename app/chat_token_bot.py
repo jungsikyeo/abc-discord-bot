@@ -138,7 +138,7 @@ async def on_ready():
         """, ("searchfi",))
         searchfi_data = cursor.fetchone()
 
-        print(f"searchfi {searchfi_data}")
+        print(f"searchfi {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
 
         asyncio.create_task(schedule_reset("searchfi", False))
 
@@ -168,7 +168,8 @@ async def on_message(message):
     type1 = "searchfi"
     global winner_users, tokens_data
     current_timestamp = datetime.now().timestamp()
-    print(datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
+    if tokens_data.get(type1):
+        print(datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
     if tokens_data.get(type1) and current_timestamp > tokens_data[type1]:
         if not winner_users.get(message.author.id) or winner_users[message.author.id] < win_limit:
             # searchfi 토큰 지급
@@ -303,6 +304,9 @@ async def schedule_reset(token_type, light):
         await schedule_give(token_type)
 
         # 다음 리셋까지 대기
+        # while True:
+        #     if (next_reset - datetime.now().timestamp()) > 0:
+        #         break
         print(f"sleep: {next_reset - datetime.now().timestamp()}")
         await asyncio.sleep(next_reset - datetime.now().timestamp())
         # await asyncio.sleep(43200)

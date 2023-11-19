@@ -1796,10 +1796,16 @@ async def me_matic(ctx, symbol):
     })
     headers = {
         "Authorization": f"Bearer {api_key}",
+        "accept": "*/*"
     }
-    response = requests.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}").text
-    data = json.loads(response)
-    # print(data)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v3/rtp/polygon/collections/v7?id={symbol}"
+                           f"&includeMintStages=false&includeSecurityConfigs=false&normalizeRoyalties=false"
+                           f"&useNonFlaggedFloorAsk=false&sortBy=allTimeVolume&limit=20",
+                           headers=headers).text
+    collections = json.loads(response)
+    print(collections)
+    data = collections["collections"][0]
+    print(data)
 
     try:
         if data['detail'] == "Collection not found":
@@ -1811,26 +1817,24 @@ async def me_matic(ctx, symbol):
         pass
 
     projectName = data["name"]
-    projectImg = data['media']
+    projectImg = data['image']
     projectChain = 'MATIC'
-    projectTwitter = data['twitterLink']
-    projectDiscord = data['discordLink']
-    projectWebsite = data['websiteLink']
+    projectTwitter = data['twitterUrl']
+    projectDiscord = data['discordUrl']
+    projectWebsite = data['externalUrl']
     projectLinks = f"[MegicEden](https://magiceden.io/ko/collections/polygon/{symbol})"
-    if projectWebsite:
+    if projectWebsite and projectWebsite != "None":
         projectLinks += f" | [Website]({projectWebsite})"
-    if projectDiscord:
+    if projectDiscord and projectDiscord != "None":
         projectLinks += f" | [Discord]({projectDiscord})"
-    if projectTwitter:
+    if projectTwitter and projectTwitter != "None":
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    time.sleep(0.1)
-    response = scraper.get(f"https://polygon-api.magiceden.io/v2/xc/collections/polygon/{symbol}/stats",
-                           headers=headers).text
-    data = json.loads(response)
-
-    projectFloorPrice = float(data['floorPrice']) / 1000000000000000000
-    projectSupply = data['totalSupply']
+    try:
+        projectFloorPrice = float(data['floorAsk']['price']['amount']['native'])
+    except:
+        projectFloorPrice = "-"
+    projectSupply = data['tokenCount']
     projectOwners = data['ownerCount']
 
     embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ko/collections/polygon/{symbol}")

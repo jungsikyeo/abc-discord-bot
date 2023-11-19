@@ -930,15 +930,20 @@ async def on_ready():
 @tasks.loop(minutes=60)
 async def member_count_update():
     super_count_channel_id = int(operating_system.getenv("SUPER_COUNT_CHANNEL_ID"))
+    searchfi_guild = int(operating_system.getenv("GUILD_ID"))
+    channel = None
+    member_count = 0
     for guild in bot.guilds:
+        if guild.id != searchfi_guild:
+            continue
         role = discord.utils.get(guild.roles, name="SF.Super")
         member_count = sum(1 for member in guild.members if role in member.roles and not member.bot)
         channel = discord.utils.get(guild.channels, id=super_count_channel_id)
-        if channel:
-            await channel.edit(name=f'SUPER: {member_count}')
-            logger.info("Changed SF.Super member count!")
-        else:
-            logger.error("Channel not found")
+    if channel:
+        await channel.edit(name=f'SUPER: {member_count}')
+        logger.info("Changed SF.Super member count!")
+    else:
+        logger.error("Channel not found")
 
 
 @bot.command()

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from discord.ext import commands
-from discord import Embed, Button, ButtonStyle
+from discord import Embed
 from discord.ui import View, button, Modal, InputText
 from discord.interactions import Interaction
 from datetime import datetime, timedelta
@@ -77,6 +77,7 @@ lock_status = True
 exclude_role_list = list(map(int, os.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
 enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split(',')))
 
+c2e_type = os.getenv("C2E_TYPE")
 
 class TokenSettingsModal(Modal):
     def __init__(self, data):
@@ -112,7 +113,7 @@ class TokenSettingsModal(Modal):
                     max_win = %s,
                     win_limit = %s
                 WHERE type = %s
-            """, (daily_limit, min_tokens, max_tokens, user_limit, "searchfi"))
+            """, (daily_limit, min_tokens, max_tokens, user_limit, c2e_type))
             connection.commit()
         except Exception as e:
             connection.rollback()
@@ -145,7 +146,7 @@ class TokenSettingsButton(View):
                     win_limit
                 FROM c2e_token_tracking
                 WHERE type = %s
-            """, "searchfi")
+            """, c2e_type)
             searchfi_data = cursor.fetchone()
         except Exception as e:
             connection.rollback()
@@ -191,7 +192,7 @@ async def on_ready():
         cursor.execute("""
             SELECT reset_at, still_available, daily_token_limit, min_win, max_win, win_limit
             FROM c2e_token_tracking WHERE type = %s
-        """, ("searchfi",))
+        """, (c2e_type,))
         searchfi_data = cursor.fetchone()
 
         global searchfi_amount, min_win, max_win, win_limit, lock_status
@@ -202,12 +203,12 @@ async def on_ready():
             cursor.execute("""
                 INSERT INTO c2e_token_tracking (type, reset_at) 
                 VALUES (%s, %s) 
-            """, ("searchfi", next_reset))
+            """, (c2e_type, next_reset))
 
             cursor.execute("""
                 SELECT reset_at, still_available, daily_token_limit, min_win, max_win, win_limit
                 FROM c2e_token_tracking WHERE type = %s
-            """, ("searchfi",))
+            """, (c2e_type,))
             searchfi_data = cursor.fetchone()
 
             searchfi_amount = searchfi_data['still_available']
@@ -221,7 +222,7 @@ async def on_ready():
         print(
             f"searchfi ready: {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
 
-        asyncio.create_task(schedule_reset("searchfi", False))
+        asyncio.create_task(schedule_reset(c2e_type, False))
 
         lock_status = False
 
@@ -242,7 +243,7 @@ async def schedule_reset(token_type, run_type=True):
         cursor.execute("""
                 SELECT reset_at, still_available, daily_token_limit, min_win, max_win, win_limit
                 FROM c2e_token_tracking WHERE type = %s
-            """, ("searchfi",))
+            """, (c2e_type,))
         searchfi_data = cursor.fetchone()
 
         searchfi_amount = searchfi_data['daily_token_limit']
@@ -304,8 +305,8 @@ async def schedule_give(token_type):
         # 새로운 토큰 지급 주기 계산
         if available > 0:
             new_rate = remaining_seconds / available
-            # 랜덤 시간 추가: -3분 ~ +3분
-            random_offset = random.randint(-180, 180)  # 초 단위로 -180초 ~ 180초
+            # 랜덤 시간 추가: -1분 30초 ~ +1분 30초
+            random_offset = random.randint(-90, 90)  # 초 단위로 -90초 ~ 90초
             next_give_time = now.timestamp() + new_rate + random_offset
         else:
             next_give_time = midnight.timestamp()  # 토큰이 없으면 다음 날로 설정
@@ -335,7 +336,7 @@ async def on_message(message):
         return
 
     # tokensData와 winnerUsers를 확인하여 토큰 지급 여부 결정
-    type1 = "searchfi"
+    type1 = c2e_type
     global winner_users, tokens_data, lock_status
     current_timestamp = datetime.now().timestamp()
     if tokens_data.get(type1):

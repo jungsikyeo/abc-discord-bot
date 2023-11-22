@@ -376,7 +376,7 @@ async def give_points(message, token_type):
 
         # 사용자 토큰 증가
         cursor.execute("""
-            INSERT INTO user_tokens_test (user_id, tokens) VALUES (%s, %s)
+            INSERT INTO user_tokens (user_id, tokens) VALUES (%s, %s)
             ON DUPLICATE KEY UPDATE tokens = tokens + VALUES(tokens)
         """, (message.author.id, token_amount))
 
@@ -395,11 +395,10 @@ async def give_points(message, token_type):
 
         # 메시지 임베드 생성
         embed = Embed(
-            # title="Congratulations 🎉 🎉",
-            # description=f"You just won **{token_amount}** {token_type} tokens!",
-            # description=f"You just won **{token_amount}** {token_type} tokens!",
-            title="Congratulations 🎉 🎉 (Sorry.. Test :joy: )",
-            description=f"You just won **{token_amount}** test tokens!",
+            title="Congratulations 🎉 🎉",
+            description=f"You just won **{token_amount}** {token_type} tokens!",
+            # title="Congratulations 🎉 🎉 (Sorry.. Test :joy: )",
+            # description=f"You just won **{token_amount}** test tokens!",
             color=0x9da1ef
         )
         embed.set_image(

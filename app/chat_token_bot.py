@@ -397,7 +397,7 @@ async def give_points(message, token_type):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (message.author.id, token_amount, message.author.name,
               'bot', 'bot', message.channel.id, message.channel.name, 'CHAT'))
-        print(f"{message.channel.name} -> {message.author.name} : {token_amount}")
+        logger.info(f"{message.channel.name} -> {message.author.name} : {token_amount}")
 
         # 커밋
         connection.commit()

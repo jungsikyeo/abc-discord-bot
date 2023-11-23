@@ -15,7 +15,6 @@ from discord.ui import View, button, Modal, InputText
 from discord.interactions import Interaction
 from datetime import datetime, timedelta
 
-
 load_dotenv()
 
 bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
@@ -78,6 +77,7 @@ exclude_role_list = list(map(int, os.getenv('C2E_EXCLUDE_ROLE_LIST').split(','))
 enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split(',')))
 
 c2e_type = os.getenv("C2E_TYPE")
+
 
 class TokenSettingsModal(Modal):
     def __init__(self, data):
@@ -155,15 +155,6 @@ class TokenSettingsButton(View):
             cursor.close()
             connection.close()
         await interaction.response.send_modal(modal=TokenSettingsModal(searchfi_data))
-
-
-@bot.command(name="setting_sf_tokens")
-@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def setting_sf_tokens(ctx):
-    embed = Embed(title="SF Token Settings", description="아래 버튼으로 SF 토큰을 세팅해주세요.\n\n"
-                                                 "Please setting SF Token using the button below.", color=0xFFFFFF)
-    view = TokenSettingsButton(db)
-    await ctx.reply(embed=embed, view=view, mention_author=True)
 
 
 # 한국 시간대 기준 정오(낮 12시) 시간 구하기
@@ -314,8 +305,7 @@ async def schedule_give(token_type):
         else:
             next_give_time = reset_at.timestamp()  # 토큰이 없으면 다음 리셋 시간으로 설정
 
-
-    # 토큰 지급 시간 업데이트
+        # 토큰 지급 시간 업데이트
         tokens_data[token_type] = next_give_time
     except Exception as e:
         connection.rollback()
@@ -416,6 +406,16 @@ async def give_points(message, token_type):
     finally:
         cursor.close()
         connection.close()
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def setting_sf_tokens(ctx):
+    embed = Embed(title="SF Token Settings", description="아래 버튼으로 SF 토큰을 세팅해주세요.\n\n"
+                                                         "Please setting SF Token using the button below.",
+                  color=0xFFFFFF)
+    view = TokenSettingsButton(db)
+    await ctx.reply(embed=embed, view=view, mention_author=True)
 
 
 bot.run(bot_token)

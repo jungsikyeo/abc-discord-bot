@@ -220,8 +220,7 @@ async def on_ready():
         # 커밋
         connection.commit()
 
-        print(
-            f"searchfi ready: {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
+        logger.info(f"searchfi ready: {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
 
         asyncio.create_task(schedule_reset(c2e_type, False))
 

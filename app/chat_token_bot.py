@@ -345,8 +345,8 @@ async def on_message(message):
     type1 = c2e_type
     global winner_users, tokens_data, lock_status
     current_timestamp = datetime.now().timestamp()
-    # if tokens_data.get(type1):
-    #     print(datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
+    if tokens_data.get(type1):
+        logger.info(datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
     if not lock_status and tokens_data.get(type1) and current_timestamp > tokens_data[type1]:
         if not winner_users.get(message.author.id) or winner_users[message.author.id] < win_limit:
             lock_status = True

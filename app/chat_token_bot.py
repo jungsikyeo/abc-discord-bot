@@ -272,7 +272,6 @@ async def schedule_reset(token_type, run_type=True):
         await schedule_give(token_type)
 
         # 다음 리셋까지 대기
-        print(f"sleep: {next_reset - datetime.now().timestamp()}")
         await asyncio.sleep(next_reset - datetime.now().timestamp())
 
         # 다음 리셋 스케줄링

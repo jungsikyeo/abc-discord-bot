@@ -299,20 +299,23 @@ async def schedule_give(token_type):
         reset_at = datetime.fromtimestamp(result['reset_at'])
         available = result['still_available']
 
+        # 평균 토큰 지급량 계산
+        average_tokens_per_distribution = (min_win + max_win) / 2  # min_win, max_win 개의 평균
+
         # 남은 시간 계산
         now = datetime.now()
         remaining_seconds = (reset_at - now).total_seconds()
 
         # 새로운 토큰 지급 주기 계산
         if available > 0:
-            new_rate = remaining_seconds / available
-            # 랜덤 시간 추가: -1분 30초 ~ +1분 30초
-            random_offset = random.randint(-90, 90)  # 초 단위로 -90초 ~ 90초
+            new_rate = remaining_seconds / (available / average_tokens_per_distribution)
+            random_offset = random.randint(-90, 90)  # -1분 30초 ~ +1분 30초
             next_give_time = now.timestamp() + new_rate + random_offset
         else:
             next_give_time = reset_at.timestamp()  # 토큰이 없으면 다음 리셋 시간으로 설정
 
-        # 토큰 지급 시간 업데이트
+
+    # 토큰 지급 시간 업데이트
         tokens_data[token_type] = next_give_time
     except Exception as e:
         connection.rollback()

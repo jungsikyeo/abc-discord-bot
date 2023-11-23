@@ -157,7 +157,7 @@ class TokenSettingsButton(View):
         await interaction.response.send_modal(modal=TokenSettingsModal(searchfi_data))
 
 
-@bot.command()
+@bot.command(name="setting_sf_tokens")
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def setting_sf_tokens(ctx):
     embed = Embed(title="SF Token Settings", description="아래 버튼으로 SF 토큰을 세팅해주세요.\n\n"

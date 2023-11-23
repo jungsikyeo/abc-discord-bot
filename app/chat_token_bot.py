@@ -317,6 +317,8 @@ async def schedule_give(token_type):
 
         # 토큰 지급 시간 업데이트
         tokens_data[token_type] = next_give_time
+
+        logger.info("Next give time: %s", datetime.fromtimestamp(next_give_time))
     except Exception as e:
         connection.rollback()
         logger.error(f'schedule_give db error: {e}')
@@ -345,8 +347,9 @@ async def on_message(message):
     type1 = c2e_type
     global winner_users, tokens_data, lock_status
     current_timestamp = datetime.now().timestamp()
-    if tokens_data.get(type1):
-        logger.info("Current: %s, Next: %s", datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
+    # if tokens_data.get(type1):
+    #     logger.info("Current: %s, Next: %s",
+    #                 datetime.fromtimestamp(current_timestamp), datetime.fromtimestamp(tokens_data[type1]))
     if not lock_status and tokens_data.get(type1) and current_timestamp > tokens_data[type1]:
         if not winner_users.get(message.author.id) or winner_users[message.author.id] < win_limit:
             lock_status = True

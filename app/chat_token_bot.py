@@ -293,14 +293,15 @@ async def schedule_give(token_type):
     try:
         # 남은 토큰 수량 확인
         cursor.execute("""
-            SELECT still_available FROM c2e_token_tracking WHERE type = %s
+            SELECT reset_at, still_available FROM c2e_token_tracking WHERE type = %s
         """, (token_type,))
-        available = cursor.fetchone()['still_available']
+        result = cursor.fetchone()
+        reset_at = datetime.fromtimestamp(result['reset_at'])
+        available = result['still_available']
 
-        # 남은 시간 계산 (예: 자정까지 남은 시간)
+        # 남은 시간 계산
         now = datetime.now()
-        midnight = datetime(now.year, now.month, now.day) + timedelta(days=1)
-        remaining_seconds = (midnight - now).total_seconds()
+        remaining_seconds = (reset_at - now).total_seconds()
 
         # 새로운 토큰 지급 주기 계산
         if available > 0:
@@ -309,7 +310,7 @@ async def schedule_give(token_type):
             random_offset = random.randint(-90, 90)  # 초 단위로 -90초 ~ 90초
             next_give_time = now.timestamp() + new_rate + random_offset
         else:
-            next_give_time = midnight.timestamp()  # 토큰이 없으면 다음 날로 설정
+            next_give_time = reset_at.timestamp()  # 토큰이 없으면 다음 리셋 시간으로 설정
 
         # 토큰 지급 시간 업데이트
         tokens_data[token_type] = next_give_time

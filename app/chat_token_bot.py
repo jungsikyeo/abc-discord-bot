@@ -157,6 +157,16 @@ class TokenSettingsButton(View):
         await interaction.response.send_modal(modal=TokenSettingsModal(searchfi_data))
 
 
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def setting_sf_tokens(ctx):
+    embed = Embed(title="SF Token Settings", description="아래 버튼으로 SF 토큰을 세팅해주세요.\n\n"
+                                                         "Please setting SF Token using the button below.",
+                  color=0xFFFFFF)
+    view = TokenSettingsButton(db)
+    await ctx.reply(embed=embed, view=view, mention_author=True)
+
+
 # 한국 시간대 기준 정오(낮 12시) 시간 구하기
 def get_noon_kst():
     seoul_tz = pytz.timezone('Asia/Seoul')
@@ -410,14 +420,12 @@ async def give_points(message, token_type):
         connection.close()
 
 
-@bot.command()
-@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def setting_sf_tokens(ctx):
-    embed = Embed(title="SF Token Settings", description="아래 버튼으로 SF 토큰을 세팅해주세요.\n\n"
-                                                         "Please setting SF Token using the button below.",
-                  color=0xFFFFFF)
-    view = TokenSettingsButton(db)
-    await ctx.reply(embed=embed, view=view, mention_author=True)
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.run(bot_token)

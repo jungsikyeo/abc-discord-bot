@@ -323,10 +323,12 @@ async def on_message(message):
 
     # 특정 역할을 가진 사용자의 메시지는 무시
     if any(role.id in exclude_role_list for role in message.author.roles):
+        await bot.process_commands(message)
         return
 
     # 메시지가 허용된 채널 중 하나에서 왔는지 확인
     if message.channel.id not in enabled_channel_list:
+        await bot.process_commands(message)
         return
 
     # tokensData와 winnerUsers를 확인하여 토큰 지급 여부 결정

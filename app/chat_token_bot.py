@@ -276,7 +276,7 @@ async def schedule_reset(token_type, run_type=True):
         await asyncio.sleep(next_reset - datetime.now().timestamp())
 
         # 다음 리셋 스케줄링
-        print(f"resetting tokens at, {datetime.fromtimestamp(next_reset)}, {token_type}")
+        logger.info(f"resetting tokens at, {datetime.fromtimestamp(next_reset)}, {token_type}")
     except Exception as e:
         connection.rollback()
         logger.error(f'schedule_reset db error: {e}')

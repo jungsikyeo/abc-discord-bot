@@ -387,6 +387,7 @@ class StatsButtons(View):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def sf_token_stats(ctx, log_date="today"):
     if log_date == "today":
         target_date = datetime.datetime.now()

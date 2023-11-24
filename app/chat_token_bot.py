@@ -12,6 +12,7 @@ from dbutils.pooled_db import PooledDB
 from discord.ext import commands
 from discord import Embed
 from discord.ui import View, button, Modal, InputText
+from discord.ext.pages import Paginator
 from discord.interactions import Interaction
 from datetime import datetime, timedelta
 
@@ -157,6 +158,253 @@ class TokenSettingsButton(View):
         await interaction.response.send_modal(modal=TokenSettingsModal(searchfi_data))
 
 
+class StatsButtons(View):
+    def __init__(self, db, ctx, today_string):
+        super().__init__()
+        self.db = db
+        self.ctx = ctx
+        self.today_string = today_string
+
+    @discord.ui.button(label="Token By Cycles",
+                       style=discord.ButtonStyle.primary,
+                       custom_id="token_cycles_button")
+    async def button_token_cycles(self, _, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        connection = self.db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"""
+                select
+                    id,
+                    (select max(timestamp) from c2e_token_logs where id < a.id) before_times,
+                    timestamp current_times,
+                    (timestampdiff(MINUTE , (select max(timestamp) from c2e_token_logs where id < a.id),timestamp)) minus_time,
+                    tokens
+                from c2e_token_logs a
+                where action_type = 'CHAT'
+                and timestamp like concat('{self.today_string}', '%')
+            """)
+            token_log = cursor.fetchall()
+            num_pages = (len(token_log) + 14) // 15
+            pages = []
+            for page in range(num_pages):
+                embed = Embed(title=f"SF Token Stats By Cycles - Page {page + 1}",
+                              description="- **Before Times**: The Before times the token was sent\n"
+                                          "- **Current Times**: The Current times the token was sent\n"
+                                          "- **Cycle**: Cycles in which tokens were sent\n"
+                                          "- **Tokens**: SF Tokens sent to the user",
+                              color=0x9da1ef)
+                header = "```\n{:<21}{:<20}{:<8}{:>6}\n".format("Before Times", "Current Times", "Cycle", "Tokens")
+                line = "-" * (20 + 20 + 9 + 6) + "\n"  # 각 열의 너비 합만큼 하이픈 추가
+                description = header + line
+                for i in range(15):
+                    index = page * 15 + i
+                    if index >= len(token_log):
+                        break
+                    log = token_log[index]
+                    before_times = log['before_times'].strftime("%Y-%m-%d %H:%M:%S") if log['before_times'] else "N/A"
+                    current_times = log['current_times'].strftime("%Y-%m-%d %H:%M:%S")
+                    minus_time = str(log['minus_time']) + " min"
+                    tokens = str(log['tokens']) + " SF"
+                    description += "{:<21}{:<20}{:>8}{:>6}\n".format(before_times, current_times, minus_time, tokens)
+                description += "```"
+
+                embed.add_field(name="",
+                                value=description)
+                pages.append(embed)
+            paginator = Paginator(pages)
+            await paginator.send(self.ctx, mention_author=True)
+        except Exception as e:
+            connection.rollback()
+            logger.error(f'Error in button_token_cycles: {e}')
+        finally:
+            cursor.close()
+            connection.close()
+
+    @discord.ui.button(label="Token By Channels",
+                       style=discord.ButtonStyle.green,
+                       custom_id="token_channels_button")
+    async def button_token_channels(self, _, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        connection = self.db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"""
+                with times as (
+                    select distinct '1' as id,
+                                    FROM_UNIXTIME(UNIX_TIMESTAMP(timestamp), '%Y-%m-%d %H') times
+                    from c2e_token_logs
+                    where timestamp like concat('{self.today_string}', '%')
+                ),
+                times_channels as (
+                    select times.times,
+                          channels.channel_id,
+                          channels.channel_name
+                   from times
+                    inner join (select distinct '1' as id,
+                                                '961445326374457354' channel_id,
+                                                '?ㅣgeneral-kr' channel_name
+                                from dual
+                                union all
+                                select distinct '1' as id,
+                                                '964983393567768626' channel_id,
+                                                '?ㅣgeneral-cn' channel_name
+                                from dual
+                                union all
+                                select distinct '1' as id,
+                                                '961448900575760454' channel_id,
+                                                '?ㅣgeneral-en' channel_name
+                                from dual
+                                union all
+                                select distinct '1' as id,
+                                                '1041359815068373002' channel_id,
+                                                '?ㅣgeneral-jp' channel_name
+                                from dual
+                    ) as channels on channels.id = times.id
+                )
+                select tc.times,
+                       tc.channel_id,
+                       tc.channel_name,
+                       ifnull(stats.cnt, 0) as cnt,
+                       ifnull(stats.sum_tokens, 0) as sum_tokens
+                from times_channels as tc
+                left outer join (
+                    select FROM_UNIXTIME(UNIX_TIMESTAMP(timestamp), '%Y-%m-%d %H') as times,
+                           channel_id,
+                           channel_name,
+                           count(1) cnt,
+                           sum(tokens) sum_tokens
+                    from c2e_token_logs as main
+                    where action_type = 'CHAT'
+                    and timestamp like concat('{self.today_string}', '%')
+                    group by FROM_UNIXTIME(UNIX_TIMESTAMP(timestamp), '%Y-%m-%d %H'),
+                             channel_id,
+                             channel_name
+                ) as stats on stats.times = tc.times
+                            and stats.channel_id = tc.channel_id
+                order by tc.times,
+                         tc.channel_name
+            """)
+            token_log = cursor.fetchall()
+            num_pages = (len(token_log) + 15) // 16
+            pages = []
+            for page in range(num_pages):
+                embed = Embed(title=f"SF Token Stats By Channels - Page {page + 1}",
+                              description="- **Times**: KST Time the token was sent (in hours)\n"
+                                          "- **Channel Name**: The channel where the token was won\n"
+                                          "- **COUNT**: Number of tokens won\n"
+                                          "- **SUM**: Total of winning tokens",
+                              color=0x9da1ef)
+                header = "```\n{:<15}{:<15}{:<5}{:>5}\n".format("Times", "Channel Name", "COUNT", "SUM")
+                line = "-" * (15 + 15 + 5 + 5) + "\n"  # 각 열의 너비 합만큼 하이픈 추가
+                description = header + line
+                for i in range(16):
+                    index = page * 16 + i
+                    if index >= len(token_log):
+                        break
+                    if i > 0 and i % 4 == 0:
+                        description += line
+                    log = token_log[index]
+                    times = log['times']
+                    channel_name = f"{bot.get_channel(int(log['channel_id']))}"
+                    count = str(log['cnt'])
+                    sum_tokens = str(log['sum_tokens'])
+                    description += "{:<15}{:<15}{:>5}{:>5}\n".format(times, channel_name, count, sum_tokens)
+                description += "```"
+
+                embed.add_field(name="",
+                                value=description)
+                pages.append(embed)
+            paginator = Paginator(pages)
+            await paginator.send(self.ctx, mention_author=True)
+        except Exception as e:
+            connection.rollback()
+            logger.error(f'Error in button_token_channels: {e}')
+        finally:
+            cursor.close()
+            connection.close()
+
+    @discord.ui.button(label="Token By Users",
+                       style=discord.ButtonStyle.red,
+                       custom_id="token_users_button")
+    async def button_token_users(self, _, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        connection = self.db.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"""
+                select channel_id,
+                       channel_name,
+                       user_id,
+                       user_name,
+                       count(1) cnt,
+                       sum(tokens) sum_tokens
+                from c2e_token_logs
+                where action_type = 'CHAT'
+                and timestamp like concat('{self.today_string}', '%')
+                group by channel_id, channel_name, user_id, user_name
+                order by sum_tokens desc
+            """)
+            token_log = cursor.fetchall()
+            num_pages = (len(token_log) + 14) // 15
+            pages = []
+            for page in range(num_pages):
+                embed = Embed(title=f"SF Token Stats By Users - Page {page + 1}",
+                              description="- **Channel Name**: The channel where the token was won\n"
+                                          "- **User Name**: User Name where the token was won\n"
+                                          "- **COUNT**: Number of tokens won\n"
+                                          "- **SUM**: Total of winning tokens",
+                              color=0x9da1ef)
+                header = "```\n{:<15}{:<25}{:<5}{:>5}\n".format("Channel Name", "User Name", "COUNT", "SUM")
+                line = "-" * (15 + 25 + 5 + 5) + "\n"  # 각 열의 너비 합만큼 하이픈 추가
+                description = header + line
+                for i in range(15):
+                    index = page * 15 + i
+                    if index >= len(token_log):
+                        break
+                    log = token_log[index]
+                    channel_name = f"{bot.get_channel(int(log['channel_id']))}"
+                    user_name = log['user_name']
+                    count = str(log['cnt'])
+                    sum_tokens = str(log['sum_tokens'])
+                    description += "{:<15}{:<25}{:>5}{:>5}\n".format(channel_name, user_name, count, sum_tokens)
+                description += "```"
+
+                embed.add_field(name="",
+                                value=description)
+                pages.append(embed)
+            paginator = Paginator(pages)
+            await paginator.send(self.ctx, mention_author=True)
+        except Exception as e:
+            connection.rollback()
+            logger.error(f'Error in button_token_cycle: {e}')
+        finally:
+            cursor.close()
+            connection.close()
+
+
+@bot.command()
+async def sf_token_stats(ctx, log_date="today"):
+    if log_date == "today":
+        target_date = datetime.datetime.now()
+        today = target_date
+        today_string = today.strftime("%Y-%m-%d")
+    else:
+        today_string = log_date
+
+    embed = Embed(title="SF Token Stats",
+                  description=f"`{today_string}` 날짜의 통계를 조회합니다.\n"
+                              "아래 버튼으로 조회할 통계 유형을 선택해주세요.\n\n"
+                              f"Query statistics for date `{today_string}`."
+                              "Please select the type of statistics you want to look up with the button below.",
+                  color=0xFFFFFF)
+    view = StatsButtons(db, ctx, today_string)
+    await ctx.reply(embed=embed, view=view, mention_author=True)
+
+
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def setting_sf_tokens(ctx):
@@ -220,7 +468,8 @@ async def on_ready():
         # 커밋
         connection.commit()
 
-        logger.info(f"searchfi ready: {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
+        logger.info(
+            f"searchfi ready: {datetime.fromtimestamp(searchfi_data['reset_at'])}, {searchfi_data['still_available']}")
 
         asyncio.create_task(schedule_reset(c2e_type, False))
 
@@ -396,6 +645,11 @@ async def give_points(message, token_type):
         """, (message.author.id, token_amount, message.author.name,
               'bot', 'bot', message.channel.id, message.channel.name, 'CHAT'))
         logger.info(f"{message.channel.name} -> {message.author.name} : {token_amount}")
+
+        if not winner_users.get(message.author.id):
+            winner_users[message.author.id] = 1
+        else:
+            winner_users[message.author.id] += 1
 
         # 커밋
         connection.commit()

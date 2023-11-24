@@ -1888,7 +1888,7 @@ def process_asset_events(asset_events):
         # Unix 타임스탬프를 datetime으로 변환
         date = datetime.datetime.fromtimestamp(event['closing_date'])
         # ETH로 환산 (quantity가 Wei로 제공되므로)
-        price = float(event['payment']['quantity']) / 10**18
+        price = float(event['payment']['quantity']) / 10 ** 18
         processed_data.append({'date': date, 'price': price})
     # DataFrame 생성
     df = pd.DataFrame(processed_data)
@@ -2307,7 +2307,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
 
     # Draw current price
     axes[0].axhline(y=float(ticker['lastPrice']), color='white', linestyle='--', linewidth=1)
-    axes[0].text(len(df.index)+text_space,
+    axes[0].text(len(df.index) + text_space,
                  float(ticker['lastPrice']),
                  f"{np.format_float_positional(float(ticker['lastPrice']))}",
                  color="white",
@@ -2329,8 +2329,6 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     #
     # coin_name = next((coin['name'] for coin in coins if coin['symbol'].upper() == base_coin), base_coin)
     coin_name = f"{base_coin}/{quote_coin}"
-
-
 
     # Extract the necessary information
     last_price = float(ticker['lastPrice'])
@@ -2907,7 +2905,7 @@ async def mp(ctx, symbol: str, amount: float):
     guild_ids=guild_ids
 )
 async def mint_slash(ctx: ApplicationContext,
-               mint_date: Option(str, "yyyy-mm-dd", required=False) = "today"):
+                     mint_date: Option(str, "yyyy-mm-dd", required=False) = "today"):
     if mint_date == "today":
         target_date = datetime.datetime.now()
 
@@ -2956,7 +2954,7 @@ async def mint_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def msearch_slash(ctx: ApplicationContext,
-                  searching: Option(str, "project name or twitter handle", required=True)):
+                        searching: Option(str, "project name or twitter handle", required=True)):
     buttonView = PageButtonView(ctx)
     pages = []
     projects = Queries.select_search_project(db, searching)
@@ -3050,7 +3048,7 @@ async def mmod_slash(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 async def mup_slash(ctx: ApplicationContext,
-              twitter_handle: Option(str, "twitter handle", required=True)):
+                    twitter_handle: Option(str, "twitter handle", required=True)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
@@ -3090,7 +3088,7 @@ async def mup_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def mdown_slash(ctx: ApplicationContext,
-                twitter_handle: Option(str, "twitter handle", required=True)):
+                      twitter_handle: Option(str, "twitter handle", required=True)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
     project_info = Queries.get_project_id_by_twitter_handle(db, twitter_handle)
@@ -3189,7 +3187,7 @@ async def mylist_slash(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 async def youlist_slash(ctx: ApplicationContext,
-                  user: Option(discord.Member, "tag user", required=True)):
+                        user: Option(discord.Member, "tag user", required=True)):
     try:
         user_id = user.id
         regUser = user.name + "#" + user.discriminator
@@ -3246,7 +3244,7 @@ async def youlist_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def myrank_slash(ctx: ApplicationContext,
-                 user: Option(discord.Member, "tag user", required=False)):
+                       user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
     else:
@@ -3306,7 +3304,7 @@ async def myrank_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def myup_slash(ctx: ApplicationContext,
-               user: Option(discord.Member, "tag user", required=False)):
+                     user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
     else:
@@ -3364,7 +3362,7 @@ async def myup_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def mydown_slash(ctx: ApplicationContext,
-                 user: Option(discord.Member, "tag user", required=False)):
+                       user: Option(discord.Member, "tag user", required=False)):
     if user:
         user_id = user.id
     else:
@@ -3423,8 +3421,8 @@ async def mydown_slash(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
 async def mchecker_slash(ctx: ApplicationContext,
-                   twitter_handle: Option(str, "twitter handle", required=True),
-                   wallet_checker_url: Option(str, "wallet checker url", required=True)):
+                         twitter_handle: Option(str, "twitter handle", required=True),
+                         wallet_checker_url: Option(str, "wallet checker url", required=True)):
     parsed_url = urlparse(wallet_checker_url)
     if not parsed_url.scheme or not parsed_url.netloc:
         embed = Embed(title="Error",
@@ -3476,8 +3474,8 @@ async def mchecker_slash(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Pioneer', 'SF.Guardian', 'SF.dev')
 async def mcall_slash(ctx: ApplicationContext,
-                twitter_handle: Option(str, "twitter handle", required=True),
-                call_url: Option(str, "wallet checker url", required=True)):
+                      twitter_handle: Option(str, "twitter handle", required=True),
+                      call_url: Option(str, "wallet checker url", required=True)):
     nft_alpha_channels = [
         "https://discord.com/channels/961242951504261130/1059449160262234153",
         "https://discord.com/channels/961242951504261130/1059431422349291530",
@@ -3544,8 +3542,8 @@ async def mcall_slash(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
 async def mt_slash(ctx: ApplicationContext,
-             blockchain: Option(str, "twitter handle", required=True),
-             tier_url: Option(str, "tire url", required=False)):
+                   blockchain: Option(str, "twitter handle", required=True),
+                   tier_url: Option(str, "tire url", required=False)):
     regUser = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
 
@@ -3596,7 +3594,7 @@ def get_current_price(token):
     guild_ids=guild_ids
 )
 async def lm_slash(ctx: ApplicationContext,
-             amount: Option(float, "token amount", required=False) = 1):
+                   amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('LM')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -3629,7 +3627,7 @@ async def lm_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def sui_slash(ctx: ApplicationContext,
-              amount: Option(float, "token amount", required=False) = 1):
+                    amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('SUI')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -3662,7 +3660,7 @@ async def sui_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def bnb_slash(ctx: ApplicationContext,
-              amount: Option(float, "token amount", required=False) = 1):
+                    amount: Option(float, "token amount", required=False) = 1):
     current_price = get_current_price('BNB')
     if current_price is not None:
         current_price_rounded = round(current_price, 1)
@@ -3950,7 +3948,7 @@ async def me_matic_slash(ctx: ApplicationContext, symbol: str):
     guild_ids=guild_ids
 )
 async def 메_slash(ctx: ApplicationContext,
-            keyword: Option(str, "keyword to search for in magic eden", required=True)):
+                  keyword: Option(str, "keyword to search for in magic eden", required=True)):
     await me_slash(ctx, keyword)
 
 
@@ -3978,8 +3976,8 @@ async def me_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def 옾_slash(ctx: ApplicationContext,
-            keyword: Option(str, "keyword to search for in opensea", required=True),
-            count: int = 0):
+                  keyword: Option(str, "keyword to search for in opensea", required=True),
+                  count: int = 0):
     await os_slash(ctx, keyword, count)
 
 
@@ -4088,9 +4086,9 @@ async def os_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def msave_slash(ctx: ApplicationContext,
-                blockchain: Option(str, "eth, sol, matic, btc", required=True),
-                keyword: Option(str, "keyword to search for in opensea", required=True),
-                symbol: Option(str, "project symbol in opensea", required=True)):
+                      blockchain: Option(str, "eth, sol, matic, btc", required=True),
+                      keyword: Option(str, "keyword to search for in opensea", required=True),
+                      symbol: Option(str, "project symbol in opensea", required=True)):
     reg_user = f"{ctx.author.name}#{ctx.author.discriminator}"
     user_id = ctx.author.id
 
@@ -4109,10 +4107,10 @@ async def msave_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def mtime_slash(ctx: ApplicationContext,
-                date_str: Option(str, "year month date: yyyy-mm-dd", required=True),
-                time_str: Option(str, "minutes and seconds: mi:ss", required=True),
-                from_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True),
-                to_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True)):
+                      date_str: Option(str, "year month date: yyyy-mm-dd", required=True),
+                      time_str: Option(str, "minutes and seconds: mi:ss", required=True),
+                      from_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True),
+                      to_timezone: Option(str, "UTC, EST, CST, PST, KST, ... etc", required=True)):
     from_tz_str = timezone_mapping.get(from_timezone.upper())
     to_tz_str = timezone_mapping.get(to_timezone.upper())
 
@@ -4158,7 +4156,7 @@ async def mtime_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def 해외주식_slash(ctx: ApplicationContext,
-               stock_symbol: Option(str, "overseas stock symbol", required=True)):
+                     stock_symbol: Option(str, "overseas stock symbol", required=True)):
     user = f"{ctx.author.name}#{ctx.author.discriminator}"
 
     if not (user == "일론마스크#1576" or user == "으노아부지#2642"):
@@ -4222,8 +4220,8 @@ async def 해외주식_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def coin_slash(ctx: ApplicationContext,
-               coin_symbol: Option(str, "coin symbol", required=True),
-               period: Option(str, "search period", required=True) = "1day"):
+                     coin_symbol: Option(str, "coin symbol", required=True),
+                     period: Option(str, "search period", required=True) = "1day"):
     await 코인_slash(ctx, coin_symbol, period)
 
 
@@ -4233,8 +4231,8 @@ async def coin_slash(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 async def 코인_slash(ctx: ApplicationContext,
-             coin_symbol: Option(str, "coin symbol", required=True),
-             period: Option(str, "search period", required=True) = "1day"):
+                   coin_symbol: Option(str, "coin symbol", required=True),
+                   period: Option(str, "search period", required=True) = "1day"):
     base_coin = coin_symbol.upper()
     quote_coin = 'USDT'
 
@@ -4370,8 +4368,8 @@ async def 코인_slash(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
 async def addrole_slash(ctx: ApplicationContext,
-                  sheet_name: Option(str, "google sheet name", required=True),
-                  role_name: Option(str, "role name", required=True)):
+                        sheet_name: Option(str, "google sheet name", required=True),
+                        role_name: Option(str, "role name", required=True)):
     # 결과를 저장할 문자열을 초기화합니다.
     result_str = ""
 
@@ -4434,7 +4432,7 @@ async def addrole_slash(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def removerole_slash(ctx: ApplicationContext,
-                     role_name: Option(str, "role name", required=True)):
+                           role_name: Option(str, "role name", required=True)):
     try:
         # 결과를 저장할 문자열을 초기화합니다.
         result_str = ""
@@ -4492,8 +4490,8 @@ async def 나무_slash(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 async def ai_slash(ctx: ApplicationContext,
-             count: Option(int, "draw count", required=True, min_value=1, max_value=4),
-             prompts: Option(str, "prompts text", required=True)):
+                   count: Option(int, "draw count", required=True, min_value=1, max_value=4),
+                   prompts: Option(str, "prompts text", required=True)):
     await draw_slash(ctx, count, prompts)
 
 
@@ -4667,7 +4665,7 @@ async def draw_slash(ctx: ApplicationContext, count: int, prompts: str):
     guild_ids=guild_ids
 )
 async def gpt_slash(ctx: ApplicationContext,
-              prompts: Option(str, "prompts text", required=True)):
+                    prompts: Option(str, "prompts text", required=True)):
     await chat_answer(ctx, prompts)
 
 
@@ -4888,8 +4886,8 @@ async def tarot_slash(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 async def mp_slash(ctx: ApplicationContext,
-             symbol: Option(str, "coin symbol", required=True),
-             quantity: Option(float, "quantity to check ", required=True)):
+                   symbol: Option(str, "coin symbol", required=True),
+                   quantity: Option(float, "quantity to check ", required=True)):
     ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")
     binance_api_url = "https://api.binance.com/api/v3/ticker/price"
     exchange_rate_api_url = f"https://v6.exchangerate-api.com/v6/{ex_api_key}/latest/USD"
@@ -4941,7 +4939,8 @@ async def rank(ctx, member: discord.Member = None):
     current_level = 1
     current_rank = 1
     background = None
-    image = await rankcard.rankcard(user=user, username=username, currentxp=currentxp, lastxp=lastxp, nextxp=nextxp, level=current_level, rank=current_rank, background=background)
+    image = await rankcard.rankcard(user=user, username=username, currentxp=currentxp, lastxp=lastxp, nextxp=nextxp,
+                                    level=current_level, rank=current_rank, background=background)
     file = discord.File(filename="rank.png", fp=image)
     await ctx.send(file=file)
 

@@ -390,7 +390,7 @@ class StatsButtons(View):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def sf_token_stats(ctx, log_date="today"):
     if log_date == "today":
-        target_date = datetime.datetime.now()
+        target_date = datetime.now()
         today = target_date
         today_string = today.strftime("%Y-%m-%d")
     else:

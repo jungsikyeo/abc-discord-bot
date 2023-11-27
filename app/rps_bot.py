@@ -162,6 +162,7 @@ class RPSGameView(View):
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.primary)
     async def accept(self, button, interaction):
+        await interaction.response.defer(ephemeral=True)
         if interaction.user.id != self.opponent.id:
             embed = Embed(
                 title='Permission Denied',
@@ -219,6 +220,7 @@ class RPSGameView(View):
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
     async def decline(self, button, interaction):
+        await interaction.response.defer(ephemeral=True)
         if interaction.user.id != self.opponent.id:
             embed = Embed(
                 title='Permission Denied',
@@ -244,26 +246,68 @@ class RPSGameView(View):
 class RPSGame(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_played_date = {}  # user_id를 키로 하고 마지막으로 게임을 한 날짜를 값으로 가지는 딕셔너리
+        self.general_last_played_date = {}  # user_id를 키로 하고 마지막으로 일반 채널에서 게임을 한 날짜를 값으로 가지는 딕셔너리
+        self.gameroom_last_played_date = {}  # user_id를 키로 하고 마지막으로 게임 채널에서 게임을 한 날짜를 값으로 가지는 딕셔너리
         self.active_games = {}  # user_id를 키로 하고 게임 상태를 값으로 가지는 딕셔너리
+        self.before_game_count = {}  # user_id 별 이전에 진행한 게임 횟수
 
     @commands.command()
     async def rps(self, ctx, opponent: discord.Member, amount=1):
-        # gameroom_channel_id 채널에서는 제한 없이 게임 가능
+        # gameroom_channel_id 채널에서 30회 게임 가능 / 다른 채널은 1회
         if ctx.channel.id != int(gameroom_channel_id):
             # 해당 유저가 마지막으로 게임을 한 날짜 가져오기
-            last_date = self.last_played_date.get(ctx.author.id)
+            last_date = self.general_last_played_date.get(ctx.author.id)
 
             # 유저가 오늘 이미 게임을 한 경우 에러 메시지 보내기
-            if last_date and last_date == datetime.utcnow().date():
+            if last_date and last_date == datetime.now().date():
                 embed = Embed(
                     title='Game Error',
-                    description=f"❌ 이 채널에서는 하루에 한 번만 게임을 할 수 있습니다.\n<#{gameroom_channel_id}>에서는 제한없이 가능합니다.\n\n"
-                                f"❌ You can only play once a day in this channel.\nYou can play without limits in <#{gameroom_channel_id}>.",
+                    description=f"❌ 이 채널에서는 하루에 한 번만 게임을 할 수 있습니다.\n<#{gameroom_channel_id}>에서는 여러번 가능합니다.\n\n"
+                                f"❌ You can only play once a day in this channel.\nYou can play many in <#{gameroom_channel_id}>.",
                     color=0xff0000,
                 )
                 await ctx.reply(embed=embed, mention_author=True)
                 return
+        else:
+            # 해당 유저가 마지막으로 게임을 한 날짜 가져오기
+            author_last_date = self.gameroom_last_played_date.get(ctx.author.id)
+
+            # 유저가 오늘 이미 게임을 한 경우
+            if author_last_date and author_last_date == datetime.now().date():
+                # 자신이 하루 게임 가능 횟수 제한이 걸린 경우
+                author_game_count = self.before_game_count.get(ctx.author.id)
+                if author_game_count and (author_game_count + 1) > 30:
+                    embed = Embed(
+                        title='Game Error',
+                        description=f"❌ 하루에 가능한 게임 횟수를 모두 사용했습니다.\n\n"
+                                    f"❌ I've used up all possible games per day.",
+                        color=0xff0000,
+                    )
+                    await ctx.reply(embed=embed, mention_author=True)
+                    return
+            else:
+                # 유저가 오늘 처음 게임을 한 경우
+                self.before_game_count[ctx.author.id] = 0
+
+            # 상대방 유저가 마지막으로 게임을 한 날짜 가져오기
+            opponent_last_date = self.gameroom_last_played_date.get(opponent.id)
+
+            # 상대방 유저가 오늘 이미 게임을 한 경우
+            if opponent_last_date and opponent_last_date == datetime.now().date():
+                # 상대방이 하루 게임 가능 횟수 제한이 걸린 경우
+                opponent_game_count = self.before_game_count.get(opponent.id)
+                if opponent_game_count and (opponent_game_count + 1) > 30:
+                    embed = Embed(
+                        title='Game Error',
+                        description=f"❌ 상대방이 하루에 가능한 게임 횟수를 모두 사용했습니다.\n\n"
+                                    f"❌ Your opponent has used up all possible games per day.",
+                        color=0xff0000,
+                    )
+                    await ctx.reply(embed=embed, mention_author=True)
+                    return
+            else:
+                # 상대방 유저가 오늘 처음 게임을 한 경우
+                self.before_game_count[opponent.id] = 0
 
         if self.active_games.get(ctx.author.id) or self.active_games.get(opponent.id):
             embed = Embed(
@@ -343,7 +387,12 @@ class RPSGame(commands.Cog):
             self.active_games[opponent.id] = True
 
             if ctx.channel.id != int(gameroom_channel_id):
-                self.last_played_date[ctx.author.id] = datetime.utcnow().date()
+                self.general_last_played_date[ctx.author.id] = datetime.now().date()
+            else:
+                self.gameroom_last_played_date[ctx.author.id] = datetime.now().date()
+                self.gameroom_last_played_date[opponent.id] = datetime.now().date()
+                self.before_game_count[ctx.author.id] += 1
+                self.before_game_count[opponent.id] += 1
         except Exception as e:
             logger.error(f'rps error: {e}')
             self.active_games[ctx.author.id] = False

@@ -576,6 +576,7 @@ def pick_winner(weights):
 
 
 @bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def giveaway_check(ctx, user_tag):
     connection = db.get_connection()
     cursor = connection.cursor()
@@ -957,6 +958,7 @@ async def giveaway_raffle(ctx: ApplicationContext):
     description="check the user's tokens and tickets purchased",
     guild_ids=guild_ids
 )
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def giveaway_check(ctx: ApplicationContext,
                          target_user: Option(discord.Member, "target user tag", required=True)):
     connection = db.get_connection()

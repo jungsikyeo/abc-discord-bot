@@ -1659,9 +1659,9 @@ async def me_btc(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
-    # print(response)
+    print(response)
     data = json.loads(response)
-    # print(data)
+    print(data)
 
     try:
         if not data:
@@ -1734,7 +1734,7 @@ async def me_sol(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = requests.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
-    # print(response)
+    print(response)
     data = json.loads(response)
     print(data)
 

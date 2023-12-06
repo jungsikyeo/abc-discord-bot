@@ -664,6 +664,10 @@ async def give_tokens(ctx, user_tag, amount):
         params = {
             'user_id': user_tag[2:-1],
             'token': int(amount),
+            'action_type': 'give_tokens',
+            'send_user_id': ctx.author.id,
+            'channel_id': ctx.channel.id,
+            'channel_name': f"{bot.get_channel(ctx.channel.id)}"
         }
 
         result = await save_tokens(params)
@@ -690,6 +694,10 @@ async def remove_tokens(ctx, user_tag, amount):
         params = {
             'user_id': user_tag[2:-1],
             'token': int(amount) * (-1),
+            'action_type': 'remove_tokens',
+            'send_user_id': ctx.author.id,
+            'channel_id': ctx.channel.id,
+            'channel_name': f"{bot.get_channel(ctx.channel.id)}"
         }
 
         result = await save_tokens(params)
@@ -716,6 +724,17 @@ async def save_tokens(params):
     try:
         user_id = params.get('user_id')
         token = params.get('token')
+        action_type = params.get('action_type')
+        send_user_id = params.get('send_user_id')
+        channel_id = params.get('channel_id')
+        channel_name = params.get('channel_name')
+
+        try:
+            user_name = bot.get_user(int(user_id))
+            if not user_name:
+                user_name = "no_find_user"
+        except:
+            user_name = f"no_find_user"
 
         cursor.execute("""
             select tokens
@@ -744,6 +763,13 @@ async def save_tokens(params):
                 insert into user_tokens (user_id, tokens)
                 values (%s, %s)
             """, (str(user_id), user_tokens,))
+
+        cursor.execute("""
+            insert into user_token_logs (
+                user_id, user_name, action_tokens, before_tokens, after_tokens, action_type, 
+                send_user_id, channel_id, channel_name)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (str(user_id), user_name, token, before_user_tokens, user_tokens, action_type, send_user_id, channel_id, channel_name))
 
         connection.commit()
         result = {

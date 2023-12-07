@@ -1874,8 +1874,11 @@ async def me(ctx, keyword):
 # 함수 정의: API에서 거래 데이터 가져오기
 async def fetch_asset_events(collection_slug):
     api_key = operating_system.getenv("OPENSEA_API_KEY")
-    headers = {"X-API-KEY": api_key}
-    url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}"
+    headers = {
+        "X-API-KEY": api_key,
+        "accept": "application/json"
+    }
+    url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}?event_type=sale"
     response = requests.get(url, headers=headers)
     return json.loads(response.text)
 

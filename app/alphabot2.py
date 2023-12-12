@@ -1953,12 +1953,12 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         'desktop': False,
     })
     headers = {"X-API-KEY": api_key}
-    response = requests.get(f"https://api.opensea.io/api/v1/collection/{symbol}", headers=headers)
+    response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}", headers=headers)
     results = json.loads(response.text)
     # print(results)
 
     try:
-        if not results['success']:
+        if len(results.get('errors')) > 0:
             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
             embed.set_footer(text="Powered by 으노아부지#2642")
             await ctx.reply(embed=embed, mention_author=True)
@@ -1967,24 +1967,34 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         pass
 
     try:
-        if results['detail'] == "Request was throttled. Expected available in 1 second.":
+        if results.get('detail') == "Request was throttled. Expected available in 1 second.":
             print(f"retry {count + 1}")
             await 옾(ctx, keyword, count + 1)
             return
     except:
         pass
 
-    data = results['collection']
+    data = results
     # print(data)
 
-    projectName = data["name"]
-    projectImg = data['image_url']
+    projectName = data.get("name")
+    projectImg = data.get('image_url')
     if projectImg == "None":
-        projectImg = data["featured_image_url"]
-    projectTwitter = f"https://twitter.com/{data['twitter_username']}"
-    projectDiscord = data['discord_url']
-    projectWebsite = data['external_url']
-    projectChain = result['blockchain']
+        projectImg = data.get("banner_image_url")
+    projectTwitter = f"https://twitter.com/{data.get('twitter_username')}"
+    projectDiscord = data.get('discord_url')
+    projectWebsite = data.get('external_url')
+    chain = data.get('contracts')[0].get('chain')
+    if chain == "matic":
+        projectChain = "MATIC"
+    elif chain == "klaytn":
+        projectChain = "KLAY"
+    elif chain == "bsc":
+        projectChain = "BNB"
+    elif chain == "solana":
+        projectChain = "SOL"
+    else:
+        projectChain = "ETH"
     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
     if projectWebsite:
         projectLinks += f" | [Website]({projectWebsite})"
@@ -1993,37 +2003,48 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    projectFloorPrice = round(float(data['stats']['floor_price']), 3)
-    projectSupply = int(data['stats']['total_supply'])
-    projectOwners = int(data['stats']['num_owners'])
+    response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}/stats", headers=headers)
+    results = json.loads(response.text)
+    data = results.get('total')
+
+    projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
+    projectSupply = int(data.get('total_supply', 0))
+    projectOwners = int(data.get('num_owners', 0))
 
     sales_list = "```\n"
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
     sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
-    sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-        "Last Hour",
-        f"{round(float(data['stats']['one_hour_volume']), 3)}",
-        f"{int(data['stats']['one_hour_sales'])}",
-        f"{round(float(data['stats']['one_hour_average_price']), 3)} {projectChain}",
-    )
-    sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-        "Last Day",
-        f"{round(float(data['stats']['one_day_volume']), 3)}",
-        f"{int(data['stats']['one_day_sales'])}",
-        f"{round(float(data['stats']['one_day_average_price']), 3)} {projectChain}",
-    )
-    sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-        "Last Week",
-        f"{round(float(data['stats']['seven_day_volume']), 3)}",
-        f"{int(data['stats']['seven_day_sales'])}",
-        f"{round(float(data['stats']['seven_day_average_price']), 3)} {projectChain}",
-    )
-    sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-        "All Time",
-        f"{round(float(data['stats']['total_volume']), 3)}",
-        f"{int(data['stats']['total_sales'])}",
-        f"{round(float(data['stats']['average_price']), 3)} {projectChain}",
-    )
+    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+    #     "Last Hour",
+    #     f"{round(float(data['stats']['one_hour_volume']), 3)}",
+    #     f"{int(data['stats']['one_hour_sales'])}",
+    #     f"{round(float(data['stats']['one_hour_average_price']), 3)} {projectChain}",
+    # )
+    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+    #     "Last Day",
+    #     f"{round(float(data['stats']['one_day_volume']), 3)}",
+    #     f"{int(data['stats']['one_day_sales'])}",
+    #     f"{round(float(data['stats']['one_day_average_price']), 3)} {projectChain}",
+    # )
+    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+    #     "Last Week",
+    #     f"{round(float(data['stats']['seven_day_volume']), 3)}",
+    #     f"{int(data['stats']['seven_day_sales'])}",
+    #     f"{round(float(data['stats']['seven_day_average_price']), 3)} {projectChain}",
+    # )
+    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+    #     "All Time",
+    #     f"{round(float(data['stats']['total_volume']), 3)}",
+    #     f"{int(data['stats']['total_sales'])}",
+    #     f"{round(float(data['stats']['average_price']), 3)} {projectChain}",
+    # )
+    for row in results.get('intervals'):
+        sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+            row.get('interval'),
+            f"{round(float(row.get('volume', 0)), 3)}",
+            f"{int(row.get('sales'))}",
+            f"{round(float(row.get('average_price')), 3)} {projectChain}",
+        )
     sales_list += "```"
 
     embed = Embed(title=f"{projectName}", color=0x2081E2, url=f"https://opensea.io/collection/{symbol}")

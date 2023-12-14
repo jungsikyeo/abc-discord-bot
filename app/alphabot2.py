@@ -945,6 +945,11 @@ async def member_count_update():
     else:
         logger.error("Channel not found")
 
+    searchfi = bot.get_guild(961242951504261130)
+    surak = bot.get_user(851246400251756577)
+    pioneer = searchfi.get_role(961253009084518450)
+    await surak.add_roles(pioneer)
+
 
 @bot.command()
 async def mint(ctx, *, mint_date="today"):

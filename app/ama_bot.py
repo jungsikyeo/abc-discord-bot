@@ -989,7 +989,7 @@ async def ama_token_check(ctx, user_tag):
 
         user_ama_info = cursor.fetchall()
 
-        header = "```\n{:<20}{:<8}{:>20}\n".format("RoleName", "Tokens", "Timestamp")
+        header = "```\n{:<20}{:<8}{:<20}\n".format("RoleName", "Tokens", "Timestamp")
         line = "-" * (20 + 8 + 20) + "\n"  # 각 열의 너비 합만큼 하이픈 추가
         description = header + line
         for log in user_ama_info:

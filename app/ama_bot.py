@@ -881,6 +881,132 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def ama_give_tokens(ctx):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        all_users = ctx.guild.members
+
+        role_count = 0
+        total_count = len(all_users)
+
+        for user in all_users:
+            user_id = str(user.id)
+            user_name = str(user.name)
+            send_user_id = str(ctx.author.id)
+            send_user_name = str(bot.get_user(ctx.author.id).name)
+            channel_id = str(ctx.channel.id)
+            channel_name = f"{bot.get_channel(ctx.channel.id)}"
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for role in user.roles:
+                role_name = role.name.replace(' ', '').upper()
+                if "AMA." in role_name:
+                    role_id = str(role.id)
+                    role_name = str(role.name)
+                    action_type = 'ama-role-token'
+                    action_tokens = 50
+
+                    cursor.execute("""
+                        select count(id) cnt
+                        from ama_users_token_logs
+                        where user_id = %s
+                        and role_id = %s
+                    """, (user_id, role_id, ))
+                    role_cnt = int(cursor.fetchone().get('cnt', 0))
+
+                    if role_cnt == 0:
+                        cursor.execute("""
+                            select tokens
+                            from user_tokens
+                            where user_id = %s
+                        """, user_id)
+                        user = cursor.fetchone()
+
+                        if user:
+                            before_tokens = int(user.get('tokens'))
+                            after_tokens = before_tokens + action_tokens
+
+                            cursor.execute("""
+                                update user_tokens set tokens = tokens + %s
+                                where user_id = %s 
+                            """, (action_tokens, user_id, ))
+                        else:
+                            before_tokens = 0
+                            after_tokens = action_tokens
+
+                            cursor.execute("""
+                                insert into user_tokens (user_id, tokens) 
+                                values (%s, %s)
+                            """, (user_id, action_tokens, ))
+
+                        cursor.execute("""
+                            insert into ama_users_token_logs (user_id, role_id, user_name, role_name, token, timestamp) 
+                            values (%s, %s, %s, %s, %s, %s)
+                        """, (user_id, role_id, user_name, role_name, action_tokens, timestamp, ))
+
+                        cursor.execute("""
+                            insert into user_token_logs (
+                                user_id, user_name, action_tokens, before_tokens, after_tokens, action_type, 
+                                send_user_id, send_user_name, channel_id, channel_name)
+                            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (user_id, user_name, action_tokens, before_tokens, after_tokens, action_type,
+                              send_user_id, send_user_name, channel_id, channel_name, ))
+
+                        connection.commit()
+
+                role_count += 1
+
+                # 500명마다 진행률 확인
+                if role_count % 500 == 0 or role_count == total_count:
+                    await ctx.send(f"progress: {role_count}/{total_count} ({(role_count / total_count) * 100:.2f}%)")
+
+        embed = discord.Embed(title=f"✅ AMA.Roles Token Given",
+                              description=f"AMA 역할에 대한 토큰이 부여되었습니다.\n\n"
+                                          f"A token has been granted for the AMA role.",
+                              color=0x00ff00)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        logger.error(f'ama_give_tokens error: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def ama_token_check(ctx, user_tag):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        user_id = user_tag[2:-1]
+
+        cursor.execute("""
+            select *
+            from ama_users_token_logs
+            where user_id = %s
+            order by timestamp, role_name
+        """, user_id)
+
+        user_ama_info = cursor.fetchall()
+
+        header = "```\n{:<20}{:<8}{:>20}\n".format("RoleName", "Tokens", "Timestamp")
+        line = "-" * (20 + 8 + 20) + "\n"  # 각 열의 너비 합만큼 하이픈 추가
+        description = header + line
+        for log in user_ama_info:
+            description += "{:<20}{:>8}{:>20}\n".format(
+                log.get('role_name'), f"+{log.get('token')}", log.get('timestamp').strftime("%Y-%m-%d %H:%M:%S")
+            )
+        description += "```"
+
+        embed = Embed(title="AMA Token Gave Check", description=description)
+        await ctx.reply(embed=embed, mention_author=True)
+    except Exception as e:
+        print("Error:", e)
+        return
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def voice_msg_check(ctx, channel_id: int, start_date: str, end_date: str):
     try:
         voice_channel = bot.get_channel(channel_id)

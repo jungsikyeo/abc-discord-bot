@@ -109,7 +109,7 @@ class PageButtonView(View):
                 embed.add_field(name="SearchFi Call", value=f"{call_url}", inline=True)
             embed.set_thumbnail(url=item['twitterProfileImage'])
             embed.set_author(name=f"{item['regUser']}", icon_url=f"{item['avatar_url']}")
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
         else:
             embed = discord.Embed(title=f"{item['name']}\n@{item['twitterUrl'].split('/')[-1]}",
                                   description=f"{mintTime} | {link_url}", color=0x04ff00)
@@ -122,7 +122,7 @@ class PageButtonView(View):
             embed.add_field(name="Down", value=f":thumbsdown: {item['badCount']}", inline=True)
             if call_url:
                 embed.add_field(name="SearchFi Call", value=f"{call_url}", inline=True)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
         return embed
 
 
@@ -1055,7 +1055,7 @@ async def mreg(ctx):
     embed = Embed(title="Warning",
                   description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.",
                   color=0xFFFFFF)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
     view = ProjectButtonView()
     await view.send_initial_message(ctx, embed, button_url, "Go to Registration")
@@ -1067,7 +1067,7 @@ async def mmod(ctx):
                   description="ℹ️ Please correct the project with the button below.\n\n"
                               "ℹ️ 아래 버튼으로 프로젝트를 수정해주세요.",
                   color=0xFFFFFF)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
     view = ProjectButtonView()
     await view.send_initial_message(ctx, embed, button_url, "Go to Modify")
@@ -1084,7 +1084,7 @@ async def mup(ctx, *, twitter_handle: str):
         embed = Embed(title="Error",
                       description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -1111,7 +1111,7 @@ async def mup(ctx, *, twitter_handle: str):
         embed = Embed(title="Changed",
                       description=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n:thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!",
                       color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1126,7 +1126,7 @@ async def mdown(ctx, *, twitter_handle: str):
         embed = Embed(title="Error",
                       description=f"❌ No project found for `{twitter_handle}`.\n Click `!mreg` to register the project.\n\n❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n `!mreg`를 눌러서 프로젝트를 등록해주세요.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
 
         button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
@@ -1153,7 +1153,7 @@ async def mdown(ctx, *, twitter_handle: str):
         embed = Embed(title="Changed",
                       description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n:thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!",
                       color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1437,7 +1437,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         embed = Embed(title="Error",
                       description="❌ Usage: `!mchecker <Twitter_Handle> <Wallet_Checker_URL>`\n\n❌ 사용방법: `!mchecker <트위터 핸들> <지갑체크 URL>`",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1447,7 +1447,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         embed = Embed(title="Error",
                       description=f"❌ Please enter a `{wallet_checker_url}` valid URL format.\n\n❌ `{wallet_checker_url}`은 유효한 URL형식이 아닙니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1461,7 +1461,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         embed = Embed(title="Error",
                       description="❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1469,7 +1469,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
         embed = Embed(title="Error",
                       description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1479,7 +1479,7 @@ async def mchecker(ctx, twitter_handle: str = None, wallet_checker_url: str = No
     embed = Embed(title="Success",
                   description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!",
                   color=0x37e37b)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1490,7 +1490,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
         embed = Embed(title="Error",
                       description="❌ Usage: `!mcall <Twitter_Handle> <Call_Massage_Link>`\n\n❌ 사용방법: `!mcall <트위터 핸들> <Call 메시지 링크>`",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1516,7 +1516,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
                                   f"{nft_alpha_channels[1]}\n"
                                   f"{nft_alpha_channels[2]}\n"
                                   f"{nft_alpha_channels[3]}\n", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1527,7 +1527,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
         embed = Embed(title="Error",
                       description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1539,7 +1539,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
         embed = Embed(title="Error",
                       description=f"❌ This link is already registered by <@{call_user_id}>. Only <@{call_user_id}> can be changed.\n\n❌ 이미 <@{call_user_id}>의 의해 링크가 등록되어 있습니다. <@{call_user_id}>만 URL변경이 가능합니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -1549,7 +1549,7 @@ async def mcall(ctx, twitter_handle: str = None, call_url: str = None):
     embed = Embed(title="Success",
                   description=f"✅ Call message link for the `{twitter_handle}` project has been updated!\n\n✅ `{twitter_handle}` 프로젝트의 Call 메시지 링크가 업데이트되었습니다!",
                   color=0x37e37b)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1565,13 +1565,13 @@ async def mt(ctx, blockchain: str = "ETH", tier_url: str = None):
             embed = Embed(title="Error",
                           description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ",
                           color=0x37e37b)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
         embed = Embed(title="Success",
                       description=f"✅ `{blockchain}` has been updated!\n\n✅ `{blockchain}` 내용이 업데이트되었습니다!",
                       color=0x37e37b)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
     else:
         result = Queries.get_tier_by_blockchain(db, blockchain)
@@ -1599,7 +1599,7 @@ async def lm(ctx, amount: float = 1):
         await ctx.reply(embed=embed, mention_author=True)
     else:
         embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1624,7 +1624,7 @@ async def sui(ctx, amount: float = 1):
         await ctx.reply(embed=embed, mention_author=True)
     else:
         embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1649,7 +1649,7 @@ async def bnb(ctx, amount: float = 1):
         await ctx.reply(embed=embed, mention_author=True)
     else:
         embed = Embed(title="Error", description="❌ Could not fetch the price.\n\n❌ 가격을 가져올 수 없습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -1664,14 +1664,14 @@ async def me_btc(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
-    print(response)
+    # print(response)
     data = json.loads(response)
-    print(data)
+    # print(data)
 
     try:
         if not data:
             embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
     except:
@@ -1720,10 +1720,8 @@ async def me_btc(ctx, symbol):
     sales_list = create_table(formatted_sales)
 
     embed.add_field(name="Activity Info", value=sales_list, inline=False)  # 판매 목록 추가
-
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.reply(embed=embed, mention_author=True)
 
@@ -1739,14 +1737,14 @@ async def me_sol(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = requests.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
-    print(response)
+    # print(response)
     data = json.loads(response)
-    print(data)
+    # print(data)
 
     try:
         if data['msg'] == "Invalid collection name.":
             embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
     except:
@@ -1766,17 +1764,16 @@ async def me_sol(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    time.sleep(1)
+    time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats").text
-    print("stats:", response)
+    # print("stats:", response)
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
-    time.sleep(1)
-    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats",
-                           ).text
-    print("holder_stats:", response)
+    time.sleep(0.1)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats").text
+    # print("holder_stats:", response)
     data = json.loads(response)
 
     try:
@@ -1791,8 +1788,54 @@ async def me_sol(ctx, symbol):
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+
+    time.sleep(0.1)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/activities").text
+    # print("activities:", response)
+    data = json.loads(response)
+
+    activities = []
+    count = 0
+    for activity in data:
+        if count > 5:
+            break
+        if activity.get("type") == "buyNow":
+            token_mint = activity.get("tokenMint")
+            time.sleep(0.01)
+            response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/tokens/{token_mint}").text
+            data = json.loads(response)
+
+            token_name = data.get("name")
+            price = activity.get("price")
+            block_time = activity.get("blockTime")
+            sale_time = datetime.datetime.fromtimestamp(block_time)
+            elapsed_time = datetime.datetime.now() - sale_time
+
+            if elapsed_time < timedelta(minutes=1):
+                time_string = f"{elapsed_time.seconds} sec ago"
+            elif elapsed_time < timedelta(hours=1):
+                time_string = f"{elapsed_time.seconds // 60} min ago"
+            elif elapsed_time < timedelta(days=1):
+                time_string = f"{elapsed_time.seconds // 3600} hrs ago"
+            elif elapsed_time < timedelta(days=30):
+                time_string = f"{elapsed_time.days} days ago"
+            else:
+                months_elapsed = elapsed_time.days // 30
+                time_string = f"{months_elapsed} months ago"
+
+            activities.append({
+                "Name": token_name,
+                "Price": float(price),
+                "Time": time_string
+            })
+            count += 1
+
+    if count > 0:
+        sales_list = create_table(activities)
+        embed.add_field(name="Activity Info", value=sales_list, inline=False)
+
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.reply(embed=embed, mention_author=True)
 
@@ -1813,14 +1856,14 @@ async def me_matic(ctx, symbol):
                            f"&useNonFlaggedFloorAsk=false&sortBy=allTimeVolume&limit=20",
                            headers=headers).text
     collections = json.loads(response)
-    print(collections)
+    # print(collections)
     data = collections["collections"][0]
-    print(data)
+    # print(data)
 
     try:
         if data['detail'] == "Collection not found":
             embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
     except:
@@ -1852,8 +1895,53 @@ async def me_matic(ctx, symbol):
     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+
+    time.sleep(0.1)
+    response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/activities").text
+    # print("activities:", response)
+    data = json.loads(response)
+
+    activities = []
+    count = 0
+    for activity in data:
+        if count > 5:
+            break
+        if activity.get("type") == "buyNow":
+            token_mint = activity.get("tokenMint")
+            time.sleep(0.01)
+            response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/tokens/{token_mint}").text
+            data = json.loads(response)
+
+            token_name = data.get("name")
+            price = activity.get("price")
+            block_time = activity.get("blockTime")
+            sale_time = datetime.datetime.fromtimestamp(block_time)
+            elapsed_time = datetime.datetime.now() - sale_time
+
+            if elapsed_time < timedelta(minutes=1):
+                time_string = f"{elapsed_time.seconds} sec ago"
+            elif elapsed_time < timedelta(hours=1):
+                time_string = f"{elapsed_time.seconds // 60} min ago"
+            elif elapsed_time < timedelta(days=1):
+                time_string = f"{elapsed_time.seconds // 3600} hrs ago"
+            elif elapsed_time < timedelta(days=30):
+                time_string = f"{elapsed_time.days} days ago"
+            else:
+                months_elapsed = elapsed_time.days // 30
+                time_string = f"{months_elapsed} months ago"
+
+            activities.append({
+                "Name": token_name,
+                "Price": float(price),
+                "Time": time_string
+            })
+            count += 1
+    if count > 0:
+        sales_list = create_table(activities)
+        embed.add_field(name="Activity Info", value=sales_list, inline=False)
+
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.reply(embed=embed, mention_author=True)
 
@@ -1965,7 +2053,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     try:
         if len(results.get('errors')) > 0:
             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
     except:
@@ -2057,7 +2145,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         embed.add_field(name="Activity Info", value=sales_list, inline=False)
 
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.reply(embed=embed, mention_author=True)
 
@@ -2071,7 +2159,7 @@ async def msave(ctx, blockchain, keyword, symbol):
 
     embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n✅ `{keyword}` 키워드가 저장되었습니다.",
                   color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -2114,7 +2202,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
 
     if not from_tz_str or not to_tz_str:
         embed = Embed(title="Error", description=f"❌ Invalid timezone provided.\n\n❌ 시간대가 올바르지 않습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2130,7 +2218,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
         embed = Embed(title="Error",
                       description="❌ Invalid datetime format. Please use `YYYY-MM-DD HH:MM`\n\n❌ 날짜형식이 올바르지 않습니다. `YYYY-MM-DD HH:MM` 형식으로 입력해주세요.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2140,7 +2228,7 @@ async def mtime(ctx, date_str, time_str, from_tz_param, to_tz_str_param):
     embed = Embed(title="Date Conversion",
                   description=f"```{datetime_str}({from_tz_param.upper()})\n\n🔄\n\n{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_tz_str_param.upper()})```",
                   color=0xFEE501)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -2150,7 +2238,7 @@ async def 해외주식(ctx, stock_symbol: str):
 
     if not (user == "일론마스크#1576" or user == "으노아부지#2642"):
         embed = Embed(title="NO NO NO!", description="❌ Only for 일론마스크#1576\n\n❌ 오직 일론 형님만 조회 가능합니다!", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2169,7 +2257,7 @@ async def 해외주식(ctx, stock_symbol: str):
         embed = Embed(title="Warning",
                       description="ℹ️ Could not fetch the stock data. Please check the stock symbol. This function can be used up to 5 times every 5 minutes.\n\nℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. 이 기능은 5분마다 최대 5회까지 사용 가능합니다.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2217,7 +2305,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
         embed = Embed(title="Warning",
                       description=f"❌ '{symbol}' is not a valid coin symbol. \n\n❌ '{symbol}'은(는) 유효한 코인 심볼이 아닙니다.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2240,7 +2328,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
         embed = Embed(title="Warning",
                       description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -2290,7 +2378,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
             embed = Embed(title="Warning",
                           description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\nℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.",
                           color=0xFFFFFF)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.reply(embed=embed, mention_author=True)
             return
     else:
@@ -2366,7 +2454,7 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
     embed.add_field(name="24h Volume (USDT)", value=f"```{volume_24h_usdt:,.2f}```")
     embed.set_image(
         url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={now_in_milliseconds}")  # Set the image in the embed using the image URL
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.reply(embed=embed, mention_author=True)
 
 
@@ -3031,7 +3119,7 @@ async def mreg_slash(ctx: ApplicationContext):
     embed = Embed(title="Warning",
                   description="ℹ️ Please register the project with the button below.\n\nℹ️ 아래 버튼으로 프로젝트를 등록해주세요.",
                   color=0xFFFFFF)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/register")}&response_type=code&scope=identify'
     view = ProjectButtonView()
     await view.send_initial_message(ctx, embed, button_url, "Go to Registration")
@@ -3047,7 +3135,7 @@ async def mmod_slash(ctx: ApplicationContext):
                   description="ℹ️ Please correct the project with the button below.\n\n"
                               "ℹ️ 아래 버튼으로 프로젝트를 수정해주세요.",
                   color=0xFFFFFF)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     button_url = f'https://discord.com/api/oauth2/authorize?client_id={discord_client_id}&redirect_uri={quote(f"{bot_domain}/discord-callback/modify")}&response_type=code&scope=identify'
     view = ProjectButtonView()
     await view.send_initial_message(ctx, embed, button_url, "Go to Modify")
@@ -3068,7 +3156,7 @@ async def mup_slash(ctx: ApplicationContext,
                       description=f"❌ No project found for `{twitter_handle}`.\n\n"
                                   f"❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3089,7 +3177,7 @@ async def mup_slash(ctx: ApplicationContext,
                       description=f":thumbup: Changed your downvote to an upvote for `{twitter_handle}` project!\n\n"
                                   f":thumbup: `{twitter_handle}` 프로젝트에 대한 비추천을 추천으로 변경했습니다!",
                       color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -3110,7 +3198,7 @@ async def mdown_slash(ctx: ApplicationContext,
                                   f"❌ `{twitter_handle}`에 대한 프로젝트를 찾을 수 없습니다.\n "
                                   f"`!mreg`를 눌러서 프로젝트를 등록해주세요.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3131,7 +3219,7 @@ async def mdown_slash(ctx: ApplicationContext,
                       description=f":thumbdown: Changed your upvote to a downvote for `{twitter_handle}` project!\n\n"
                                   f":thumbdown: `{twitter_handle}` 프로젝트에 대한 추천을 비추천으로 변경했습니다!",
                       color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -3440,7 +3528,7 @@ async def mchecker_slash(ctx: ApplicationContext,
                       description=f"❌ Please enter a `{wallet_checker_url}` valid URL format.\n\n"
                                   f"❌ `{wallet_checker_url}`은 유효한 URL형식이 아닙니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3451,7 +3539,7 @@ async def mchecker_slash(ctx: ApplicationContext,
                       description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n"
                                   f"❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3464,7 +3552,7 @@ async def mchecker_slash(ctx: ApplicationContext,
                       description=f"❌ The wallet check URL is already registered by <@{wallet_checker_user_id}>. Only <@{wallet_checker_user_id}> can be changed.\n\n"
                                   f"❌ 이미 <@{wallet_checker_user_id}>의 의해 지갑 체크 URL이 등록되어 있습니다. <@{wallet_checker_user_id}>만 URL변경이 가능합니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3474,7 +3562,7 @@ async def mchecker_slash(ctx: ApplicationContext,
                   description=f"✅ Wallet Checker URL for the `{twitter_handle}` project has been updated!\n\n"
                               f"✅ `{twitter_handle}` 프로젝트의 Wallet Checker URL이 업데이트되었습니다!",
                   color=0x37e37b)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -3508,7 +3596,7 @@ async def mcall_slash(ctx: ApplicationContext,
                                   f"{nft_alpha_channels[1]}\n"
                                   f"{nft_alpha_channels[2]}\n"
                                   f"{nft_alpha_channels[3]}\n", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3519,7 +3607,7 @@ async def mcall_slash(ctx: ApplicationContext,
                       description=f"❌ Cannot find a project corresponding to `{twitter_handle}`.\n\n"
                                   f"❌ `{twitter_handle}`에 해당하는 프로젝트를 찾을 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3532,7 +3620,7 @@ async def mcall_slash(ctx: ApplicationContext,
                       description=f"❌ This link is already registered by <@{call_user_id}>. Only <@{call_user_id}> can be changed.\n\n"
                                   f"❌ 이미 <@{call_user_id}>의 의해 링크가 등록되어 있습니다. <@{call_user_id}>만 URL변경이 가능합니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3542,7 +3630,7 @@ async def mcall_slash(ctx: ApplicationContext,
                   description=f"✅ Call message link for the `{twitter_handle}` project has been updated!\n\n"
                               f"✅ `{twitter_handle}` 프로젝트의 Call 메시지 링크가 업데이트되었습니다!",
                   color=0x37e37b)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -3565,14 +3653,14 @@ async def mt_slash(ctx: ApplicationContext,
                           description=f"❌ The `{blockchain}` keyword is locked and cannot be changed.\n\n"
                                       f"❌ `{blockchain}` 키워드는 잠금 처리 되어있어 변경할 수 없습니다. ",
                           color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.respond(embed=embed, ephemeral=True)
             return
         embed = Embed(title="Success",
                       description=f"✅ `{blockchain}` has been updated!\n\n"
                                   f"✅ `{blockchain}` 내용이 업데이트되었습니다!",
                       color=0x37e37b)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=False)
     else:
         result = Queries.get_tier_by_blockchain(db, blockchain)
@@ -3581,7 +3669,7 @@ async def mt_slash(ctx: ApplicationContext,
                           description=f"❌ The `{blockchain}` keyword is not saved.\n\n"
                                       f"❌ `{blockchain}` 키워드는 저장되어 있지 않습니다. ",
                           color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.respond(embed=embed, ephemeral=True)
             return
         await ctx.respond(f"{result['imageUrl']}", ephemeral=False)
@@ -3628,7 +3716,7 @@ async def lm_slash(ctx: ApplicationContext,
                       description="❌ Could not fetch the price.\n\n"
                                   "❌ 가격을 가져올 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
 
 
@@ -3661,7 +3749,7 @@ async def sui_slash(ctx: ApplicationContext,
                       description="❌ Could not fetch the price.\n\n"
                                   "❌ 가격을 가져올 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
 
 
@@ -3694,7 +3782,7 @@ async def bnb_slash(ctx: ApplicationContext,
                       description="❌ Could not fetch the price.\n\n"
                                   "❌ 가격을 가져올 수 없습니다.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
 
 
@@ -3781,7 +3869,7 @@ async def me_btc_slash(ctx: ApplicationContext, symbol: str):
 
     if not data:
         embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3828,7 +3916,7 @@ async def me_btc_slash(ctx: ApplicationContext, symbol: str):
     sales_list = create_table(formatted_sales)
     embed.add_field(name="Activity Info", value=sales_list, inline=False)  # 판매 목록 추가
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.respond(embed=embed, ephemeral=False)
 
@@ -3850,7 +3938,7 @@ async def me_sol_slash(ctx: ApplicationContext, symbol: str):
 
     if data and data['msg'] == "Invalid collection name.":
         embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, respond=True)
         return
 
@@ -3894,7 +3982,7 @@ async def me_sol_slash(ctx: ApplicationContext, symbol: str):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.respond(embed=embed, ephemeral=False)
 
@@ -3915,7 +4003,7 @@ async def me_matic_slash(ctx: ApplicationContext, symbol: str):
 
     if data and data['detail'] == "Collection not found":
         embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -3948,7 +4036,7 @@ async def me_matic_slash(ctx: ApplicationContext, symbol: str):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.respond(embed=embed, ephemeral=False)
 
@@ -4014,7 +4102,7 @@ async def os_slash(ctx: ApplicationContext,
     try:
         if not results['success']:
             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.respond(embed=embed, ephemeral=True)
             return
     except:
@@ -4086,7 +4174,7 @@ async def os_slash(ctx: ApplicationContext,
     embed.add_field(name="Activity Info", value=sales_list, inline=False)
 
     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.respond(embed=embed, ephemeral=False)
 
@@ -4108,7 +4196,7 @@ async def msave_slash(ctx: ApplicationContext,
     embed = Embed(title="Saved", description=f"✅ Keyword `{keyword}` has been saved.\n\n"
                                              f"✅ `{keyword}` 키워드가 저장되었습니다.",
                   color=0x37E37B)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -4127,7 +4215,7 @@ async def mtime_slash(ctx: ApplicationContext,
 
     if not from_tz_str or not to_tz_str:
         embed = Embed(title="Error", description=f"❌ Invalid timezone provided.\n\n❌ 시간대가 올바르지 않습니다.", color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -4143,7 +4231,7 @@ async def mtime_slash(ctx: ApplicationContext,
                       description="❌ Invalid datetime format. Please use `YYYY-MM-DD HH:MM`\n\n"
                                   "❌ 날짜형식이 올바르지 않습니다. `YYYY-MM-DD HH:MM` 형식으로 입력해주세요.",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -4157,7 +4245,7 @@ async def mtime_slash(ctx: ApplicationContext,
                               f"{datetime_in_to_tz.strftime('%Y-%m-%d %H:%M')}({to_timezone.upper()})"
                               f"```",
                   color=0xFEE501)
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 
@@ -4175,7 +4263,7 @@ async def 해외주식_slash(ctx: ApplicationContext,
                       description="❌ Only for 일론마스크#1576\n\n"
                                   "❌ 오직 일론 형님만 조회 가능합니다!",
                       color=0xff0000)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.reply(embed=embed, mention_author=True)
         return
 
@@ -4198,7 +4286,7 @@ async def 해외주식_slash(ctx: ApplicationContext,
                                   "ℹ️ 주식 데이터를 가져올 수 없습니다. 주식 심볼을 확인해주세요. "
                                   "이 기능은 5분마다 최대 5회까지 사용 가능합니다.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -4253,7 +4341,7 @@ async def 코인_slash(ctx: ApplicationContext,
         embed = Embed(title="Warning",
                       description=f"❌ '{symbol}' is not a valid coin symbol. \n\n❌ '{symbol}'은(는) 유효한 코인 심볼이 아닙니다.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -4275,7 +4363,7 @@ async def 코인_slash(ctx: ApplicationContext,
                       description="❌ Invalid symbol. Please check the symbol and try again.\n\n"
                                   "❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
                       color=0xFFFFFF)
-        embed.set_footer(text="Powered by 으노아부지#2642")
+        embed.set_footer(text="Powered by SearchFi DEV")
         await ctx.respond(embed=embed, ephemeral=True)
         return
 
@@ -4318,7 +4406,7 @@ async def 코인_slash(ctx: ApplicationContext,
                           description="ℹ️ Please enter a valid period: '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' or leave it blank for full data.\n\n"
                                       "ℹ️ '3year', '1year', '3mon', '1mon', '1week', '1day', '5min' 형식의 기간을 입력하거나 전체 데이터를 입력하려면 공백으로 두십시오.",
                           color=0xFFFFFF)
-            embed.set_footer(text="Powered by 으노아부지#2642")
+            embed.set_footer(text="Powered by SearchFi DEV")
             await ctx.respond(embed=embed, ephemeral=True)
             return
     else:
@@ -4368,7 +4456,7 @@ async def 코인_slash(ctx: ApplicationContext,
     embed.add_field(name="24h Volume (USDT)", value=f"```{volume_24h_usdt:,.2f}```")
     embed.set_image(
         url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/coin_chart.png?v={now_in_milliseconds}")
-    embed.set_footer(text="Powered by 으노아부지#2642")
+    embed.set_footer(text="Powered by SearchFi DEV")
     await ctx.respond(embed=embed, ephemeral=False)
 
 

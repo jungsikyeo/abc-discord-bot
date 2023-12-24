@@ -1989,6 +1989,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     projectTwitter = f"https://twitter.com/{data.get('twitter_username')}"
     projectDiscord = data.get('discord_url')
     projectWebsite = data.get('external_url')
+    projectSupply = int(data.get('total_supply', 0))
     chain = data.get('contracts')[0].get('chain')
     if chain == "matic":
         projectChain = "MATIC"
@@ -2013,42 +2014,18 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     data = results.get('total')
 
     projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
-    projectSupply = int(data.get('total_supply', 0))
     projectOwners = int(data.get('num_owners', 0))
 
     sales_list = "```\n"
     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
     sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
-    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-    #     "Last Hour",
-    #     f"{round(float(data['stats']['one_hour_volume']), 3)}",
-    #     f"{int(data['stats']['one_hour_sales'])}",
-    #     f"{round(float(data['stats']['one_hour_average_price']), 3)} {projectChain}",
-    # )
-    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-    #     "Last Day",
-    #     f"{round(float(data['stats']['one_day_volume']), 3)}",
-    #     f"{int(data['stats']['one_day_sales'])}",
-    #     f"{round(float(data['stats']['one_day_average_price']), 3)} {projectChain}",
-    # )
-    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-    #     "Last Week",
-    #     f"{round(float(data['stats']['seven_day_volume']), 3)}",
-    #     f"{int(data['stats']['seven_day_sales'])}",
-    #     f"{round(float(data['stats']['seven_day_average_price']), 3)} {projectChain}",
-    # )
-    # sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-    #     "All Time",
-    #     f"{round(float(data['stats']['total_volume']), 3)}",
-    #     f"{int(data['stats']['total_sales'])}",
-    #     f"{round(float(data['stats']['average_price']), 3)} {projectChain}",
-    # )
+
     for row in results.get('intervals'):
         sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
             row.get('interval'),
             f"{round(float(row.get('volume', 0)), 3)}",
             f"{int(row.get('sales'))}",
-            f"{round(float(row.get('average_price')), 3)} {projectChain}",
+            f"{round(float(row.get('average_price')), 3)} ETH",
         )
     sales_list += "```"
 

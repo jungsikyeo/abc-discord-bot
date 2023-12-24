@@ -1990,6 +1990,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     projectDiscord = data.get('discord_url')
     projectWebsite = data.get('external_url')
     projectSupply = int(data.get('total_supply', 0))
+
     chain = data.get('contracts')[0].get('chain')
     if chain == "matic":
         projectChain = "MATIC"
@@ -2001,6 +2002,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         projectChain = "SOL"
     else:
         projectChain = "ETH"
+
     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
     if projectWebsite:
         projectLinks += f" | [Website]({projectWebsite})"
@@ -2013,6 +2015,9 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     results = json.loads(response.text)
     data = results.get('total')
 
+    floor_price_symbol = data.get('floor_price_symbol')
+    if floor_price_symbol and floor_price_symbol != "":
+        projectChain = floor_price_symbol
     projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
     projectOwners = int(data.get('num_owners', 0))
 

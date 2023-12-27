@@ -1737,9 +1737,9 @@ async def me_sol(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = requests.get(f"https://api-mainnet.magiceden.dev/collections/{symbol}").text
-    # print(response)
+    print(response)
     data = json.loads(response)
-    # print(data)
+    print(data)
 
     try:
         if data['msg'] == "Invalid collection name.":
@@ -1766,14 +1766,14 @@ async def me_sol(ctx, symbol):
 
     time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats").text
-    # print("stats:", response)
+    print("stats:", response)
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
     time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats").text
-    # print("holder_stats:", response)
+    print("holder_stats:", response)
     data = json.loads(response)
 
     try:
@@ -1791,7 +1791,7 @@ async def me_sol(ctx, symbol):
 
     time.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/activities").text
-    # print("activities:", response)
+    print("activities:", response)
     data = json.loads(response)
 
     activities = []

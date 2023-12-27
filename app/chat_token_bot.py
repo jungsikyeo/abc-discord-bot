@@ -525,7 +525,7 @@ async def schedule_reset(token_type, run_type=True):
         await asyncio.sleep(next_reset - datetime.now().timestamp())
 
         # 다음 리셋 스케줄링
-        logger.info(f"resetting tokens at, {datetime.fromtimestamp(next_reset)}, {token_type}")
+        logger.info(f"resetting tokens - reset_time: {datetime.fromtimestamp(next_reset)}, amount: {searchfi_amount}")
     except Exception as e:
         connection.rollback()
         logger.error(f'schedule_reset db error: {e}')
@@ -546,7 +546,7 @@ async def schedule_give(token_type):
         """, (token_type,))
         result = cursor.fetchone()
         reset_at = datetime.fromtimestamp(result['reset_at'])
-        available = result['still_available']
+        available = int(result['still_available'])
 
         # 평균 토큰 지급량 계산
         average_tokens_per_distribution = (min_win + max_win) / 2  # min_win, max_win 개의 평균
@@ -558,6 +558,7 @@ async def schedule_give(token_type):
         # 새로운 토큰 지급 주기 계산
         if available > 0:
             new_rate = remaining_seconds / (available / average_tokens_per_distribution)
+            logger.info(f"new rate: {new_rate}")
             random_offset = random.randint(-90, 90)  # -1분 30초 ~ +1분 30초
             next_give_time = now.timestamp() + new_rate + random_offset
         else:

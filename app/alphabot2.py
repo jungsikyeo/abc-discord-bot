@@ -2491,10 +2491,14 @@ async def coin2(ctx, coin_symbol: str):
         embed.add_field(name="90d Change", value=f"```{coin_info['percent_change_90d']:,.2f} USDT```")
         embed.add_field(name="Market Cap", value=f"```{coin_info['market_cap']:,.2f} USDT```")
         embed.add_field(name="Volume (24h)", value=f"```{coin_info['volume_24h']:,.2f} USDT```")
+        embed.set_footer(text="Powered by SearchFi DEV")
 
         await ctx.send(embed=embed)
     else:
-        await ctx.send("Error fetching coin data.")
+        embed = Embed(title="Warning",
+                      description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
+                      color=0xFFFFFF)
+        embed.set_footer(text="Powered by SearchFi DEV")
 
 
 @bot.command()

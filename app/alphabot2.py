@@ -2459,6 +2459,45 @@ async def coin(ctx, coin_symbol: str, period: str = "1day"):
 
 
 @bot.command()
+async def coin2(ctx, coin_symbol: str):
+    COINMARKETCAP_API_KEY = operating_system.getenv("COINMARKETCAP_API_KEY")
+
+    url = f'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol={coin_symbol.upper()}&convert=USDT'
+    headers = {
+        'Accepts': 'application/json',
+        'X-CMC_PRO_API_KEY': COINMARKETCAP_API_KEY,
+    }
+    parameters = {
+        'symbol': coin_symbol.upper()
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    if response.status_code == 200 and data['status']['error_code'] == 0:
+        coin_info = data['data'][coin_symbol.upper()]['quote']['USDT']
+
+        embed = discord.Embed(
+            title=f"{coin_symbol.upper()} Information",
+            description=f"{coin_symbol.upper()} Price and Statistics",
+            color=0x00ff00
+        )
+        embed.add_field(name="Last Price", value=f"```{coin_info['price']:,.4f} USDT```")
+        embed.add_field(name="1h Change", value=f"```{coin_info['percent_change_1h']:,.2f} USDT```")
+        embed.add_field(name="24h Change", value=f"```diff\n{coin_info['percent_change_24h']:,.2f}%```")
+        embed.add_field(name="7d Change", value=f"```{coin_info['percent_change_7d']:,.2f} USDT```")
+        embed.add_field(name="30d Change", value=f"```{coin_info['percent_change_30d']:,.2f} USDT```")
+        embed.add_field(name="60d Change", value=f"```{coin_info['percent_change_60d']:,.2f} USDT```")
+        embed.add_field(name="90d Change", value=f"```{coin_info['percent_change_90d']:,.2f} USDT```")
+        embed.add_field(name="Market Cap", value=f"```{coin_info['market_cap']:,.2f} USDT```")
+        embed.add_field(name="Volume (24h)", value=f"```{coin_info['volume_24h']:,.2f} USDT```")
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("Error fetching coin data.")
+
+
+@bot.command()
 @commands.has_any_role('SF.Team', 'SF.Super', 'SF.Guardian', 'SF.dev')
 async def addrole(ctx, sheet_name, role_name):
     # 결과를 저장할 문자열을 초기화합니다.

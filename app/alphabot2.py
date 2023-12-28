@@ -2482,15 +2482,15 @@ async def coin2(ctx, coin_symbol: str):
             description=f"{coin_symbol.upper()} Price and Statistics",
             color=0x00ff00
         )
-        embed.add_field(name="Last Price", value=f"```{coin_info['price']:,.4f} USDT```")
+        embed.add_field(name="Last Price", value=f"```python\n{coin_info['price']:,.4f} USDT```")
         embed.add_field(name="1h Change", value=f"```diff\n{'+' if coin_info['percent_change_1h'] > 0 else ''}{coin_info['percent_change_1h']:,.2f} USDT```")
         embed.add_field(name="24h Change", value=f"```diff\n{'+' if coin_info['percent_change_24h'] > 0 else ''}{coin_info['percent_change_24h']:,.2f}%```")
         embed.add_field(name="7d Change", value=f"```diff\n{'+' if coin_info['percent_change_7d'] > 0 else ''}{coin_info['percent_change_7d']:,.2f} USDT```")
         embed.add_field(name="30d Change", value=f"```diff\n{'+' if coin_info['percent_change_30d'] > 0 else ''}{coin_info['percent_change_30d']:,.2f} USDT```")
         embed.add_field(name="60d Change", value=f"```diff\n{'+' if coin_info['percent_change_60d'] > 0 else ''}{coin_info['percent_change_60d']:,.2f} USDT```")
         embed.add_field(name="90d Change", value=f"```diff\n{'+' if coin_info['percent_change_90d'] > 0 else ''}{coin_info['percent_change_90d']:,.2f} USDT```")
-        embed.add_field(name="Market Cap", value=f"```{coin_info['market_cap']:,.2f} USDT```")
-        embed.add_field(name="Volume (24h)", value=f"```{coin_info['volume_24h']:,.2f} USDT```")
+        embed.add_field(name="Market Cap", value=f"```python\n{coin_info['market_cap']:,.2f} USDT```")
+        embed.add_field(name="Volume (24h)", value=f"```python\n{coin_info['volume_24h']:,.2f} USDT```")
         embed.set_footer(text="Powered by SearchFi DEV")
 
         await ctx.send(embed=embed)

@@ -52,7 +52,7 @@ my_awards = {
     ],
 }
 
-DiscordLevelingSystem.create_database_file(rf'{local_db_file_path}')
+# DiscordLevelingSystem.create_database_file(rf'{local_db_file_path}')
 
 lvl = DiscordLevelingSystem(awards=my_awards, level_up_channel_ids=[level_announcement_channel_id])
 lvl.connect_to_database_file(rf'{local_db_file_path}/{local_db_file_name}')

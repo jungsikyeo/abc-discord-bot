@@ -719,6 +719,14 @@ async def reset_sf_tokens(ctx):
         connection.commit()
         lock_status = False
 
+        embed = Embed(
+            title="✅ SF Token Reset Complete",
+            description=f"Successfully reset SF token to all users",
+            color=0x9da1ef
+        )
+        # 메시지 전송
+        await ctx.reply(embed=embed, mention_author=True)
+
     except Exception as e:
         connection.rollback()
         logger.error(f'Error in reset_sf_tokens: {e}')

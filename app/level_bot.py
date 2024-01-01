@@ -127,12 +127,14 @@ async def on_message(message):
 async def on_ready():
     logger.info(f"We have logged in as {bot.user}")
 
+    guild_id = int(os.getenv("SELF_GUILD_ID"))
+
     # no xp channel 세팅
-    for guild in bot.guilds:
-        for channel in guild.channels:
-            if channel.id in enabled_channel_list:
-                continue
-            no_xp_channels.append(channel.id)
+    guild = bot.get_guild(guild_id)
+    for channel in guild.channels:
+        if channel.id in enabled_channel_list:
+            continue
+        no_xp_channels.append(channel.id)
     lvl.no_xp_channels = no_xp_channels
 
 

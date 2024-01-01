@@ -677,6 +677,56 @@ async def give_points(message, token_type):
         connection.close()
 
 
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def reset_sf_tokens(ctx):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+            select user_id, tokens
+            from user_tokens
+            where tokens > 0
+        """)
+        user_list = cursor.fetchall()
+
+        global lock_status
+
+        lock_status = True
+
+        for user in user_list:
+            user_id = user.get("user_id")
+            user_name = bot.get_user(user_id)
+            token = int(user.get("tokens"))
+            action_type = "reset-sf-tokens"
+            send_user_id = ctx.author.id
+            send_user_name = bot.get_user(send_user_id)
+            channel_id = str(ctx.channel.id)
+            channel_name = f"{bot.get_channel(ctx.channel.id)}"
+
+            cursor.execute("""
+                update user_tokens set tokens = %s
+                where user_id = %s
+            """, (0, str(user_id),))
+
+            cursor.execute("""
+                insert into user_token_logs (
+                    user_id, user_name, action_tokens, before_tokens, after_tokens, action_type, 
+                    send_user_id, send_user_name, channel_id, channel_name)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (str(user_id), user_name, token * (-1), token, 0, action_type, send_user_id, send_user_name, channel_id, channel_name))
+
+        connection.commit()
+        lock_status = False
+
+    except Exception as e:
+        connection.rollback()
+        logger.error(f'Error in reset_sf_tokens: {e}')
+    finally:
+        cursor.close()
+        connection.close()
+
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):

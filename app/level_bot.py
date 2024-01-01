@@ -7,7 +7,7 @@ from discord import Member, Embed
 from discord.ext import commands
 from discord.commands import Option
 from discord.commands.context import ApplicationContext
-from discordLevelingSystem import DiscordLevelingSystem, RoleAward
+from discordLevelingSystem import DiscordLevelingSystem, LevelUpAnnouncement, RoleAward
 from DiscordLevelingCard import RankCard, Settings
 from discord.ext.pages import Paginator
 from dotenv import load_dotenv
@@ -54,7 +54,9 @@ my_awards = {
 
 # DiscordLevelingSystem.create_database_file(rf'{local_db_file_path}')
 
-lvl = DiscordLevelingSystem(awards=my_awards, level_up_channel_ids=[level_announcement_channel_id])
+announcement = LevelUpAnnouncement(f'{LevelUpAnnouncement.Member.mention} just leveled up to level {LevelUpAnnouncement.LEVEL} 😎',
+                                   level_up_channel_ids=[level_announcement_channel_id])
+lvl = DiscordLevelingSystem(awards=my_awards, level_up_announcement=announcement)
 lvl.connect_to_database_file(rf'{local_db_file_path}/{local_db_file_name}')
 
 no_xp_channels = []
@@ -150,6 +152,10 @@ async def rank(ctx: ApplicationContext,
 
         data = await lvl.get_data_for(user)
 
+        if not data:
+            await lvl.add_record(user.guild.id, user.id, user.name, 0)
+            data = await lvl.get_data_for(user)
+
         await ctx.defer()
 
         card_settings = Settings(
@@ -158,18 +164,22 @@ async def rank(ctx: ApplicationContext,
             bar_color="#ffffff"
         )
 
-        if data.total_xp > 0:
-            total_xp = data.total_xp
+        if data and data.total_xp > 0:
+            user_level = data.level
+            user_xp = data.xp
+            user_total_xp = lvl.get_xp_for_level(user_level+1)
         else:
-            total_xp = lvl.get_xp_for_level(1)
+            user_level = 0
+            user_xp = 0
+            user_total_xp = lvl.get_xp_for_level(1)
 
         a = RankCard(
             settings=card_settings,
             avatar=user.display_avatar.url,
-            level=data.level,
-            current_exp=data.xp,
-            max_exp=total_xp,
-            username=f"{user.display_name}"
+            level=user_level,
+            current_exp=user_xp,
+            max_exp=user_total_xp,
+            username=f"{user.name}"
         )
         image = await a.card2()
         await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)
@@ -201,7 +211,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
                 if index >= len(rankers):
                     break
                 ranker = rankers[index]
-                description += f"`{ranker.rank}.` {ranker.mention} • Level **{ranker.rank}** - **{ranker.xp}** XP\n"
+                description += f"`{ranker.rank}.` {ranker.mention} • Level **{ranker.level}** - **{ranker.xp}** XP\n"
             embed = make_embed({
                 "title": f"Leaderboard Page {page + 1}",
                 "description": description,
@@ -228,7 +238,11 @@ async def rank_leaderboard(ctx: ApplicationContext):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_xp(ctx: ApplicationContext, member: Member, xp: int):
     try:
+        user = lvl.get_data_for(member)
+        if not user:
+            await lvl.add_record(member.guild.id, member.id, member.name, 0)
         await lvl.add_xp(member, xp)
+
         embed = make_embed({
             "title": "XP successfully added",
             "description": f"✅ Successfully added {xp} XP to {member.mention}",

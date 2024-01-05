@@ -887,7 +887,7 @@ async def ama_give_tokens(ctx):
     try:
         all_users = ctx.guild.members
 
-        role_count = 0
+        user_count = 0
         total_count = len(all_users)
 
         for user in all_users:
@@ -954,11 +954,11 @@ async def ama_give_tokens(ctx):
 
                         connection.commit()
 
-                role_count += 1
+            user_count += 1
 
-                # 500명마다 진행률 확인
-                if role_count % 500 == 0 or role_count == total_count:
-                    await ctx.send(f"progress: {role_count}/{total_count} ({(role_count / total_count) * 100:.2f}%)")
+            # 5000명마다 진행률 확인
+            if user_count % 5000 == 0 or user_count == total_count:
+                await ctx.send(f"progress: {user_count}/{total_count} ({(user_count / total_count) * 100:.2f}%)")
 
         embed = discord.Embed(title=f"✅ AMA.Roles Token Given",
                               description=f"AMA 역할에 대한 토큰이 부여되었습니다.\n\n"

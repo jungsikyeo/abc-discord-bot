@@ -4,9 +4,8 @@ import io
 import pymysql
 import chat_exporter
 import pytz
-from datetime import datetime
 from discord import *
-from discord.ui import View
+from discord.ui import View, Button
 from discord.ext import commands, tasks
 from discord.ext.pages import Paginator
 from pymysql.cursors import DictCursor
@@ -15,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-bot_token = os.getenv("SEARCHFI_BOT_TOKEN")
+bot_token = os.getenv("SEARCHFI_TICKET_BOT_TOKEN")
 command_flag = os.getenv("SEARCHFI_BOT_FLAG")
 guild_id = int(os.getenv('SELF_GUILD_ID'))
 mysql_ip = os.getenv("MYSQL_IP")
@@ -65,7 +64,12 @@ class TicketSystem(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f'Bot Loaded | ticket_system.py ✅')
-        self.bot.add_view(TicketView())
+        view = TicketView()
+        view.add_item(Button(label="Collab",
+                             emoji="🤝",
+                             style=discord.ButtonStyle.link,
+                             url="https://discord.gg/cqW8RsEk4s"))
+        self.bot.add_view(view)
         self.bot.add_view(CloseButton())
         self.bot.add_view(TicketOptions())
 
@@ -169,11 +173,10 @@ async def make_button(category_id: int, interaction: Interaction):
 
             embed = Embed(description=f'📬 Ticket was Created! Look here --> {ticket_channel.mention}',
                           color=discord.colour.Color.green())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         else:
             embed = Embed(title=f"You already have a open Ticket", color=0xff0000)
-            await interaction.response.send_message(embed=embed,
-                                                    ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 class TicketView(View):
@@ -182,10 +185,12 @@ class TicketView(View):
 
     @discord.ui.button(label="Support", emoji="☎️", style=discord.ButtonStyle.blurple, custom_id="support")
     async def support(self, _, interaction: Interaction):
+        await interaction.response.defer()
         await make_button(category_id1, interaction)
 
     @discord.ui.button(label="Giveaway Winner", emoji="🎉", style=discord.ButtonStyle.blurple, custom_id="giveaway_winner")
     async def giveaway_winner(self, _, interaction: Interaction):
+        await interaction.response.defer()
         await make_button(category_id2, interaction)
 
 
@@ -362,7 +367,12 @@ class TicketCommand(commands.Cog):
         embed = discord.Embed(title="Open a ticket",
                               description=description,
                               color=discord.colour.Color.blue())
-        await self.channel.send(embed=embed, view=TicketView())
+        view = TicketView()
+        view.add_item(Button(label="Collab",
+                             emoji="🤝",
+                             style=discord.ButtonStyle.link,
+                             url="https://discord.gg/cqW8RsEk4s"))
+        await self.channel.send(embed=embed, view=view)
         await ctx.respond("Ticket Menu was send!", ephemeral=True)
 
     @commands.slash_command(

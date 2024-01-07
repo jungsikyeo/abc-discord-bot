@@ -3,9 +3,12 @@ import os
 import io
 import pymysql
 import chat_exporter
+import pytz
+from datetime import datetime
 from discord import *
 from discord.ui import View
 from discord.ext import commands, tasks
+from discord.ext.pages import Paginator
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from dotenv import load_dotenv
@@ -85,6 +88,7 @@ async def make_button(category_id: int, interaction: Interaction):
                 FROM tickets
                 WHERE user_id = %s
                 and category_id = %s
+                and ticket_status = 'OPEN'
             """,
             (user_id, category_id)
         )
@@ -104,6 +108,7 @@ async def make_button(category_id: int, interaction: Interaction):
                     FROM tickets
                     WHERE category_id = %s
                     and user_id = %s
+                    and ticket_status = 'OPEN'
                 """,
                 (category_id, user_id))
             ticket_number = cursor.fetchone()['id']
@@ -169,7 +174,6 @@ async def make_button(category_id: int, interaction: Interaction):
             embed = Embed(title=f"You already have a open Ticket", color=0xff0000)
             await interaction.response.send_message(embed=embed,
                                                     ephemeral=True)
-    return
 
 
 class TicketView(View):
@@ -198,12 +202,23 @@ class CloseButton(View):
                 SELECT id, user_id
                 FROM tickets 
                 WHERE concat(user_id,'-',id) = %s
+                and ticket_status = 'OPEN'
             """,
             (ticket_topic,)
         )
         ticket = cursor.fetchone()
+        ticket_id = ticket.get("id")
         ticket_user_id = ticket.get("user_id")
         ticket_creator = guild.get_member(int(ticket_user_id))
+
+        cursor.execute(
+            """
+                UPDATE tickets SET ticket_status = 'CLOSE'
+                WHERE id = %s
+            """,
+            (ticket_id,)
+        )
+        connection.commit()
 
         embed = Embed(title="Ticket Closed 🎫",
                       description=f"The ticket has been closed by {ticket_creator}",
@@ -238,34 +253,48 @@ class TicketOptions(View):
                 SELECT id, user_id, category_name
                 FROM tickets 
                 WHERE concat(user_id, '-', id) = %s
+                and ticket_status = 'CLOSE'
             """,
             (ticket_topic,)
         )
         ticket = cursor.fetchone()
+        ticket_id = ticket.get("id")
         ticket_user_id = ticket.get("user_id")
         ticket_category_name = ticket.get("category_name")
         ticket_creator = guild.get_member(int(ticket_user_id))
-
-        cursor.execute(
-            """
-                DELETE FROM tickets 
-                WHERE concat(user_id, '-', id) = %s
-            """,
-            (ticket_topic,)
-        )
-        connection.commit()
 
         # Creating the Transcript
         military_time: bool = True
         transcript = await chat_exporter.export(
             interaction.channel,
-            limit=200,
+            limit=500,
             tz_info=timezone,
             military_time=military_time,
             bot=bot,
         )
         if transcript is None:
             return
+        else:
+            lines = transcript.split('\n')
+
+            new_transcript = ""
+            for line in lines:
+                if "https://media.discordapp.net/attachments" in line:
+                    new_line = line.replace("https://media.discordapp.net/attachments", "https://cdn.discordapp.com/attachments")
+                    new_transcript += new_line
+                else:
+                    new_transcript += line
+            transcript = new_transcript
+
+        cursor.execute(
+            """
+                UPDATE tickets SET ticket_status = 'DELETE', ticket_description = %s
+                WHERE concat(user_id, '-', id) = %s
+                and ticket_status = 'CLOSE' 
+            """,
+            (transcript, ticket_topic,)
+        )
+        connection.commit()
 
         transcript_file = discord.File(
             io.BytesIO(transcript.encode()),
@@ -276,7 +305,8 @@ class TicketOptions(View):
 
         embed = Embed(description=f'Ticket is deliting in 5 seconds.', color=0xff0000)
         transcript_info = Embed(title=f"Ticket Deleting | {interaction.channel.name}",
-                                description=f"- **Ticket from:** {ticket_creator.mention}\n"
+                                description=f"- **Ticket ID:** {ticket_id}\n"
+                                            f"- **Ticket from:** {ticket_creator.mention}\n"
                                             f"- **Ticket Name:** {interaction.channel.name} \n"
                                             f"- **Ticket Type:** {ticket_category_name}\n"
                                             f"- **Closed from:** {interaction.user.mention}",
@@ -285,12 +315,14 @@ class TicketOptions(View):
         await interaction.response.send_message(embed=embed)
 
         try:
-            await ticket_creator.send(embed=transcript_info, file=transcript_file)
+            await ticket_creator.send(embed=transcript_info,
+                                      file=transcript_file)
         except:
             transcript_info.add_field(name="Error",
                                       value="Couldn't send the Transcript to the User because he has his DMs disabled!",
                                       inline=True)
-        await log_channel.send(embed=transcript_info, file=transcript_file2)
+        await log_channel.send(embed=transcript_info,
+                               file=transcript_file2)
         await asyncio.sleep(3)
         await interaction.channel.delete(reason="Ticket got Deleted!")
 
@@ -334,129 +366,63 @@ class TicketCommand(commands.Cog):
         await ctx.respond("Ticket Menu was send!", ephemeral=True)
 
     @commands.slash_command(
-        name="add",
-        description="Add a Member to the Ticket",
+        name="ticket-search",
+        description="Search ticket messages",
         guild_ids=[guild_id]
     )
     @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-    async def add(self, ctx: ApplicationContext, member: Option(Member,
-                                            description="Which Member you want to add to the Ticket",
-                                            required=True)):
-        if "-ticket" in ctx.channel.name or "ticket-closed-" in ctx.channel.name:
-            await ctx.channel.set_permissions(member,
-                                              send_messages=True,
-                                              read_messages=True,
-                                              add_reactions=False,
-                                              embed_links=True,
-                                              attach_files=True,
-                                              read_message_history=True,
-                                              external_emojis=True)
-            self.embed = Embed(
-                description=f"Added {member.mention} to this Ticket <#{ctx.channel.id}>! \n "
-                            f"Use /remove to remove a User.",
-                color=discord.colour.Color.green())
-            await ctx.respond(embed=self.embed, ephemeral=True)
-        else:
-            self.embed = Embed(description=f'You can only use this command in a Ticket!',
-                               color=discord.colour.Color.red())
-            await ctx.respond(embed=self.embed, ephemeral=True)
-
-    @commands.slash_command(
-        name="remove",
-        description="Remove a Member from the Ticket",
-        guild_ids=[guild_id]
-    )
-    @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-    async def remove(self, ctx, member: Option(Member,
-                                               description="Which Member you want to remove from the Ticket",
-                                               required=True)):
-        if "ticket-" in ctx.channel.name or "ticket-closed-" in ctx.channel.name:
-            await ctx.channel.set_permissions(member, 
-                                              send_messages=False, 
-                                              read_messages=False, 
-                                              add_reactions=False,
-                                              embed_links=False, 
-                                              attach_files=False, 
-                                              read_message_history=False,
-                                              external_emojis=False)
-            self.embed = Embed(
-                description=f'Removed {member.mention} from this Ticket <#{ctx.channel.id}>! \n Use /add to add a User.',
-                color=discord.colour.Color.green())
-            await ctx.send(embed=self.embed)
-        else:
-            self.embed = Embed(description=f'You can only use this command in a Ticket!',
-                               color=discord.colour.Color.red())
-            await ctx.send(embed=self.embed)
-
-    @commands.slash_command(
-        name="delete",
-        description="Delete the Ticket",
-        guild_ids=[guild_id]
-    )
-    async def delete_ticket(self, ctx):
-        guild = self.bot.get_guild(guild_id)
-        log_channel = self.bot.get_channel(log_channel_id)
-        ticket_topic = ctx.channel.topic
-        cursor.execute(
-            """
-                SELECT id, user_id
-                FROM tickets 
-                WHERE concat(user_id, '-', id) = %s
-            """,
-            (ticket_topic,)
-        )
-        ticket = cursor.fetchone()
-        ticket_user_id = ticket.get("user_id")
-        ticket_creator = guild.get_member(int(ticket_user_id))
-
-        cursor.execute(
-            """
-                DELETE FROM tickets 
-                WHERE category_id = %s
-                and user_id = %s
-            """,
-            (ticket_creator,)
-        )
-        connection.commit()
-
-        # Create Transcript
-        military_time: bool = True
-        transcript = await chat_exporter.export(
-            ctx.channel,
-            limit=200,
-            tz_info=timezone,
-            military_time=military_time,
-            bot=self.bot,
-        )
-        if transcript is None:
+    async def ticket_search(self,
+                            ctx: ApplicationContext,
+                            search_user: Option(Member, "What users to search for", required=False),
+                            search_message: Option(str, "What messages to search for", required=False)):
+        if search_user is None and search_message is None:
+            embed = Embed(title="Error",
+                          description=f"You must enter either a user or a message that you want to search for.",
+                          color=0xff0000)
+            await ctx.respond(embed=embed, ephemeral=True)
             return
 
-        transcript_file = discord.File(
-            io.BytesIO(transcript.encode()),
-            filename=f"transcript-{ctx.channel.name}.html")
-        transcript_file2 = discord.File(
-            io.BytesIO(transcript.encode()),
-            filename=f"transcript-{ctx.channel.name}.html")
+        where = ""
+        where_params = []
+        if search_user:
+            where += "and user_id = %s "
+            where_params.append(search_user.id)
+        if search_message:
+            where += "and ticket_description like %s "
+            where_params.append(f"%{search_message}%")
 
-        ticket_creator = guild.get_member(ticket_creator)
-        embed = discord.Embed(description=f'Ticket is deliting in 5 seconds.', color=0xff0000)
-        transcript_info = discord.Embed(title=f"Ticket Deleting | {ctx.channel.name}",
-                                        description=f"Ticket from: {ticket_creator.mention}\nTicket Name: {ctx.channel.name} \n Closed from: {ctx.author.mention}",
-                                        color=discord.colour.Color.blue())
+        cursor.execute(
+            f"""
+                SELECT id, user_id, user_name, category_name, ticket_created, ticket_status
+                FROM tickets 
+                WHERE 1=1 
+                    {where}
+            """,
+            where_params
+        )
+        tickets = cursor.fetchall()
 
-        await ctx.reply(embed=embed)
-        # Checks if the user has his DMs enabled/disabled
-        try:
-            await ticket_creator.send(embed=transcript_info, file=transcript_file)
-        except:
-            transcript_info.add_field(name="Error",
-                                      value="Couldn't send the Transcript to the User because he has his DMs disabled!",
-                                      inline=True)
-        await log_channel.send(embed=transcript_info, file=transcript_file2)
-        await asyncio.sleep(3)
-        await ctx.channel.delete(reason="Ticket got Deleted!")
+        pages = []
+        for ticket in tickets:
+            ticket_id = ticket.get("id")
+            ticket_user_id = ticket.get("user_id")
+            ticket_user_name = ticket.get("user_name")
+            ticket_category_name = ticket.get("category_name")
+            ticket_created = ticket.get("ticket_created")
+            ticket_created_utc = ticket_created.astimezone(pytz.utc)
+            ticket_created_timestamp = int(ticket_created_utc.timestamp())
+            ticket_status = ticket.get("ticket_status")
 
-
+            embed = Embed(title=f"Searched Tickets\n> Search User: `{search_user}`\n> Search Message: `{search_message}`",
+                          description=f"- **Ticket ID:** {ticket_id}\n"
+                                      f"- **Ticket from:** {ticket_user_name}(ID: {ticket_user_id})\n"
+                                      f"- **Ticket Type:** {ticket_category_name}\n"
+                                      f"- **Ticket Created:** <t:{ticket_created_timestamp}:F> \n"
+                                      f"- **Ticket Status:** {ticket_status}",
+                          color=discord.colour.Color.blue())
+            pages.append(embed)
+        paginator = Paginator(pages=pages)
+        await paginator.respond(ctx.interaction, ephemeral=False)
 @bot.event
 async def on_ready():
     print(f'Bot Logged | {bot.user.name}')

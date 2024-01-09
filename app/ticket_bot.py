@@ -29,6 +29,18 @@ team_role2 = int(os.getenv('TICKET_TEAM_ROLE_ID2'))
 ticket_channel_id = int(os.getenv('TICKET_CHANNEL_ID'))
 log_channel_id = int(os.getenv('TICKET_LOG_CHANNEL_ID'))
 timezone = "Asia/Seoul"
+bot_log_folder = os.getenv("BOT_LOG_FOLDER")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(filename=f"{bot_log_folder}/ticket_bot.log", mode='a'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=discord.Intents.all())
 
@@ -446,6 +458,14 @@ async def richpresence():
     category2 = discord.utils.get(guild.categories, id=int(category_id2))
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                         name=f'Tickets | {len(category1.channels) + len(category2.channels)}'))
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    else:
+        logger.error(f"An error occurred: {str(error)}")
 
 
 bot.add_cog(TicketSystem(bot))

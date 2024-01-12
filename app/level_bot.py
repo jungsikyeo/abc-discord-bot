@@ -98,12 +98,12 @@ async def check_level_give_role(member: Member):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def xp_cooldown(ctx: ApplicationContext, per: int):
+async def xp_cooldown(ctx: ApplicationContext, rate: int,  per: int):
     try:
-        await lvl.change_cooldown(1, float(per))
+        await lvl.change_cooldown(rate, float(per))
         embed = make_embed({
             "title": "XP Cooldown successfully setting",
-            "description": f"✅ Successfully setting `{per}s` XP Cooldown",
+            "description": f"✅ Successfully setting `{rate}chat` per `{per}s` XP Cooldown",
             "color": 0x37e37b,
         })
         await ctx.respond(embed=embed, ephemeral=False)

@@ -3039,6 +3039,71 @@ async def mp(ctx, symbol: str, amount: float):
     await ctx.send(embed=embed)
 
 
+def get_gas_prices():
+    ETHERSCAN_API_KEY = operating_system.getenv("ETHERSCAN_API_KEY")
+    params = {
+        'module': 'gastracker',
+        'action': 'gasoracle',
+        'apikey': ETHERSCAN_API_KEY
+    }
+    ETHERSCAN_API_URL = "https://api.etherscan.io/api"
+    response = requests.get(ETHERSCAN_API_URL, params=params)
+    data = response.json()
+
+    return data['result']
+
+
+def get_current_eth_price():
+    # 바이낸스 API 엔드포인트
+    binance_api_url = 'https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'
+
+    try:
+        response = requests.get(binance_api_url)
+        response.raise_for_status()  # 오류가 발생하면 예외를 발생시킴
+        data = response.json()
+        return float(data['price'])
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error occurred: {err}")
+    except Exception as err:
+        print(f"An error occurred: {err}")
+
+
+@bot.command()
+async def g(ctx):
+    gas_prices = get_gas_prices()
+    current_eth_price = get_current_eth_price()
+
+    fast = int(gas_prices['FastGasPrice'])
+    average = int(gas_prices['ProposeGasPrice'])
+    slow = int(gas_prices['SafeGasPrice'])
+
+    eth_fast = fast * 21000 / 1e9 * current_eth_price
+    eth_average = average * 21000 / 1e9 * current_eth_price
+    eth_slow = slow * 21000 / 1e9 * current_eth_price
+    transaction_list = "```"
+    transaction_list += "{:<18s}{:<8s}{:<9s}{:<9s}\n".format("Action", "Low", "Average", "Fast")
+    transaction_list += "-" * 42 + "\n"
+    transaction_list += "{:<18s}{:<8s}{:<9s}{:<9s}\n".format(
+        "ETH transaction",
+        f"${eth_fast:.2f}",
+        f"${eth_average:.2f}",
+        f"${eth_slow:.2f}",
+    )
+    transaction_list += "```"
+
+    embed = discord.Embed(title="Gas Estimation",
+                          description="Current gas price and estimated transaction fees",
+                          color=0xEFB90A)
+    embed.add_field(name="😆 Low", value=f"```python\n{slow} GWEI```", inline=True)
+    embed.add_field(name="😃 Average", value=f"```python\n{average} GWEI```", inline=True)
+    embed.add_field(name="🙂 Fast", value=f"```python\n{fast} GWEI```", inline=True)
+    embed.add_field(name="ETH transaction",
+                    value=f"{transaction_list}", inline=False)
+    embed.set_footer(text="Powered by SearchFi DEV")
+
+    await ctx.send(embed=embed)
+
+
 #########################################
 # Slash Command start #
 @bot.slash_command(
@@ -5065,26 +5130,6 @@ async def mp_slash(ctx: ApplicationContext,
     embed.add_field(name="🇯🇵 JAPAN", value="```{:,.2f} JPY```".format(result['JPY']), inline=False)
 
     await ctx.respond(embed=embed, ephemeral=False)
-
-
-@bot.command()
-async def rank(ctx, member: discord.Member = None):
-    import rankcard
-    if member:
-        user = member
-    else:
-        user = ctx.author
-    username = user.name + "#" + user.discriminator
-    currentxp = 1
-    lastxp = 0
-    nextxp = 2
-    current_level = 1
-    current_rank = 1
-    background = None
-    image = await rankcard.rankcard(user=user, username=username, currentxp=currentxp, lastxp=lastxp, nextxp=nextxp,
-                                    level=current_level, rank=current_rank, background=background)
-    file = discord.File(filename="rank.png", fp=image)
-    await ctx.send(file=file)
 
 
 @bot.event

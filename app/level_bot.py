@@ -347,15 +347,17 @@ async def give_xp_bulk(ctx: ApplicationContext,
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def reset_leaderboard_stats(ctx: ApplicationContext):
     try:
+        await ctx.defer()
+
         role_lvs = []
         for role in ctx.guild.roles:
-            if "LV." in role.name:
+            if "LV_TEST." in role.name:
                 role_lvs.append(role.id)
 
         for member in ctx.guild.members:
             await lvl.reset_member(member)
             for role in member.roles:
-                if "LV." in role.name:
+                if "LV_TEST." in role.name:
                     await member.remove_roles(role)
 
         embed = make_embed({

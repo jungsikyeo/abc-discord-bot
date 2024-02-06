@@ -403,6 +403,56 @@ class TicketCommand(commands.Cog):
             logger.error(f"An error occurred: {str(error)}")
 
     @commands.slash_command(
+        name="close-ticket",
+        description="Close the Ticket",
+        guild_ids=[guild_id]
+    )
+    @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+    async def close(self, ctx: ApplicationContext):
+        try:
+            guild = ctx.guild
+            ticket_topic = ctx.channel.topic
+            cursor.execute(
+                """
+                    SELECT id, user_id
+                    FROM tickets 
+                    WHERE concat(user_id,'-',id) = %s
+                    and ticket_status = 'OPEN'
+                """,
+                (ticket_topic,)
+            )
+            ticket = cursor.fetchone()
+            ticket_id = ticket.get("id")
+            ticket_user_id = ticket.get("user_id")
+            ticket_creator = guild.get_member(int(ticket_user_id))
+
+            cursor.execute(
+                """
+                    UPDATE tickets SET ticket_status = 'CLOSE'
+                    WHERE id = %s
+                """,
+                (ticket_id,)
+            )
+            connection.commit()
+
+            embed = Embed(title="Ticket Closed 🎫",
+                          description=f"The ticket has been closed by {ticket_creator}",
+                          color=discord.colour.Color.green())
+            await ctx.channel.set_permissions(ticket_creator,
+                                                      send_messages=False,
+                                                      read_messages=False,
+                                                      add_reactions=False,
+                                                      embed_links=False,
+                                                      attach_files=False,
+                                                      read_message_history=False,
+                                                      external_emojis=False)
+            await ctx.channel.edit(name=f"ticket-closed-{ticket_creator.name}-ticket")
+            await ctx.response.send_message(embed=embed,
+                                                    view=TicketOptions())
+        except Exception as error:
+            logger.error(f"An error occurred: {str(error)}")
+
+    @commands.slash_command(
         name="delete-ticket",
         description="Delete the Ticket",
         guild_ids=[guild_id]

@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from typing import Union
+from discord.ext.pages import Paginator
 
 load_dotenv()
 
@@ -536,7 +537,31 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
             "snap", "status", "total", "valid", "joins", "leaves", "time_spent")
         all_snapshot_description += "-" * 48 + "\n"
         index = 1
+        pages = []
         for row in all_snapshot:
+            if index == 51:
+                total_seconds = user_summary['time_spent']
+                minutes, seconds = divmod(total_seconds, 60)
+                if minutes > 0:
+                    time_spent_str = f"`{minutes}` minutes `{seconds}` seconds"
+                else:
+                    time_spent_str = f"`{seconds}` seconds"
+
+                embed = Embed(title=f"{role_name} Summary for {member.display_name}",
+                              description=f"- Total Messages: `{user_summary['total_messages']}`\n"
+                                          f"- Valid Messages: `{user_summary['valid_messages']}`\n"
+                                          f"- AMA VC Joins: `{user_summary['total_joins']}`\n"
+                                          f"- AMA VC Leaves: `{user_summary['total_leaves']}`\n"
+                                          f"- Time Spent: {time_spent_str}\n\n"
+                                          f"- All Snapshot\n"
+                                          f"{all_snapshot_description}",
+                              color=0x37e37b)
+                pages.append(embed)
+                all_snapshot_description = "```\n"
+                all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(
+                    "snap", "status", "total", "valid", "joins", "leaves", "time_spent")
+                all_snapshot_description += "-" * 48 + "\n"
+
             if row["snap_time"] == "final_snapshot":
                 snap = "final"
             else:
@@ -573,13 +598,18 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
                                       f"- All Snapshot\n"
                                       f"{all_snapshot_description}",
                           color=0x37e37b)
+            pages.append(embed)
         else:
             embed = Embed(title="No Data Found",
                           description=f"No summary data found for {member.display_name} in {role_name}.\n\n"
                                       f"- All Snapshot\n"
                                       f"{all_snapshot_description}",
                           color=0xff0000)
-        await ctx.reply(embed=embed, mention_author=True)
+        if len(pages) > 1:
+            paginator = Paginator(pages=pages)
+            await paginator.send(ctx, mention_author=True)
+        else:
+            await ctx.reply(embed=embed, mention_author=True)
     except Exception as e:
         embed = Embed(title="Error",
                       description=f"An error occurred: {str(e)}",

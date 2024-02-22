@@ -546,6 +546,7 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
                     time_spent_str = f"`{minutes}` minutes `{seconds}` seconds"
                 else:
                     time_spent_str = f"`{seconds}` seconds"
+                all_snapshot_description += "```"
 
                 embed = Embed(title=f"{role_name} Summary for {member.display_name}",
                               description=f"- Total Messages: `{user_summary['total_messages']}`\n"
@@ -556,7 +557,6 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
                                           f"- All Snapshot\n"
                                           f"{all_snapshot_description}",
                               color=0x37e37b)
-                all_snapshot_description += "```"
                 pages.append(embed)
                 all_snapshot_description = "```\n"
                 all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(

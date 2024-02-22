@@ -556,6 +556,7 @@ async def ama_info(ctx, role: Union[discord.Role, int, str], member: discord.Mem
                                           f"- All Snapshot\n"
                                           f"{all_snapshot_description}",
                               color=0x37e37b)
+                all_snapshot_description += "```"
                 pages.append(embed)
                 all_snapshot_description = "```\n"
                 all_snapshot_description += "{:<6s}{:<7s}{:<6s}{:<6s}{:<6s}{:<7s}{:<10s}\n".format(

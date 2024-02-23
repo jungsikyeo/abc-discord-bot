@@ -1964,27 +1964,55 @@ async def me(ctx, keyword):
         await me_matic(ctx, result['symbol'])
 
 
-# 함수 정의: API에서 거래 데이터 가져오기
-async def fetch_asset_events(collection_slug):
-    api_key = operating_system.getenv("OPENSEA_API_KEY")
+# 오픈씨 API에서 거래 데이터
+# async def fetch_asset_events(collection_slug):
+#     api_key = operating_system.getenv("OPENSEA_API_KEY")
+#     headers = {
+#         "X-API-KEY": api_key,
+#         "accept": "application/json"
+#     }
+#     url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}?event_type=sale"
+#     response = requests.get(url, headers=headers)
+#     return json.loads(response.text)
+
+
+# 오픈씨 API에서 거래 데이터
+async def fetch_asset_events(collection_contract):
+    api_key = operating_system.getenv("RESERVOIR_API_KEY")
     headers = {
-        "X-API-KEY": api_key,
-        "accept": "application/json"
+        "x-api-key": api_key,
+        "accept": "*/*"
     }
-    url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}?event_type=sale"
+    url = f"https://api.reservoir.tools/sales/v6?collection={collection_contract}&limit=2"
     response = requests.get(url, headers=headers)
     return json.loads(response.text)
 
 
-# 함수 정의: 거래 데이터를 DataFrame으로 변환
+# 오픈씨 거래 데이터를 DataFrame으로 변환
+# def process_asset_events(asset_events):
+#     # 빈 리스트를 생성하여 각 거래마다 필요한 정보를 저장
+#     processed_data = []
+#     for event in asset_events:
+#         # Unix 타임스탬프를 datetime으로 변환
+#         date = datetime.datetime.fromtimestamp(event['closing_date'])
+#         # ETH로 환산 (quantity가 Wei로 제공되므로)
+#         price = float(event['payment']['quantity']) / 10 ** 18
+#         processed_data.append({'date': date, 'price': price})
+#     # DataFrame 생성
+#     df = pd.DataFrame(processed_data)
+#     df.set_index('date', inplace=True)
+#     return df
+
+
 def process_asset_events(asset_events):
     # 빈 리스트를 생성하여 각 거래마다 필요한 정보를 저장
     processed_data = []
-    for event in asset_events:
+    sales = asset_events.get("sales")
+    for event in sales:
         # Unix 타임스탬프를 datetime으로 변환
-        date = datetime.datetime.fromtimestamp(event['closing_date'])
+        date = datetime.datetime.fromtimestamp(event['timestamp'])
         # ETH로 환산 (quantity가 Wei로 제공되므로)
-        price = float(event['payment']['quantity']) / 10 ** 18
+        price = float(event['price']['amount']['native'])
         processed_data.append({'date': date, 'price': price})
     # DataFrame 생성
     df = pd.DataFrame(processed_data)
@@ -2031,7 +2059,121 @@ async def 옾2(ctx, keyword, count: int = 0):
 async def os2(ctx, keyword, count: int = 0):
     await os(ctx, keyword, 2, count)
 
+# 오픈씨 API 소스 백업
+# @bot.command()
+# async def os(ctx, keyword, search_type: int = 1, count: int = 0):
+#     time.sleep(1)
+#
+#     result = Queries.select_keyword(db, keyword)
+#     symbol = result['symbol']
+#
+#     api_key = operating_system.getenv("OPENSEA_API_KEY")
+#     headers = {"X-API-KEY": api_key}
+#     response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}", headers=headers)
+#     results = json.loads(response.text)
+#     # print(results)
+#
+#     try:
+#         if len(results.get('errors')) > 0:
+#             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
+#             embed.set_footer(text="Powered by SearchFi DEV")
+#             await ctx.reply(embed=embed, mention_author=True)
+#             return
+#     except:
+#         pass
+#
+#     try:
+#         if results.get('detail') == "Request was throttled. Expected available in 1 second.":
+#             print(f"retry {count + 1}")
+#             await 옾(ctx, keyword, count + 1)
+#             return
+#     except:
+#         pass
+#
+#     data = results
+#     # print(data)
+#
+#     projectName = data.get("name")
+#     projectImg = data.get('image_url')
+#     if projectImg == "None":
+#         projectImg = data.get("banner_image_url")
+#     projectTwitter = f"https://twitter.com/{data.get('twitter_username')}"
+#     projectDiscord = data.get('discord_url')
+#     projectWebsite = data.get('external_url')
+#     projectSupply = int(data.get('total_supply', 0))
+#
+#     chain = data.get('contracts')[0].get('chain')
+#     if chain == "matic":
+#         projectChain = "MATIC"
+#     elif chain == "klaytn":
+#         projectChain = "KLAY"
+#     elif chain == "bsc":
+#         projectChain = "BNB"
+#     elif chain == "solana":
+#         projectChain = "SOL"
+#     else:
+#         projectChain = "ETH"
+#
+#     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
+#     if projectWebsite:
+#         projectLinks += f" | [Website]({projectWebsite})"
+#     if projectDiscord:
+#         projectLinks += f" | [Discord]({projectDiscord})"
+#     if projectTwitter:
+#         projectLinks += f" | [Twitter]({projectTwitter})"
+#
+#     response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}/stats", headers=headers)
+#     results = json.loads(response.text)
+#     data = results.get('total')
+#
+#     floor_price_symbol = data.get('floor_price_symbol')
+#     if floor_price_symbol and floor_price_symbol != "":
+#         projectChain = floor_price_symbol
+#     projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
+#     projectOwners = int(data.get('num_owners', 0))
+#
+#     sales_list = "```\n"
+#     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
+#     sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
+#
+#     for row in results.get('intervals'):
+#         sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
+#             row.get('interval'),
+#             f"{round(float(row.get('volume', 0)), 3)}",
+#             f"{int(row.get('sales'))}",
+#             f"{round(float(row.get('average_price')), 3)} ETH",
+#         )
+#     sales_list += "```"
+#
+#     embed = Embed(title=f"{projectName}", color=0x2081E2, url=f"https://opensea.io/collection/{symbol}")
+#     if projectImg and projectImg != "None":
+#         embed.set_thumbnail(url=f"{projectImg}")
+#     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+#     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+#     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+#
+#     if search_type == 2:
+#         try:
+#             data = await fetch_asset_events(symbol)
+#             df = process_asset_events(data['asset_events'])
+#             chart_image = await create_price_chart(df, symbol)
+#             now_in_seconds = time.time()
+#             now_in_milliseconds = int(now_in_seconds * 1000)
+#             embed.set_image(
+#                 url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
+#         except Exception as e:
+#             logger.error(f"os set_image error: {e}")
+#             pass
+#     else:
+#         embed.add_field(name="Activity Info", value=sales_list, inline=False)
+#
+#     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+#     embed.set_footer(text="Powered by SearchFi DEV")
+#
+#     await ctx.reply(embed=embed, mention_author=True)
 
+
+# Reservoir API
 @bot.command()
 async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     time.sleep(1)
@@ -2039,14 +2181,9 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     result = Queries.select_keyword(db, keyword)
     symbol = result['symbol']
 
-    api_key = operating_system.getenv("OPENSEA_API_KEY")
-    scraper = cloudscraper.create_scraper(delay=10, browser={
-        'browser': 'chrome',
-        'platform': 'android',
-        'desktop': False,
-    })
-    headers = {"X-API-KEY": api_key}
-    response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}", headers=headers)
+    api_key = operating_system.getenv("RESERVOIR_API_KEY")
+    headers = {"x-api-key": api_key}
+    response = requests.get(f"https://api.reservoir.tools/collections/v7?slug={keyword}", headers=headers)
     results = json.loads(response.text)
     # print(results)
 
@@ -2067,29 +2204,25 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     except:
         pass
 
-    data = results
+    data = results.get("collections")[0]
     # print(data)
 
+    contractId = data.get("id")
     projectName = data.get("name")
-    projectImg = data.get('image_url')
+    projectImg = data.get('image')
     if projectImg == "None":
-        projectImg = data.get("banner_image_url")
-    projectTwitter = f"https://twitter.com/{data.get('twitter_username')}"
-    projectDiscord = data.get('discord_url')
-    projectWebsite = data.get('external_url')
-    projectSupply = int(data.get('total_supply', 0))
+        projectImg = data.get("banner")
+    projectTwitter = f"https://twitter.com/{data.get('twitterUsername')}"
+    projectDiscord = data.get('discordUrl')
+    projectWebsite = data.get('externalUrl')
+    projectSupply = int(data.get('tokenCount', 0))
 
-    chain = data.get('contracts')[0].get('chain')
-    if chain == "matic":
-        projectChain = "MATIC"
-    elif chain == "klaytn":
-        projectChain = "KLAY"
-    elif chain == "bsc":
-        projectChain = "BNB"
-    elif chain == "solana":
-        projectChain = "SOL"
-    else:
-        projectChain = "ETH"
+    floor = data.get('floorAsk')
+    price = floor.get("price")
+    currency = price.get("currency")
+    projectChain = currency.get("symbol")
+    amount = price.get("amount")
+    projectFloorPrice = amount.get("native")
 
     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
     if projectWebsite:
@@ -2099,26 +2232,17 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}/stats", headers=headers)
-    results = json.loads(response.text)
-    data = results.get('total')
-
-    floor_price_symbol = data.get('floor_price_symbol')
-    if floor_price_symbol and floor_price_symbol != "":
-        projectChain = floor_price_symbol
-    projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
-    projectOwners = int(data.get('num_owners', 0))
+    projectOwners = int(data.get('ownerCount', 0))
 
     sales_list = "```\n"
-    sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
+    sales_list += "{:<12s}{:<13s}\n".format("Activity", "Volume")
     sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
 
-    for row in results.get('intervals'):
-        sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-            row.get('interval'),
-            f"{round(float(row.get('volume', 0)), 3)}",
-            f"{int(row.get('sales'))}",
-            f"{round(float(row.get('average_price')), 3)} ETH",
+    volume = data.get("volume")
+    for key, value in volume.items():
+        sales_list += "{:<12s}{:<13s}\n".format(
+            key,
+            f"{value} ETH",
         )
     sales_list += "```"
 
@@ -2129,10 +2253,20 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
+    topbid = data.get("topBid")
+    site = topbid.get("sourceDomain")
+    topbid_price = topbid.get("price")
+    topbid_price_currency = topbid_price.get("currency")
+    topbid_price_currency_symbol = topbid_price_currency.get("symbol")
+    topbid_price_amount = topbid_price.get("amount")
+    topbid_price_amount_native = topbid_price_amount.get("native")
+    embed.add_field(name="""Tob Bid Site""", value=f"```{site}```", inline=True)
+    embed.add_field(name="""Tob Bid Price""", value=f"```{topbid_price_amount_native} {topbid_price_currency_symbol} ```", inline=True)
+
     if search_type == 2:
         try:
-            data = await fetch_asset_events(symbol)
-            df = process_asset_events(data['asset_events'])
+            data = await fetch_asset_events(contractId)
+            df = process_asset_events(data)
             chart_image = await create_price_chart(df, symbol)
             now_in_seconds = time.time()
             now_in_milliseconds = int(now_in_seconds * 1000)
@@ -2144,7 +2278,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     else:
         embed.add_field(name="Activity Info", value=sales_list, inline=False)
 
-    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=False)
     embed.set_footer(text="Powered by SearchFi DEV")
 
     await ctx.reply(embed=embed, mention_author=True)

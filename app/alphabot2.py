@@ -1983,7 +1983,7 @@ async def fetch_asset_events(collection_contract):
         "x-api-key": api_key,
         "accept": "*/*"
     }
-    url = f"https://api.reservoir.tools/sales/v6?collection={collection_contract}&limit=2"
+    url = f"https://api.reservoir.tools/sales/v6?collection={collection_contract}&limit=1000"
     response = requests.get(url, headers=headers)
     return json.loads(response.text)
 

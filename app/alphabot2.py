@@ -2183,7 +2183,7 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
 
     api_key = operating_system.getenv("RESERVOIR_API_KEY")
     headers = {"x-api-key": api_key}
-    response = requests.get(f"https://api.reservoir.tools/collections/v7?slug={keyword}", headers=headers)
+    response = requests.get(f"https://api.reservoir.tools/collections/v7?slug={symbol}", headers=headers)
     results = json.loads(response.text)
     # print(results)
 

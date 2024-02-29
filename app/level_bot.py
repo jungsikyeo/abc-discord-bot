@@ -227,7 +227,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
 
         change_bulk(True, "rank_leaderboard")
 
-        rankers = await lvl.each_member_data(ctx.guild, sort_by='xp')
+        rankers = await lvl.each_member_data(ctx.guild, sort_by='rank')
         num_pages = (len(rankers) + 9) // 10
         pages = []
         for page in range(num_pages):

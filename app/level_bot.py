@@ -25,8 +25,7 @@ level_announcement_channel_id = int(os.getenv('LEVEL_ANNOUNCEMENT_CHANNEL_ID'))
 level_2_role_id = int(os.getenv('LEVEL_2_ROLE_ID'))
 level_5_role_id = int(os.getenv('LEVEL_5_ROLE_ID'))
 level_10_role_id = int(os.getenv('LEVEL_10_ROLE_ID'))
-level_15_role_id = int(os.getenv('LEVEL_15_ROLE_ID'))
-level_20_role_id = int(os.getenv('LEVEL_20_ROLE_ID'))
+pioneer_role_id = int(os.getenv('PIONEER_ROLE_ID'))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,11 +43,9 @@ bot = commands.Bot(command_prefix=f"{command_flag}", intents=intents)
 
 my_awards = {
     local_server: [
-        RoleAward(role_id=level_2_role_id, level_requirement=2, role_name='LV.2_TEST'),
-        RoleAward(role_id=level_5_role_id, level_requirement=5, role_name='LV.5_TEST'),
-        RoleAward(role_id=level_10_role_id, level_requirement=10, role_name='LV.10_TEST'),
-        RoleAward(role_id=level_15_role_id, level_requirement=15, role_name='LV.15_TEST'),
-        RoleAward(role_id=level_20_role_id, level_requirement=20, role_name='LV.20_TEST'),
+        RoleAward(role_id=level_2_role_id, level_requirement=2, role_name='LV.2+'),
+        RoleAward(role_id=level_5_role_id, level_requirement=5, role_name='LV.5+'),
+        RoleAward(role_id=level_10_role_id, level_requirement=10, role_name='LV.10+'),
     ],
 }
 
@@ -67,6 +64,20 @@ enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split
 ##############################
 # Core Function
 ##############################
+bulk = {
+    "flag": False,
+    "func": ""
+}
+
+
+def change_bulk(flag, func):
+    global bulk
+    bulk = {
+        "flag": flag,
+        "func": func
+    }
+
+
 def make_embed(embed_info):
     embed = Embed(
         title=embed_info.get('title', ''),
@@ -203,6 +214,19 @@ async def rank(ctx: ApplicationContext,
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def rank_leaderboard(ctx: ApplicationContext):
     try:
+        global bulk
+        if bulk.get("flag"):
+            embed = make_embed({
+                "title": "Warning",
+                "description": f"Bulk operation is in progress, please try again later.",
+                "color": 0xff0000,
+            })
+            await ctx.respond(embed=embed, ephemeral=True)
+            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+            return
+
+        change_bulk(True, "rank_leaderboard")
+
         rankers = await lvl.each_member_data(ctx.guild, sort_by='rank')
         num_pages = (len(rankers) + 9) // 10
         pages = []
@@ -230,6 +254,8 @@ async def rank_leaderboard(ctx: ApplicationContext):
         })
         await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
+    finally:
+        change_bulk(False, "")
 
 
 @bot.slash_command(
@@ -240,7 +266,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_xp(ctx: ApplicationContext, member: Member, xp: int):
     try:
-        user = lvl.get_data_for(member)
+        user = await lvl.get_data_for(member)
         if not user:
             await lvl.add_record(member.guild.id, member.id, member.name, 0)
         await lvl.add_xp(member, xp)
@@ -295,6 +321,19 @@ async def remove_xp(ctx: ApplicationContext, member: Member, xp: int):
 async def give_xp_bulk(ctx: ApplicationContext,
                        file: Option(discord.Attachment, "Upload the CSV file", required=True)):
     try:
+        global bulk
+        if bulk.get("flag"):
+            embed = make_embed({
+                "title": "Warning",
+                "description": f"Bulk operation is in progress, please try again later.",
+                "color": 0xff0000,
+            })
+            await ctx.respond(embed=embed, ephemeral=True)
+            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+            return
+
+        change_bulk(True, "give_xp_bulk")
+
         file_bytes = await file.read()
         file_content = io.StringIO(file_bytes.decode('utf-8'))
         csv_reader = csv.reader(file_content, delimiter=',')
@@ -337,6 +376,8 @@ async def give_xp_bulk(ctx: ApplicationContext,
         })
         await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
+    finally:
+        change_bulk(False, "")
 
 
 @bot.slash_command(
@@ -349,16 +390,27 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
     try:
         await ctx.defer()
 
-        role_lvs = []
-        for role in ctx.guild.roles:
-            if "LV_TEST." in role.name:
-                role_lvs.append(role.id)
+        global bulk
+        if bulk.get("flag"):
+            embed = make_embed({
+                "title": "Warning",
+                "description": f"Bulk operation is in progress, please try again later.",
+                "color": 0xff0000,
+            })
+            await ctx.respond(embed=embed, ephemeral=True)
+            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+            return
+
+        change_bulk(True, "reset_leaderboard_stats")
+
+        role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
 
         for member in ctx.guild.members:
             await lvl.reset_member(member)
-            for role in member.roles:
-                if "LV_TEST." in role.name:
-                    await member.remove_roles(role)
+            for role_lv in role_lvs:
+                if member.get_role(role_lv):
+                    guild_role_lv = ctx.guild.get_role(role_lv)
+                    await member.remove_roles(guild_role_lv)
 
         embed = make_embed({
             "title": "Leaderboard Reset Completed!",
@@ -374,6 +426,8 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
         })
         await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
+    finally:
+        change_bulk(False, "")
 
 
 @bot.slash_command(
@@ -384,10 +438,20 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_role_top_users(ctx: ApplicationContext):
     try:
-        role_pioneer = None
-        for role in ctx.guild.roles:
-            if role.name == "SF.Pioneer":
-                role_pioneer = role
+        global bulk
+        if bulk.get("flag"):
+            embed = make_embed({
+                "title": "Warning",
+                "description": f"Bulk operation is in progress, please try again later.",
+                "color": 0xff0000,
+            })
+            await ctx.respond(embed=embed, ephemeral=True)
+            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+            return
+
+        change_bulk(True, "give_role_top_users")
+
+        role_pioneer = ctx.guild.get_role(pioneer_role_id)
 
         for member in ctx.guild.members:
             data = await lvl.get_data_for(member)
@@ -412,6 +476,8 @@ async def give_role_top_users(ctx: ApplicationContext):
         })
         await ctx.respond(embed=embed, ephemeral=True)
         logger.error(f"An error occurred: {str(e)}")
+    finally:
+        change_bulk(False, "")
 
 
 bot.run(bot_token)

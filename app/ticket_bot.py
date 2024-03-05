@@ -154,7 +154,8 @@ async def make_button(category_id: int, interaction: Interaction):
                                                  embed_links=True,
                                                  attach_files=True,
                                                  read_message_history=True,
-                                                 external_emojis=True)
+                                                 external_emojis=True,
+                                                 use_slash_commands=False)
             await ticket_channel.set_permissions(guild.default_role,
                                                  send_messages=False,
                                                  read_messages=False,

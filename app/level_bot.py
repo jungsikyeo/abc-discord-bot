@@ -388,12 +388,12 @@ async def rank_leaderboard(ctx: ApplicationContext):
             """, guild_id)
             db_users = cursor.fetchall()
 
-            num_pages = (len(db_users) + 9) // 10
+            num_pages = (len(db_users) + 14) // 15
             pages = []
             for page in range(num_pages):
                 description = ""
                 for i in range(15):
-                    index = page * 10 + i
+                    index = page * 15 + i
                     if index >= len(db_users):
                         break
                     ranker = db_users[index]

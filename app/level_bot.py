@@ -294,7 +294,7 @@ async def get_rank(ctx: ApplicationContext,
     if not user:
         user = ctx.user
 
-    user_name = user.display_name
+    user_name = user.name
     user_id = user.id
     guild_id = user.guild.id
 

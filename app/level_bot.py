@@ -1,16 +1,22 @@
 import os
 import discord
 import logging
+import math
+import hashlib
+import pymysql
 import csv
 import io
 from discord import Member, Embed
-from discord.ext import commands
 from discord.commands import Option
 from discord.commands.context import ApplicationContext
-from discordLevelingSystem import DiscordLevelingSystem, LevelUpAnnouncement, RoleAward
 from DiscordLevelingCard import RankCard, Settings
+from pymysql.cursors import DictCursor
+from dbutils.pooled_db import PooledDB
+from datetime import timedelta
+from discord.ext import commands
 from discord.ext.pages import Paginator
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -26,6 +32,15 @@ level_2_role_id = int(os.getenv('LEVEL_2_ROLE_ID'))
 level_5_role_id = int(os.getenv('LEVEL_5_ROLE_ID'))
 level_10_role_id = int(os.getenv('LEVEL_10_ROLE_ID'))
 pioneer_role_id = int(os.getenv('PIONEER_ROLE_ID'))
+mysql_ip = os.getenv("MYSQL_IP")
+mysql_port = os.getenv("MYSQL_PORT")
+mysql_id = os.getenv("MYSQL_ID")
+mysql_passwd = os.getenv("MYSQL_PASSWD")
+mysql_db = os.getenv("MYSQL_DB")
+
+no_xp_roles = list(map(int, os.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
+enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split(',')))
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,27 +53,33 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=f"{command_flag}", intents=intents)
 
-my_awards = {
-    local_server: [
-        RoleAward(role_id=level_2_role_id, level_requirement=2, role_name='LV.2+'),
-        RoleAward(role_id=level_5_role_id, level_requirement=5, role_name='LV.5+'),
-        RoleAward(role_id=level_10_role_id, level_requirement=10, role_name='LV.10+'),
-    ],
-}
+class Database:
+    def __init__(self, host, port, user, password, db):
+        self.pool = PooledDB(
+            creator=pymysql,
+            maxconnections=100,
+            mincached=2,
+            host=host,
+            port=int(port),
+            user=user,
+            password=password,
+            database=db,
+            charset='utf8mb4',
+            cursorclass=DictCursor
+        )
 
-# DiscordLevelingSystem.create_database_file(rf'{local_db_file_path}')
+    def get_connection(self):
+        return self.pool.connection()
 
-announcement = LevelUpAnnouncement(f'{LevelUpAnnouncement.Member.mention} just leveled up to level {LevelUpAnnouncement.LEVEL} 😎',
-                                   level_up_channel_ids=[level_announcement_channel_id])
-lvl = DiscordLevelingSystem(awards=my_awards, level_up_announcement=announcement)
-lvl.connect_to_database_file(rf'{local_db_file_path}/{local_db_file_name}')
 
-no_xp_channels = []
-no_xp_roles = list(map(int, os.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
-enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split(',')))
+bot = commands.Bot(command_prefix=command_flag, intents=discord.Intents.all())
+db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
+
+level_2_role = None
+level_5_role = None
+level_10_role = None
+pioneer_role = None
 
 
 ##############################
@@ -92,61 +113,172 @@ def make_embed(embed_info):
     return embed
 
 
-async def check_level_give_role(member: Member):
-    member_level = await lvl.get_level_for(member)
-    for level_role in my_awards.get(local_server):
-        if level_role.level_requirement <= member_level:
-            guild_level_role = bot.get_guild(local_server).get_role(level_role.role_id)
-            await member.add_roles(guild_level_role)
+def rank_to_level(org_xp: int):
+    if not org_xp or org_xp < 0:
+        return {
+            "xp": 0,
+            "level": 0,
+            "total_xp": int(math.pow(2, 4))
+        }
+
+    curr_level = math.floor(math.pow(org_xp, 1/4))
+    offset = 0 if curr_level == 1 else math.pow(curr_level, 4)
+    xp = org_xp - offset
+    xp_required = math.pow(curr_level + 1, 4) - offset
+
+    return {
+        "xp": int(xp),
+        "level": curr_level - 1,
+        "total_xp": int(xp_required)
+    }
 
 
-##############################
-# Core Commands
-##############################
-@bot.slash_command(
-    name="xp_cooldown",
-    description="Show the top active users",
-    guild_ids=guild_ids
-)
-@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def xp_cooldown(ctx: ApplicationContext, rate: int,  per: int):
-    try:
-        await lvl.change_cooldown(rate, float(per))
-        embed = make_embed({
-            "title": "XP Cooldown successfully setting",
-            "description": f"✅ Successfully setting `{rate}chat` per `{per}s` XP Cooldown",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=False)
-    except Exception as e:
-        embed = make_embed({
-            "title": "Error",
-            "description": f"An error occurred: {str(e)}",
-            "color": 0xff0000,
-        })
-        await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
+async def set_level_to_roles(user_id: int, level: int):
+    global level_2_role, level_5_role, level_10_role, pioneer_role
+
+    searchfi = bot.get_guild(local_server)
+    user = searchfi.get_member(int(user_id))
+
+    if level >= 10:
+        await user.add_roles(level_2_role)
+        await user.add_roles(level_5_role)
+        await user.add_roles(level_10_role)
+    elif 10 > level >= 5:
+        await user.add_roles(level_2_role)
+        await user.add_roles(level_5_role)
+        await user.remove_roles(level_10_role)
+    elif 5 > level >= 2:
+        await user.add_roles(level_2_role)
+        await user.remove_roles(level_5_role)
+        await user.remove_roles(level_10_role)
+    else:
+        await user.remove_roles(level_2_role)
+        await user.remove_roles(level_5_role)
+        await user.remove_roles(level_10_role)
 
 
 @bot.event
 async def on_message(message):
-    await lvl.award_xp(amount=15, message=message)
+    if message.author == bot.user or message.author.bot:
+        return
+
+    # 메시지가 지정된 채널 또는 역할에서 오지 않은 경우 무시
+    if message.channel.id not in enabled_channel_list or any(role.id in no_xp_roles for role in message.author.roles):
+        return
+
+    user_id = message.author.id
+    guild_id = message.guild.id
+    message_hash = hashlib.sha256(message.content.encode()).hexdigest()
+    points = 0
+
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                select sysdate() as current_db_time
+                from dual
+            """)
+            current_time = cursor.fetchone()['current_db_time']
+
+            # 사용자의 마지막 메시지 정보 조회
+            cursor.execute("""
+                SELECT last_message_time
+                FROM user_levels
+                WHERE user_id = %s  AND guild_id = %s 
+            """, (user_id, guild_id))
+            last_message = cursor.fetchone()
+
+            if last_message:
+                cursor.execute("""
+                    SELECT message_time
+                    FROM user_message_logs
+                    WHERE user_id = %s  AND guild_id = %s 
+                    AND message_time > %s  AND message_time <= %s 
+                    AND message_hash = %s
+                    ORDER BY message_time DESC
+                    LIMIT 1
+                """, (user_id, guild_id, current_time - timedelta(seconds=120), current_time, message_hash))
+                check_message = cursor.fetchone()
+
+                # 2분 이내 동일 채팅인 경우 패스
+                if not check_message:
+                    print((current_time.timestamp() - last_message['last_message_time'].timestamp()))
+                    # 45초 이내 채팅인 경우 패스
+                    if (current_time.timestamp() - last_message['last_message_time'].timestamp()) > 45:
+                        # 메시지 필터링 및 포인트 계산 로직
+                        cursor.execute("""
+                            SELECT COUNT(DISTINCT message_hash) AS filtered_count
+                            FROM user_message_logs
+                            WHERE user_id = %s AND guild_id = %s 
+                            AND message_time > %s 
+                            AND message_time <= %s
+                        """, (user_id, guild_id, current_time - timedelta(seconds=120), current_time))
+                        filtered_result = cursor.fetchone()
+                        filtered_count = filtered_result['filtered_count'] if filtered_result else 0
+
+                        if filtered_count >= 2:
+                            points = (math.sqrt(filtered_count) ** (1/3)) * 5
+                        else:
+                            points = 0
+
+                        # logger.info(f"{user_name} -> {points}")
+
+                        if points > 0:
+                            cursor.execute("""
+                                select xp
+                                from user_levels
+                                WHERE user_id = %s AND guild_id = %s
+                            """, (user_id, guild_id))
+                            user_level = cursor.fetchone()
+
+                            current_xp = int(user_level['xp'])
+
+                            cursor.execute("""
+                                UPDATE user_levels
+                                SET xp = xp + %s, last_message_time = %s
+                                WHERE user_id = %s AND guild_id = %s
+                            """, (points, current_time, user_id, guild_id))
+                            connection.commit()
+
+                            old_level = rank_to_level(current_xp)['level']
+                            new_level = rank_to_level(current_xp + points)['level']
+
+                            if old_level != new_level:
+                                # LEVEL UP => role check
+                                await set_level_to_roles(user_id, new_level)
+
+            else:
+                # logger.info(f"{user_name} -> new")
+                cursor.execute("""
+                    INSERT INTO user_levels (user_id, guild_id, xp, last_message_time)
+                    VALUES (%s, %s, %s, %s)
+                """, (user_id, guild_id, points, current_time))
+                connection.commit()
+
+            cursor.execute("""
+                INSERT INTO user_message_logs (user_id, guild_id, xp, message_hash, message_time)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, guild_id, points, message_hash, current_time))
+            connection.commit()
+    except Exception as e:
+        logger.error(f"Error handling message: {e}")
+        connection.rollback()
+    finally:
+        connection.close()
+
     await bot.process_commands(message)
 
 
 @bot.event
 async def on_ready():
-    logger.info(f"We have logged in as {bot.user}")
+    logger.info(f'{bot.user} has connected to Discord!')
 
-    guild_id = int(os.getenv("SELF_GUILD_ID"))
+    global level_2_role, level_5_role, level_10_role, pioneer_role
 
-    # no xp channel 세팅
-    guild = bot.get_guild(guild_id)
-    for channel in guild.channels:
-        if channel.id in enabled_channel_list:
-            continue
-        no_xp_channels.append(channel.id)
-    lvl.no_xp_channels = no_xp_channels
+    level_2_role = bot.get_guild(local_server).get_role(level_2_role_id)
+    level_5_role = bot.get_guild(local_server).get_role(level_5_role_id)
+    level_10_role = bot.get_guild(local_server).get_role(level_10_role_id)
+    pioneer_role = bot.get_guild(local_server).get_role(pioneer_role_id)
 
 
 ##############################
@@ -157,53 +289,69 @@ async def on_ready():
     description="Show the top active users",
     guild_ids=guild_ids
 )
-async def rank(ctx: ApplicationContext,
-               user: Option(Member, "User to show rank of (Leave empty for personal rank)", required=False)):
+async def get_rank(ctx: ApplicationContext,
+                   user: Option(Member, "User to show rank of (Leave empty for personal rank)", required=False)):
+    if not user:
+        user = ctx.user
+
+    user_name = user.display_name
+    user_id = user.id
+    guild_id = user.guild.id
+
+    connection = db.get_connection()
     try:
-        if not user:
-            user = ctx.user
+        with connection.cursor() as cursor:
+            if not user:
+                user = ctx.user
 
-        data = await lvl.get_data_for(user)
+            cursor.execute("""
+                select user_id, xp
+                from user_levels
+                where guild_id = %s
+                and user_id = %s
+            """, (guild_id, user_id))
+            data = cursor.fetchone()
 
-        if not data:
-            await lvl.add_record(user.guild.id, user.id, user.name, 0)
-            data = await lvl.get_data_for(user)
+            if data:
+                org_xp = data['xp']
+            else:
+                org_xp = 0
 
-        await ctx.defer()
+            data = rank_to_level(org_xp)
 
-        card_settings = Settings(
-            background="./level_card.png",
-            text_color="white",
-            bar_color="#ffffff"
-        )
+            await ctx.defer()
 
-        if data and data.total_xp > 0:
-            user_level = data.level
-            user_xp = data.xp
-            user_total_xp = lvl.get_xp_for_level(user_level+1)
-        else:
-            user_level = 0
-            user_xp = 0
-            user_total_xp = lvl.get_xp_for_level(1)
+            card_settings = Settings(
+                background="./level_card.png",
+                text_color="white",
+                bar_color="#ffffff"
+            )
 
-        a = RankCard(
-            settings=card_settings,
-            avatar=user.display_avatar.url,
-            level=user_level,
-            current_exp=user_xp,
-            max_exp=user_total_xp,
-            username=f"{user.name}"
-        )
-        image = await a.card2()
-        await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)
+            user_level = data['level']
+            user_xp = data['xp']
+            user_total_xp = data['total_xp']
+
+            rank_card = RankCard(
+                settings=card_settings,
+                avatar=user.display_avatar.url,
+                level=user_level,
+                current_exp=user_xp,
+                max_exp=user_total_xp,
+                username=f"{user_name}"
+            )
+            image = await rank_card.card2()
+            await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
+    finally:
+        connection.close()
 
 
 @bot.slash_command(
@@ -213,49 +361,74 @@ async def rank(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def rank_leaderboard(ctx: ApplicationContext):
+    guild_id = ctx.guild.id
+
+    connection = db.get_connection()
     try:
-        global bulk
-        if bulk.get("flag"):
-            embed = make_embed({
-                "title": "Warning",
-                "description": f"Bulk operation is in progress, please try again later.",
-                "color": 0xff0000,
-            })
-            await ctx.respond(embed=embed, ephemeral=True)
-            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
-            return
+        with connection.cursor() as cursor:
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
 
-        change_bulk(True, "rank_leaderboard")
+            change_bulk(True, "rank_leaderboard")
 
-        rankers = await lvl.each_member_data(ctx.guild, sort_by='rank')
-        num_pages = (len(rankers) + 9) // 10
-        pages = []
-        for page in range(num_pages):
-            description = ""
-            for i in range(15):
-                index = page * 10 + i
-                if index >= len(rankers):
-                    break
-                ranker = rankers[index]
-                description += f"`{ranker.rank}.` {ranker.mention} • Level **{ranker.level}** - **{ranker.xp}** XP\n"
-            embed = make_embed({
-                "title": f"Leaderboard Page {page + 1}",
-                "description": description,
-                "color": 0x37e37b,
-            })
-            pages.append(embed)
-        paginator = Paginator(pages)
-        await paginator.respond(ctx.interaction, ephemeral=False)
+            cursor.execute("""
+                select user_id, xp, rank() over(order by xp desc) as user_rank
+                from user_levels
+                where guild_id = %s
+                order by xp desc
+            """, guild_id)
+            db_users = cursor.fetchall()
+
+            num_pages = (len(db_users) + 9) // 10
+            pages = []
+            for page in range(num_pages):
+                description = ""
+                for i in range(15):
+                    index = page * 10 + i
+                    if index >= len(db_users):
+                        break
+                    ranker = db_users[index]
+                    user_rank = ranker['user_rank']
+                    user_id = int(ranker['user_id'])
+                    user = ctx.guild.get_member(user_id)
+                    if user:
+                        user_mention = user.mention
+                    else:
+                        user_mention = f"<@{user_id}>"
+                    org_xp = ranker['xp']
+                    rank_info = rank_to_level(org_xp)
+                    user_level = rank_info['level']
+                    user_xp = rank_info['xp']
+
+                    description += f"`{user_rank}.` {user_mention} • Level **{user_level}** - **{user_xp}** XP\n"
+                embed = make_embed({
+                    "title": f"Leaderboard Page {page + 1}",
+                    "description": description,
+                    "color": 0x37e37b,
+                })
+                pages.append(embed)
+            paginator = Paginator(pages)
+            await paginator.respond(ctx.interaction, ephemeral=False)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
     finally:
         change_bulk(False, "")
+        connection.close()
 
 
 @bot.slash_command(
@@ -264,27 +437,58 @@ async def rank_leaderboard(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def give_xp(ctx: ApplicationContext, member: Member, xp: int):
-    try:
-        user = await lvl.get_data_for(member)
-        if not user:
-            await lvl.add_record(member.guild.id, member.id, member.name, 0)
-        await lvl.add_xp(member, xp)
+async def give_xp(ctx: ApplicationContext, member: Member, points: int):
+    guild_id = ctx.guild.id
+    user_id = member.id
 
-        embed = make_embed({
-            "title": "XP successfully added",
-            "description": f"✅ Successfully added {xp} XP to {member.mention}",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=False)
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                select sysdate() as current_db_time
+                from dual
+            """)
+            current_time = cursor.fetchone()['current_db_time']
+
+            cursor.execute("""
+                select xp
+                from user_levels
+                WHERE user_id = %s AND guild_id = %s
+            """, (user_id, guild_id))
+            user_level = cursor.fetchone()
+
+            current_xp = int(user_level['xp'])
+
+            cursor.execute("""
+                UPDATE user_levels
+                SET xp = xp + %s, last_message_time = %s
+                WHERE user_id = %s AND guild_id = %s
+            """, (points, current_time, user_id, guild_id))
+            connection.commit()
+
+            old_level = rank_to_level(current_xp)['level']
+            new_level = rank_to_level(current_xp + points)['level']
+
+            if old_level != new_level:
+                await set_level_to_roles(user_id, new_level)
+
+            embed = make_embed({
+                "title": "XP successfully added",
+                "description": f"✅ Successfully added {points} XP to {member.mention}",
+                "color": 0x37e37b,
+            })
+            await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
+    finally:
+        connection.close()
 
 
 @bot.slash_command(
@@ -294,22 +498,7 @@ async def give_xp(ctx: ApplicationContext, member: Member, xp: int):
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def remove_xp(ctx: ApplicationContext, member: Member, xp: int):
-    try:
-        await lvl.remove_xp(member, xp)
-        embed = make_embed({
-            "title": "XP successfully removed",
-            "description": f"✅ Successfully removed {xp} XP to {member.mention}",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=True)
-    except Exception as e:
-        embed = make_embed({
-            "title": "Error",
-            "description": f"An error occurred: {str(e)}",
-            "color": 0xff0000,
-        })
-        await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
+    await give_xp(ctx, member, xp*(-1))
 
 
 @bot.slash_command(
@@ -320,63 +509,107 @@ async def remove_xp(ctx: ApplicationContext, member: Member, xp: int):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_xp_bulk(ctx: ApplicationContext,
                        file: Option(discord.Attachment, "Upload the CSV file", required=True)):
+    guild_id = ctx.guild.id
+
+    connection = db.get_connection()
     try:
-        global bulk
-        if bulk.get("flag"):
+        with connection.cursor() as cursor:
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "give_xp_bulk")
+
+            file_bytes = await file.read()
+            file_content = io.StringIO(file_bytes.decode('utf-8'))
+            csv_reader = csv.reader(file_content, delimiter=',')
+
+            await ctx.defer()
+
+            cursor.execute("""
+                select sysdate() as current_db_time
+                from dual
+            """)
+            current_time = cursor.fetchone()['current_db_time']
+
+            row_num = 1
+            success_num = 0
+            fail_num = 0
+            for row in csv_reader:
+                user_id, xp = row
+                try:
+                    member = ctx.guild.get_member(int(user_id))
+                    if member:
+                        cursor.execute("""
+                            select xp
+                            from user_levels
+                            WHERE user_id = %s AND guild_id = %s
+                        """, (user_id, guild_id))
+                        user_level = cursor.fetchone()
+
+                        if user_level:
+                            current_xp = int(user_level['xp'])
+
+                            cursor.execute("""
+                                UPDATE user_levels
+                                SET xp = xp + %s, last_message_time = %s
+                                WHERE user_id = %s AND guild_id = %s
+                            """, (int(xp), current_time, user_id, guild_id))
+                            connection.commit()
+
+                            old_level = rank_to_level(current_xp)['level']
+                            new_level = rank_to_level(current_xp + int(xp))['level']
+
+                            if old_level != new_level:
+                                await set_level_to_roles(user_id, new_level)
+                            await ctx.channel.send(f"🟢 Successfully added {xp} XP to {member.mention}")
+                            success_num += 1
+                        else:
+                            # logger.info(f"{member.name} -> new")
+                            cursor.execute("""
+                                INSERT INTO user_levels (user_id, guild_id, xp, last_message_time)
+                                VALUES (%s, %s, %s, %s)
+                            """, (user_id, guild_id, int(xp), current_time))
+                            connection.commit()
+
+                            if old_level != new_level:
+                                await set_level_to_roles(user_id, new_level)
+                            await ctx.channel.send(f"🟢 Successfully added {xp} XP to {member.mention}")
+                            success_num += 1
+                    else:
+                        await ctx.channel.send(f"🔴 Failed to add {xp} XP to {user_id} on line {row_num}")
+                        fail_num += 1
+                except Exception as e:
+                    await ctx.channel.send(f"🔴 Failed to add {xp} XP to {user_id} on line {row_num}")
+                    logger.error(f"member give xp error: {str(e)}")
+                    fail_num += 1
+                row_num += 1
+
             embed = make_embed({
-                "title": "Warning",
-                "description": f"Bulk operation is in progress, please try again later.",
-                "color": 0xff0000,
+                "title": f"Give XP to {row_num} users",
+                "description": f"✅ Successfully added XP to `{success_num}` users\n"
+                               f"❌ Fail added XP to `{fail_num}` users",
+                "color": 0x37e37b,
             })
             await ctx.respond(embed=embed, ephemeral=True)
-            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
-            return
-
-        change_bulk(True, "give_xp_bulk")
-
-        file_bytes = await file.read()
-        file_content = io.StringIO(file_bytes.decode('utf-8'))
-        csv_reader = csv.reader(file_content, delimiter=',')
-
-        await ctx.defer()
-
-        row_num = 1
-        success_num = 0
-        fail_num = 0
-        for row in csv_reader:
-            user_id, xp = row
-            try:
-                member = ctx.guild.get_member(int(user_id))
-                if member:
-                    await lvl.add_xp(member, int(xp))
-                    await check_level_give_role(member)
-                    await ctx.channel.send(f"🟢 Successfully added {xp} XP to {member.mention}")
-                    success_num += 1
-                else:
-                    await ctx.channel.send(f"🔴 Failed to add {xp} XP to {user_id} on line {row_num}")
-                    fail_num += 1
-            except Exception as e:
-                await ctx.channel.send(f"🔴 Failed to add {xp} XP to {user_id} on line {row_num}")
-                logger.error(f"member give xp error: {str(e)}")
-                fail_num += 1
-            row_num += 1
-
-        embed = make_embed({
-            "title": f"Give XP to {row_num} users",
-            "description": f"✅ Successfully added XP to `{success_num}` users\n"
-                           f"❌ Fail added XP to `{fail_num}` users",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=True)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
     finally:
+        connection.close()
         change_bulk(False, "")
 
 
@@ -387,46 +620,59 @@ async def give_xp_bulk(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def reset_leaderboard_stats(ctx: ApplicationContext):
+    connection = db.get_connection()
     try:
-        await ctx.defer()
+        with connection.cursor() as cursor:
+            await ctx.defer()
 
-        global bulk
-        if bulk.get("flag"):
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "reset_leaderboard_stats")
+
+            role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
+
+            cursor.execute("""
+                truncate user_levels
+            """)
+
+            cursor.execute("""
+                truncate user_message_logs
+            """)
+
+            connection.commit()
+
+            for member in ctx.guild.members:
+                for role_lv in role_lvs:
+                    if member.get_role(role_lv):
+                        guild_role_lv = ctx.guild.get_role(role_lv)
+                        await member.remove_roles(guild_role_lv)
+
             embed = make_embed({
-                "title": "Warning",
-                "description": f"Bulk operation is in progress, please try again later.",
-                "color": 0xff0000,
+                "title": "Leaderboard Reset Completed!",
+                "description": f"✅ Leaderboard have been reset successfully",
+                "color": 0x37e37b,
             })
-            await ctx.respond(embed=embed, ephemeral=True)
-            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
-            return
-
-        change_bulk(True, "reset_leaderboard_stats")
-
-        role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
-
-        for member in ctx.guild.members:
-            await lvl.reset_member(member)
-            for role_lv in role_lvs:
-                if member.get_role(role_lv):
-                    guild_role_lv = ctx.guild.get_role(role_lv)
-                    await member.remove_roles(guild_role_lv)
-
-        embed = make_embed({
-            "title": "Leaderboard Reset Completed!",
-            "description": f"✅ Leaderboard have been reset successfully",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=False)
+            await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
     finally:
+        connection.close()
         change_bulk(False, "")
 
 
@@ -437,37 +683,52 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_role_top_users(ctx: ApplicationContext):
+    guild_id = ctx.guild.id
+
+    connection = db.get_connection()
     try:
-        global bulk
-        if bulk.get("flag"):
+        with connection.cursor() as cursor:
+            global bulk, pioneer_role
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "give_role_top_users")
+
+            for member in ctx.guild.members:
+                user_id = member.id
+                cursor.execute("""
+                    select user_id, xp, user_rank
+                    from (
+                        select user_id, xp, rank() over(order by xp desc) as user_rank
+                        from user_levels
+                        where guild_id = %s
+                        order by xp desc
+                    ) as user_ranks
+                    where user_id = %s
+                """, (user_id, guild_id))
+                user_level = cursor.fetchone()
+
+                if user_level:
+                    if user_level['user_rank'] <= 200:
+                        await member.add_roles(pioneer_role)
+                    else:
+                        for role in member.roles:
+                            if role == pioneer_role:
+                                await member.remove_roles(pioneer_role)
+
             embed = make_embed({
-                "title": "Warning",
-                "description": f"Bulk operation is in progress, please try again later.",
-                "color": 0xff0000,
+                "title": "Top Users Refreshed!",
+                "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
+                "color": 0x37e37b,
             })
-            await ctx.respond(embed=embed, ephemeral=True)
-            logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
-            return
-
-        change_bulk(True, "give_role_top_users")
-
-        role_pioneer = ctx.guild.get_role(pioneer_role_id)
-
-        for member in ctx.guild.members:
-            data = await lvl.get_data_for(member)
-            if data and data.rank <= 200:
-                await member.add_roles(role_pioneer)
-            else:
-                for role in member.roles:
-                    if role == role_pioneer:
-                        await member.remove_roles(role_pioneer)
-
-        embed = make_embed({
-            "title": "Top Users Refreshed!",
-            "description": f"✅ Successfully Given top 200 users {role_pioneer.mention}",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=False)
+            await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
         embed = make_embed({
             "title": "Error",

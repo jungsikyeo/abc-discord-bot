@@ -202,7 +202,7 @@ async def on_message(message):
 
                 # 2분 이내 동일 채팅인 경우 패스
                 if not check_message:
-                    print((current_time.timestamp() - last_message['last_message_time'].timestamp()))
+                    # print((current_time.timestamp() - last_message['last_message_time'].timestamp()))
                     # 45초 이내 채팅인 경우 패스
                     if (current_time.timestamp() - last_message['last_message_time'].timestamp()) > 45:
                         # 메시지 필터링 및 포인트 계산 로직

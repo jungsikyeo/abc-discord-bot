@@ -383,6 +383,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
                 select user_id, xp, rank() over(order by xp desc) as user_rank
                 from user_levels
                 where guild_id = %s
+                and user_id not in('941010057406079046','732448005180883017')
                 order by xp desc
             """, guild_id)
             db_users = cursor.fetchall()
@@ -709,6 +710,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                         select user_id, xp, rank() over(order by xp desc) as user_rank
                         from user_levels
                         where guild_id = %s
+                        and user_id not in('941010057406079046','732448005180883017')
                         order by xp desc
                     ) as user_ranks
                     where user_id = %s

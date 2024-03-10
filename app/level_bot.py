@@ -710,6 +710,18 @@ async def reset_level_role_stats(ctx: ApplicationContext):
                         guild_role_lv = ctx.guild.get_role(role_lv)
                         await member.remove_roles(guild_role_lv)
 
+                user_id = member.id
+                guild_id = local_server
+                cursor.execute("""
+                    select xp
+                    from user_levels
+                    WHERE user_id = %s AND guild_id = %s
+                """, (user_id, guild_id))
+                user_level = cursor.fetchone()
+
+                user_level = rank_to_level(user_level['xp'])['level']
+                await set_level_to_roles(user_id, user_level)
+
             embed = make_embed({
                 "title": "Level Role Reset Completed!",
                 "description": f"✅ Level role have been reset successfully",

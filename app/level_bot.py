@@ -678,6 +678,59 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
 
 
 @bot.slash_command(
+    name="reset_level_role_stats",
+    description="Reset level role (Using only DEV)",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.dev')
+async def reset_level_role_stats(ctx: ApplicationContext):
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            await ctx.defer()
+
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "reset_level_role_stats")
+
+            role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
+
+            for member in ctx.guild.members:
+                for role_lv in role_lvs:
+                    if member.get_role(role_lv):
+                        guild_role_lv = ctx.guild.get_role(role_lv)
+                        await member.remove_roles(guild_role_lv)
+
+            embed = make_embed({
+                "title": "Level Role Reset Completed!",
+                "description": f"✅ Level role have been reset successfully",
+                "color": 0x37e37b,
+            })
+            await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
+        embed = make_embed({
+            "title": "Error",
+            "description": f"An error occurred: {str(e)}",
+            "color": 0xff0000,
+        })
+        await ctx.respond(embed=embed, ephemeral=True)
+    finally:
+        connection.close()
+        change_bulk(False, "")
+
+
+@bot.slash_command(
     name="give_role_top_users",
     description="Give special role to the top 200 users",
     guild_ids=guild_ids

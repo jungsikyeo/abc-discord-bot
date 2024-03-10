@@ -305,17 +305,23 @@ async def get_rank(ctx: ApplicationContext,
                 user = ctx.user
 
             cursor.execute("""
-                select user_id, xp
-                from user_levels
-                where guild_id = %s
-                and user_id = %s
+                select user_id, xp, user_rank
+                from (
+                    select user_id, xp, rank()over(order by xp desc) as user_rank
+                    from user_levels
+                    where guild_id = %s
+                    order by xp desc
+                ) as user_ranks
+                where user_id = %s
             """, (guild_id, user_id))
             data = cursor.fetchone()
 
             if data:
                 org_xp = data['xp']
+                rank = data['user_rank']
             else:
                 org_xp = 0
+                rank = 0
 
             data = rank_to_level(org_xp)
 
@@ -337,7 +343,8 @@ async def get_rank(ctx: ApplicationContext,
                 level=user_level,
                 current_exp=user_xp,
                 max_exp=user_total_xp,
-                username=f"{user_name}"
+                username=f"{user_name}",
+                rank=rank
             )
             image = await rank_card.card2()
             await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)

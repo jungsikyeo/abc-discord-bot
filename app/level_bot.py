@@ -712,8 +712,9 @@ async def reset_level_role_stats(ctx: ApplicationContext):
                 """, (user_id, guild_id))
                 user_level = cursor.fetchone()
 
-                user_level = rank_to_level(user_level['xp'])['level']
-                await set_level_to_roles(user_id, user_level)
+                if user_level:
+                    user_level = rank_to_level(user_level['xp'])['level']
+                    await set_level_to_roles(user_id, user_level)
 
             embed = make_embed({
                 "title": "Level Role Reset Completed!",

@@ -307,7 +307,7 @@ async def get_rank(ctx: ApplicationContext,
             cursor.execute("""
                 select user_id, xp, user_rank
                 from (
-                    select user_id, xp, rank()over(order by xp desc) as user_rank
+                    select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                     from user_levels
                     where guild_id = %s
                     order by xp desc
@@ -387,7 +387,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
             change_bulk(True, "rank_leaderboard")
 
             cursor.execute("""
-                select user_id, xp, rank() over(order by xp desc) as user_rank
+                select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                 from user_levels
                 where guild_id = %s
                 and user_id not in('941010057406079046','732448005180883017')
@@ -773,7 +773,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                 cursor.execute("""
                     select user_id, xp, user_rank
                     from (
-                        select user_id, xp, rank() over(order by xp desc) as user_rank
+                        select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                         from user_levels
                         where guild_id = %s
                         and user_id not in('941010057406079046','732448005180883017')

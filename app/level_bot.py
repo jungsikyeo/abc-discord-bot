@@ -702,14 +702,7 @@ async def reset_level_role_stats(ctx: ApplicationContext):
 
             change_bulk(True, "reset_level_role_stats")
 
-            role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
-
             for member in ctx.guild.members:
-                for role_lv in role_lvs:
-                    if member.get_role(role_lv):
-                        guild_role_lv = ctx.guild.get_role(role_lv)
-                        await member.remove_roles(guild_role_lv)
-
                 user_id = member.id
                 guild_id = local_server
                 cursor.execute("""

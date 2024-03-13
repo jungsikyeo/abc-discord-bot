@@ -5267,6 +5267,33 @@ async def mp_slash(ctx: ApplicationContext,
 
 
 @bot.event
+async def on_message(message):
+    # '일상 공유' 채널의 ID로 대체하세요.
+    sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
+    # '팀원' 역할의 ID로 대체하세요.
+    exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
+
+    if message.author.bot:
+        return
+
+    if message.channel.id != sharing_channel_id or any(role.id in exclude_role_list for role in message.author.roles):
+        await bot.process_commands(message)
+        return
+
+    # 첨부 파일이 이미지인지 확인
+    image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if attachment.content_type)
+
+    # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
+    if not image_attached or len(message.content.strip()) == 0:
+        await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
+        # 사용자에게 규칙을 알리는 메시지를 보냄
+        warning_msg = await message.channel.send(
+            f"{message.author.mention}, please post both an image and some text together!"
+        )
+        await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+
+
+@bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return

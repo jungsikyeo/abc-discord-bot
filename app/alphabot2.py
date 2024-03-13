@@ -3142,10 +3142,13 @@ async def mp(ctx, symbol: str, amount: float):
 
     # Get coin price in USD from Binance API
     response = requests.get(binance_api_url, params={"symbol": symbol.upper() + "USDT"})
-    if response.status_code != 200:
+    if symbol.upper() == "USDT":
+        coin_price_in_usd = 1.0
+    elif response.status_code != 200:
         await ctx.send("Invalid coin symbol.")
         return
-    coin_price_in_usd = float(response.json()['price'])
+    else:
+        coin_price_in_usd = float(response.json()['price'])
 
     # Get exchange rates
     response = requests.get(exchange_rate_api_url)

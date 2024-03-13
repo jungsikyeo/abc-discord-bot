@@ -305,17 +305,23 @@ async def get_rank(ctx: ApplicationContext,
                 user = ctx.user
 
             cursor.execute("""
-                select user_id, xp
-                from user_levels
-                where guild_id = %s
-                and user_id = %s
+                select user_id, xp, user_rank
+                from (
+                    select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
+                    from user_levels
+                    where guild_id = %s
+                    order by xp desc
+                ) as user_ranks
+                where user_id = %s
             """, (guild_id, user_id))
             data = cursor.fetchone()
 
             if data:
                 org_xp = data['xp']
+                rank = data['user_rank']
             else:
                 org_xp = 0
+                rank = 0
 
             data = rank_to_level(org_xp)
 
@@ -337,7 +343,8 @@ async def get_rank(ctx: ApplicationContext,
                 level=user_level,
                 current_exp=user_xp,
                 max_exp=user_total_xp,
-                username=f"{user_name}"
+                username=f"{user_name}",
+                rank=rank
             )
             image = await rank_card.card2()
             await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)
@@ -380,7 +387,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
             change_bulk(True, "rank_leaderboard")
 
             cursor.execute("""
-                select user_id, xp, rank() over(order by xp desc) as user_rank
+                select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                 from user_levels
                 where guild_id = %s
                 and user_id not in('941010057406079046','732448005180883017')
@@ -678,6 +685,65 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
 
 
 @bot.slash_command(
+    name="reset_level_role_stats",
+    description="Reset level role (Using only DEV)",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.dev')
+async def reset_level_role_stats(ctx: ApplicationContext):
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            await ctx.defer()
+
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "reset_level_role_stats")
+
+            for member in ctx.guild.members:
+                user_id = member.id
+                guild_id = local_server
+                cursor.execute("""
+                    select xp
+                    from user_levels
+                    WHERE user_id = %s AND guild_id = %s
+                """, (user_id, guild_id))
+                user_level = cursor.fetchone()
+
+                if user_level:
+                    user_level = rank_to_level(user_level['xp'])['level']
+                    await set_level_to_roles(user_id, user_level)
+
+            embed = make_embed({
+                "title": "Level Role Reset Completed!",
+                "description": f"✅ Level role have been reset successfully",
+                "color": 0x37e37b,
+            })
+            await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
+        embed = make_embed({
+            "title": "Error",
+            "description": f"An error occurred: {str(e)}",
+            "color": 0xff0000,
+        })
+        await ctx.respond(embed=embed, ephemeral=True)
+    finally:
+        connection.close()
+        change_bulk(False, "")
+
+
+@bot.slash_command(
     name="give_role_top_users",
     description="Give special role to the top 200 users",
     guild_ids=guild_ids
@@ -707,7 +773,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                 cursor.execute("""
                     select user_id, xp, user_rank
                     from (
-                        select user_id, xp, rank() over(order by xp desc) as user_rank
+                        select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                         from user_levels
                         where guild_id = %s
                         and user_id not in('941010057406079046','732448005180883017')

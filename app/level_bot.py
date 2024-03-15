@@ -799,13 +799,14 @@ async def give_role_top_users(ctx: ApplicationContext):
                     await member.remove_roles(pioneer_role)
                     logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
 
-            await asyncio.sleep(0.2)
-            embed = make_embed({
-                "title": "Top Users Refreshed!",
-                "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
-                "color": 0x37e37b,
-            })
-            await ctx.respond(embed=embed, ephemeral=False)
+            await asyncio.sleep(1)
+
+        embed = make_embed({
+            "title": "Top Users Refreshed!",
+            "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
+            "color": 0x37e37b,
+        })
+        await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         connection.rollback()

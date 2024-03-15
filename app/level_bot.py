@@ -755,7 +755,9 @@ async def give_role_top_users(ctx: ApplicationContext):
     connection = db.get_connection()
     try:
         with connection.cursor() as cursor:
-            global bulk, pioneer_role
+            await ctx.defer()
+
+            global bulk
             if bulk.get("flag"):
                 embed = make_embed({
                     "title": "Warning",
@@ -767,6 +769,8 @@ async def give_role_top_users(ctx: ApplicationContext):
                 return
 
             change_bulk(True, "give_role_top_users")
+
+            pioneer_role = ctx.guild.get_role(pioneer_role_id)
 
             for member in ctx.guild.members:
                 user_id = member.id

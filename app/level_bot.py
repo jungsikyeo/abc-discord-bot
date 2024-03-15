@@ -782,7 +782,7 @@ async def give_role_top_users(ctx: ApplicationContext):
             top_users = cursor.fetchall()
 
             # user_id와 랭킹을 딕셔너리로 변환
-        top_users_dict = {user['user_id']: user['user_rank'] for user in top_users}
+        top_users_dict = {str(user['user_id']): user['user_rank'] for user in top_users}
 
         pioneer_role = ctx.guild.get_role(pioneer_role_id)
 

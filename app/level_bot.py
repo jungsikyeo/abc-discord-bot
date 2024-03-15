@@ -802,14 +802,16 @@ async def give_role_top_users(ctx: ApplicationContext):
             })
             await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
         embed = make_embed({
             "title": "Error",
             "description": f"An error occurred: {str(e)}",
             "color": 0xff0000,
         })
         await ctx.respond(embed=embed, ephemeral=True)
-        logger.error(f"An error occurred: {str(e)}")
     finally:
+        connection.close()
         change_bulk(False, "")
 
 

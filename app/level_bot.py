@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 import logging
 import math
@@ -770,31 +771,35 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             change_bulk(True, "give_role_top_users")
 
-            pioneer_role = ctx.guild.get_role(pioneer_role_id)
+            cursor.execute("""
+                select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
+                from user_levels
+                where guild_id = %s
+                  and user_id not in('941010057406079046','732448005180883017')
+                order by xp desc
+                limit 200
+            """, guild_id)
+            top_users = cursor.fetchall()
 
-            for member in ctx.guild.members:
-                user_id = member.id
-                cursor.execute("""
-                    select user_id, xp, user_rank
-                    from (
-                        select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
-                        from user_levels
-                        where guild_id = %s
-                        and user_id not in('941010057406079046','732448005180883017')
-                        order by xp desc
-                    ) as user_ranks
-                    where user_id = %s
-                """, (user_id, guild_id))
-                user_level = cursor.fetchone()
+            # user_id와 랭킹을 딕셔너리로 변환
+        top_users_dict = {user['user_id']: user['user_rank'] for user in top_users}
 
-                if user_level:
-                    if user_level['user_rank'] <= 200:
-                        await member.add_roles(pioneer_role)
-                    else:
-                        for role in member.roles:
-                            if role == pioneer_role:
-                                await member.remove_roles(pioneer_role)
+        pioneer_role = ctx.guild.get_role(pioneer_role_id)
 
+        for member in ctx.guild.members:
+            user_rank = top_users_dict.get(str(member.id))
+            if user_rank:
+                # 멤버가 상위 200명 안에 있다면 역할 추가
+                if pioneer_role not in member.roles:
+                    await member.add_roles(pioneer_role)
+                    logger.info(f"{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
+            else:
+                # 멤버가 상위 200명 밖이라면 역할 제거
+                if pioneer_role in member.roles:
+                    await member.remove_roles(pioneer_role)
+                    logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+
+            await asyncio.sleep(0.2)
             embed = make_embed({
                 "title": "Top Users Refreshed!",
                 "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",

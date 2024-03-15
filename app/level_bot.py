@@ -790,14 +790,12 @@ async def give_role_top_users(ctx: ApplicationContext):
             user_rank = top_users_dict.get(str(member.id))
             if user_rank:
                 # 멤버가 상위 200명 안에 있다면 역할 추가
-                if pioneer_role not in member.roles:
-                    await member.add_roles(pioneer_role)
-                    logger.info(f"{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
+                await member.add_roles(pioneer_role)
+                logger.info(f"{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
             else:
                 # 멤버가 상위 200명 밖이라면 역할 제거
-                if pioneer_role in member.roles:
-                    await member.remove_roles(pioneer_role)
-                    logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+                await member.remove_roles(pioneer_role)
+                logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
 
             await asyncio.sleep(1)
 

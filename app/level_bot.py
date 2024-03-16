@@ -40,6 +40,7 @@ mysql_passwd = os.getenv("MYSQL_PASSWD")
 mysql_db = os.getenv("MYSQL_DB")
 
 no_xp_roles = list(map(int, os.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
+no_rank_members = list(map(int, os.getenv('NO_RANK_MEMBERS').split(',')))
 enabled_channel_list = list(map(int, os.getenv('C2E_ENABLED_CHANNEL_LIST').split(',')))
 
 
@@ -387,11 +388,13 @@ async def rank_leaderboard(ctx: ApplicationContext):
 
             change_bulk(True, "rank_leaderboard")
 
-            cursor.execute("""
+            no_rank_members_str = ','.join([f"{member_id}" for member_id in no_rank_members])
+
+            cursor.execute(f"""
                 select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                 from user_levels
                 where guild_id = %s
-                and user_id not in('941010057406079046','732448005180883017')
+                and user_id not in({no_rank_members_str})
                 order by xp desc
             """, guild_id)
             db_users = cursor.fetchall()
@@ -771,11 +774,13 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             change_bulk(True, "give_role_top_users")
 
-            cursor.execute("""
+            no_rank_members_str = ','.join([f"{member_id}" for member_id in no_rank_members])
+
+            cursor.execute(f"""
                 select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
                 from user_levels
                 where guild_id = %s
-                  and user_id not in('941010057406079046','732448005180883017')
+                  and user_id not in({no_rank_members_str})
                 order by xp desc
                 limit 200
             """, guild_id)

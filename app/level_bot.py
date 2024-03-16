@@ -799,7 +799,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                     await member.remove_roles(pioneer_role)
                     logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
 
-            await asyncio.sleep(0.2)
+            # await asyncio.sleep(0.2)
 
         embed = make_embed({
             "title": "Top Users Refreshed!",

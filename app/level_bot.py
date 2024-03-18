@@ -638,6 +638,8 @@ async def give_xp_bulk(ctx: ApplicationContext,
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def reset_leaderboard_stats(ctx: ApplicationContext):
+    guild_id = ctx.guild.id
+
     connection = db.get_connection()
     try:
         with connection.cursor() as cursor:
@@ -659,12 +661,12 @@ async def reset_leaderboard_stats(ctx: ApplicationContext):
             role_lvs = [level_2_role_id, level_5_role_id, level_10_role_id]
 
             cursor.execute("""
-                truncate user_levels
-            """)
+                delete from user_levels where guild_id = %s
+            """, guild_id)
 
             cursor.execute("""
-                truncate user_message_logs
-            """)
+                delete from user_message_logs where guild_id = %s
+            """, guild_id)
 
             connection.commit()
 

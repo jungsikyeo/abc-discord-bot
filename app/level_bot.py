@@ -145,18 +145,22 @@ async def set_level_to_roles(user_id: int, level: int):
         await user.add_roles(level_2_role)
         await user.add_roles(level_5_role)
         await user.add_roles(level_10_role)
+        logger.info(f"{user_id} -> Delete: x, Add: 2, 5, 10")
     elif 10 > level >= 5:
         await user.add_roles(level_2_role)
         await user.add_roles(level_5_role)
         await user.remove_roles(level_10_role)
+        logger.info(f"{user_id} -> Delete: 10, Add: 2, 5")
     elif 5 > level >= 2:
         await user.add_roles(level_2_role)
         await user.remove_roles(level_5_role)
         await user.remove_roles(level_10_role)
+        logger.info(f"{user_id} -> Delete: 5, 10, Add: 2")
     else:
         await user.remove_roles(level_2_role)
         await user.remove_roles(level_5_role)
         await user.remove_roles(level_10_role)
+        logger.info(f"{user_id} -> Delete: 2, 5, 10, Add: x")
 
 
 @bot.event
@@ -169,6 +173,7 @@ async def on_message(message):
         return
 
     user_id = message.author.id
+    user_name = message.author.name
     guild_id = message.guild.id
     message_hash = hashlib.sha256(message.content.encode()).hexdigest()
     points = 0
@@ -247,6 +252,7 @@ async def on_message(message):
 
                             if old_level != new_level:
                                 # LEVEL UP => role check
+                                logger.info(f"{user_name} ({user_id}) LEVEL{old_level} -> LEVEL{new_level}")
                                 await set_level_to_roles(user_id, new_level)
 
             else:

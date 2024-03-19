@@ -433,7 +433,7 @@ async def rank_leaderboard(ctx: ApplicationContext):
                     "color": 0x37e37b,
                 })
                 pages.append(embed)
-            paginator = Paginator(pages)
+            paginator = Paginator(pages, disable_on_timeout=False, timeout=None)
             await paginator.respond(ctx.interaction, ephemeral=False)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")

@@ -1,5 +1,5 @@
 import os
-import asyncio
+import time
 import discord
 import logging
 import math
@@ -13,7 +13,7 @@ from discord.commands.context import ApplicationContext
 from DiscordLevelingCard import RankCard, Settings
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
-from datetime import timedelta
+from datetime import datetime, timedelta
 from discord.ext import commands
 from discord.ext.pages import Paginator
 from dotenv import load_dotenv
@@ -82,6 +82,8 @@ level_2_role = None
 level_5_role = None
 level_10_role = None
 pioneer_role = None
+
+rank_search_users = {}
 
 
 ##############################
@@ -306,6 +308,22 @@ async def get_rank(ctx: ApplicationContext,
     user_id = user.id
     guild_id = user.guild.id
 
+    current_time = time.time()
+    if rank_search_users and rank_search_users.get(user_id, None):
+        prev_time = rank_search_users.get(user_id, current_time)
+        time_spent = current_time - prev_time
+        doing_time = datetime.fromtimestamp(prev_time + 60*60*9) # 9시간 딜레이 세팅
+        doting_timestamp = int(doing_time.timestamp())
+        if time_spent < 60*60*9:
+            embed = make_embed({
+                "title": "Error",
+                "description": "Rank command inquiry is possible every nine hours.\n"
+                               f"Your next command query time is '<t:{doting_timestamp}>'",
+                "color": 0xff0000,
+            })
+            await ctx.respond(embed=embed, ephemeral=True)
+            return
+
     connection = db.get_connection()
     try:
         with connection.cursor() as cursor:
@@ -356,6 +374,8 @@ async def get_rank(ctx: ApplicationContext,
             )
             image = await rank_card.card2()
             await ctx.respond(file=discord.File(image, filename=f"rank.png"), ephemeral=False)
+
+            rank_search_users[user_id] = current_time
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         connection.rollback()

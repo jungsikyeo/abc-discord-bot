@@ -312,13 +312,13 @@ async def get_rank(ctx: ApplicationContext,
     if rank_search_users and rank_search_users.get(user_id, None):
         prev_time = rank_search_users.get(user_id, current_time)
         time_spent = current_time - prev_time
-        doing_time = datetime.fromtimestamp(prev_time + 60*60*9) # 9시간 딜레이 세팅
+        doing_time = datetime.fromtimestamp(prev_time + 60*60*8)    # 9시간 딜레이 세팅
         doting_timestamp = int(doing_time.timestamp())
-        if time_spent < 60*60*9:
+        if time_spent < 60*60*8:
             embed = make_embed({
                 "title": "Error",
                 "description": "Rank command inquiry is possible every nine hours.\n"
-                               f"Your next command query time is '<t:{doting_timestamp}>'",
+                               f"Your next command query time is <t:{doting_timestamp}>",
                 "color": 0xff0000,
             })
             await ctx.respond(embed=embed, ephemeral=True)

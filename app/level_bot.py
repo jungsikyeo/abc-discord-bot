@@ -309,7 +309,7 @@ async def get_rank(ctx: ApplicationContext,
     guild_id = user.guild.id
 
     current_time = time.time()
-    if rank_search_users and rank_search_users.get(user_id, None):
+    if rank_search_users and rank_search_users.get(user_id, None) and user_id not in no_rank_members:
         prev_time = rank_search_users.get(user_id, current_time)
         time_spent = current_time - prev_time
         doing_time = datetime.fromtimestamp(prev_time + 60*60*8)    # 9시간 딜레이 세팅

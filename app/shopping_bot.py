@@ -520,7 +520,7 @@ def get_products(db):
     products = None
     try:
         cursor.execute("""
-            select p.id, p.name, p.image, p.price, p.quantity
+            select p.id, p.name, p.image, p.price, p.quantity, p.whitelist_use
             from products p 
             where p.product_status = 'OPEN'
         """)
@@ -544,7 +544,16 @@ def get_user_tickets(db):
             from user_tickets u
             inner join products p on p.id = u.product_id
             where p.product_status = 'OPEN'
-            group by u.user_id, p.id, p.name 
+            and p.whitelist_use = 'N'
+            group by u.user_id, p.id, p.name
+            union all
+            select u.user_id, p.name, count(u.id) tickets
+            from user_tickets u
+            inner join products p on p.id = u.product_id
+            inner join user_whitelist uw on u.user_id = uw.user_id
+            where p.product_status = 'OPEN'
+              and p.whitelist_use = 'Y'
+            group by u.user_id, p.id, p.name
         """)
         user_tickets = cursor.fetchall()
 

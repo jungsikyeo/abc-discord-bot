@@ -985,7 +985,7 @@ async def mint(ctx, *, mint_date="today"):
         embed = buttonView.makeEmbed(item)
         pages.append(embed)
     if len(projects) > 0:
-        paginator = Paginator(pages)
+        paginator = Paginator(pages, disable_on_timeout=False, timeout=None)
         await paginator.send(ctx, mention_author=True)
     else:
         embed = discord.Embed(title="", description="")

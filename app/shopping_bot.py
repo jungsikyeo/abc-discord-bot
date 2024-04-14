@@ -701,6 +701,54 @@ async def give_tokens(ctx, user_tag, amount):
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def give_tokens_bulk(ctx):
+    if len(ctx.message.attachments) == 0:
+        await ctx.reply("No file provided. Please attach an file.")
+        return
+
+    file = ctx.message.attachments[0]
+
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        file_bytes = await file.read()
+        file_content = io.StringIO(file_bytes.decode('utf-8'))
+        csv_reader = csv.reader(file_content, delimiter=',')
+
+        row_num = 1
+        success_num = 0
+        fail_num = 0
+        for row in csv_reader:
+            _, user_id, tokens = row
+            try:
+                member = ctx.guild.get_member(int(user_id))
+                if member:
+                    await give_tokens(ctx, member, tokens)
+                    success_num += 1
+            except Exception as e:
+                await ctx.channel.send(f"🔴 Failed to add {tokens} tokens to {user_id} on line {row_num}")
+                logger.error(f"member give tokens error: {str(e)}")
+                fail_num += 1
+            row_num += 1
+
+        description = f"✅ Successfully added XP to `{success_num}` users\n" \
+                      f"❌ Fail added XP to `{fail_num}` users"
+        embed = Embed(
+            title=f"Give XP to {row_num} users",
+            description=description,
+            color=0x37e37b,
+        )
+        await ctx.channel.send(embed=embed)
+    except Exception as e:
+        logger.error(f'save_tokens error: {e}')
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def remove_tokens(ctx, user_tag, amount):
     try:
         params = {

@@ -975,7 +975,7 @@ async def sf_rank_leaderboard(ctx):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def open_shop(ctx: ApplicationContext):
+async def open_shop_slash(ctx: ApplicationContext):
     description = "ShoppingFi에 오신 것을 환영합니다!\n\n" \
                   "SearchFi가 준비한 경품 추첨에 SearchFi 토큰으로 참여할 수 있습니다.\n\n" \
                   "`Prizes` 버튼을 클릭하면 경품이 표시됩니다.\n\n" \
@@ -1000,7 +1000,7 @@ async def open_shop(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def add_prize(ctx: ApplicationContext):
+async def add_prize_slash(ctx: ApplicationContext):
     embed = Embed(title="Add Prize", description="🎁️ 아래 버튼으로 경품을 등록해주세요.\n\n"
                                                  "🎁️ Please register the prize using the button below.", color=0xFFFFFF)
     embed.set_footer(text="Powered by 으노아부지#2642")
@@ -1014,7 +1014,7 @@ async def add_prize(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def giveaway_raffle(ctx: ApplicationContext):
+async def giveaway_raffle_slash(ctx: ApplicationContext):
     connection = db.get_connection()
     cursor = connection.cursor()
     try:
@@ -1047,7 +1047,7 @@ async def giveaway_raffle(ctx: ApplicationContext):
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def giveaway_check(ctx: ApplicationContext,
+async def giveaway_check_slash(ctx: ApplicationContext,
                          target_user: Option(discord.Member, "target user tag", required=True)):
     connection = db.get_connection()
     cursor = connection.cursor()
@@ -1098,7 +1098,7 @@ async def giveaway_check(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def give_tokens(ctx: ApplicationContext,
+async def give_tokens_slash(ctx: ApplicationContext,
                       target_user: Option(discord.Member, "target user tag", required=True),
                       quantity: Option(int, "token quantity", required=True)):
     try:
@@ -1130,7 +1130,7 @@ async def give_tokens(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def give_tokens_bulk(ctx: ApplicationContext,
+async def give_tokens_bulk_slash(ctx: ApplicationContext,
                            file: Option(discord.Attachment, "Upload the CSV file", required=True)):
     connection = db.get_connection()
     cursor = connection.cursor()
@@ -1179,7 +1179,7 @@ async def give_tokens_bulk(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def remove_tokens(ctx: ApplicationContext,
+async def remove_tokens_slash(ctx: ApplicationContext,
                         target_user: Option(discord.Member, "target user tag", required=True),
                         quantity: Option(int, "token quantity", required=True)):
     try:
@@ -1211,7 +1211,7 @@ async def remove_tokens(ctx: ApplicationContext,
     guild_ids=guild_ids
 )
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
-async def remove_ticket(ctx: ApplicationContext,
+async def remove_ticket_slash(ctx: ApplicationContext,
                         target_user: Option(discord.Member, "target user tag", required=True),
                         prize_name: Option(str, "name of the prize to be deleted", required=True)):
     connection = db.get_connection()

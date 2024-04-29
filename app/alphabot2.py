@@ -2254,14 +2254,18 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
     topbid = data.get("topBid")
-    site = topbid.get("sourceDomain")
-    topbid_price = topbid.get("price")
-    topbid_price_currency = topbid_price.get("currency")
-    topbid_price_currency_symbol = topbid_price_currency.get("symbol")
-    topbid_price_amount = topbid_price.get("amount")
-    topbid_price_amount_native = topbid_price_amount.get("native")
-    embed.add_field(name="""Top Bid Site""", value=f"```{site}```", inline=True)
-    embed.add_field(name="""Top Bid Price""", value=f"```{topbid_price_amount_native} {topbid_price_currency_symbol} ```", inline=True)
+    if topbid.get("id"):
+        site = topbid.get("sourceDomain")
+        topbid_price = topbid.get("price")
+        topbid_price_currency = topbid_price.get("currency")
+        topbid_price_currency_symbol = topbid_price_currency.get("symbol")
+        topbid_price_amount = topbid_price.get("amount")
+        topbid_price_amount_native = topbid_price_amount.get("native")
+        embed.add_field(name="""Top Bid Site""", value=f"```{site}```", inline=True)
+        embed.add_field(name="""Top Bid Price""", value=f"```{topbid_price_amount_native} {topbid_price_currency_symbol} ```", inline=True)
+    else:
+        embed.add_field(name="""Top Bid Site""", value=f"```None```", inline=True)
+        embed.add_field(name="""Top Bid Price""", value=f"```None```", inline=True)
 
     if search_type == 2:
         try:

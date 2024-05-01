@@ -5273,31 +5273,74 @@ async def mp_slash(ctx: ApplicationContext,
     await ctx.respond(embed=embed, ephemeral=False)
 
 
+def isEnglishOrKorean(input_s):
+    k_count = 0
+    e_count = 0
+    for c in input_s:
+        if ord('가') <= ord(c) <= ord('힣'):
+            k_count+=1
+        elif ord('a') <= ord(c.lower()) <= ord('z'):
+            e_count+=1
+    return "korean" if k_count > e_count else "english"
+
+
 @bot.event
 async def on_message(message):
-    # '일상 공유' 채널의 ID로 대체하세요.
-    sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
-    # '팀원' 역할의 ID로 대체하세요.
-    exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
-
     if message.author.bot:
         return
 
+    investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
+    if message.channel.category_id == investment_category_id:
+        to_language = isEnglishOrKorean(message.content)
+        if to_language == "english":
+            from_language = "korean"
+        else:
+            from_language = "english"
+
+        prompt_text = message.content
+        model = "gpt-3.5-turbo"
+
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant who is good at translating."
+            },
+            {
+                "role": "user",
+                "content": f"""
+                    ```{prompt_text}```
+                    - Condition 1: please translate it into {from_language}.
+                    - Condition 2: Tell me only the translated text
+                    - Condition 3: Make sure to follow the above conditions
+                """
+            }
+        ]
+
+        # ChatGPT API 호출하기
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=messages
+        )
+        answer = response['choices'][0]['message']['content']
+        await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
+
+    sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
+    exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
     if message.channel.id != sharing_channel_id or any(role.id in exclude_role_list for role in message.author.roles):
         await bot.process_commands(message)
         return
+    else:
+        # 첨부 파일이 이미지인지 확인
+        image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if attachment.content_type)
 
-    # 첨부 파일이 이미지인지 확인
-    image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if attachment.content_type)
-
-    # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
-    if not image_attached or len(message.content.strip()) == 0:
-        await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
-        # 사용자에게 규칙을 알리는 메시지를 보냄
-        warning_msg = await message.channel.send(
-            f"{message.author.mention}, please post both an image and some text together!"
-        )
-        await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+        # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
+        if not image_attached or len(message.content.strip()) == 0:
+            await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
+            # 사용자에게 규칙을 알리는 메시지를 보냄
+            warning_msg = await message.channel.send(
+                f"{message.author.mention}, please post both an image and some text together!"
+            )
+            await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
 
 
 @bot.event

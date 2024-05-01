@@ -20,6 +20,7 @@ import uuid
 import io
 import base64
 import logging
+import langid
 import numpy as np
 from datetime import timezone
 from pytz import all_timezones
@@ -5273,17 +5274,6 @@ async def mp_slash(ctx: ApplicationContext,
     await ctx.respond(embed=embed, ephemeral=False)
 
 
-def isEnglishOrKorean(input_s):
-    k_count = 0
-    e_count = 0
-    for c in input_s:
-        if ord('가') <= ord(c) <= ord('힣'):
-            k_count+=1
-        elif ord('a') <= ord(c.lower()) <= ord('z'):
-            e_count+=1
-    return "korean" if k_count > e_count else "english"
-
-
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -5291,11 +5281,16 @@ async def on_message(message):
 
     investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
     if message.channel.category_id == investment_category_id:
-        to_language = isEnglishOrKorean(message.content)
-        if to_language == "english":
-            from_language = "korean"
+        to_language, _ = langid.classify(message.content)
+        if to_language == "en":
+            from_language1 = "korean"
+            from_language2 = "chinese"
+        elif to_language == "ko":
+            from_language1 = "english"
+            from_language2 = "chinese"
         else:
-            from_language = "english"
+            from_language1 = "korean"
+            from_language2 = "english"
 
         prompt_text = message.content
         model = "gpt-3.5-turbo"
@@ -5309,9 +5304,12 @@ async def on_message(message):
                 "role": "user",
                 "content": f"""
                     ```{prompt_text}```
-                    - Condition 1: please translate it into {from_language}.
-                    - Condition 2: Tell me only the translated text
-                    - Condition 3: Make sure to follow the above conditions
+                    >>> Condition 1: Please translate the above into {from_language1} and {from_language2}, respectively.
+                    >>> Condition 2: Please print it out in the form below.
+                        - {from_language1}: Translated {from_language1}
+                        - {from_language2}: Translated {from_language2}
+                    >>> Condition 3: Please do not attach anything other than the form in Condition 2
+                    >>> Condition 4: Make sure to follow the above conditions
                 """
             }
         ]

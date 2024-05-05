@@ -5281,46 +5281,63 @@ async def on_message(message):
 
     investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
     if message.channel.category_id == investment_category_id:
-        to_language, _ = langid.classify(message.content)
-        if to_language == "en":
-            from_language1 = "korean"
-            from_language2 = "chinese"
-        elif to_language == "ko":
-            from_language1 = "english"
-            from_language2 = "chinese"
-        else:
-            from_language1 = "korean"
-            from_language2 = "english"
+        if len(message.content.strip()) != 0:
+            to_language, _ = langid.classify(message.content)
+            if to_language == "en":
+                from_language1 = "korean"
+                from_language2 = "chinese"
+            elif to_language == "ko":
+                from_language1 = "english"
+                from_language2 = "chinese"
+            else:
+                from_language1 = "korean"
+                from_language2 = "english"
 
-        prompt_text = message.content
-        model = "gpt-3.5-turbo"
+            prompt_text = message.content
+            model = "gpt-3.5-turbo"
 
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant who is good at translating."
-            },
-            {
-                "role": "user",
-                "content": f"""
-                    ```{prompt_text}```
-                    >>> Condition 1: Please translate the above into {from_language1} and {from_language2}, respectively.
-                    >>> Condition 2: Please print it out in the form below.
-                        - {from_language1}: Translated {from_language1}
-                        - {from_language2}: Translated {from_language2}
-                    >>> Condition 3: Please do not attach anything other than the form in Condition 2
-                    >>> Condition 4: Make sure to follow the above conditions
-                """
-            }
-        ]
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant who is good at translating."
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+                        >>> Condition 1: Please translate the contents of the context to {from_language1} and {from_language2} respectively.
+                        >>> Condition 2: Please print it out in the form below.
+                            - {from_language1}: Translated {from_language1}
+                            - {from_language2}: Translated {from_language2}
+                        >>> Condition 3: Please do not attach anything other than the form in Condition 2
+                        >>> Condition 4: If you only have a emoji, please show me the original text without translating it
+                        >>> Condition 5: If you only have a site link, answer that it can't be translated.
+                        >>> Condition 6: Make sure to follow the above conditions
+                        --------
+                        Context: {prompt_text}
+                        --------
+                        Example:
+                            - english: Hello
+                            - chinese: 你好
+                            
+                            - korean: 안녕
+                            - chinese: 你好
+                            
+                            - korean: 안녕
+                            - english: Hello
+                            
+                            - {from_language1}: :heart:
+                            - {from_language2}: :heart:
+                    """
+                }
+            ]
 
-        # ChatGPT API 호출하기
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages
-        )
-        answer = response['choices'][0]['message']['content']
-        await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
+            # ChatGPT API 호출하기
+            response = openai.ChatCompletion.create(
+                model=model,
+                messages=messages
+            )
+            answer = response['choices'][0]['message']['content']
+            await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
     exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))

@@ -4,7 +4,6 @@ import pymysql
 import discord
 import requests
 import os as operating_system
-import openai
 import random
 import cloudscraper
 import json
@@ -22,6 +21,7 @@ import base64
 import logging
 import langid
 import numpy as np
+from openai import OpenAI
 from datetime import timezone
 from pytz import all_timezones
 from discord.ext import commands, tasks
@@ -39,6 +39,11 @@ from binance.client import Client
 from datetime import timedelta
 from oauth2client.service_account import ServiceAccountCredentials
 from PIL import Image, ImageSequence
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from langchain.chains import LLMMathChain
+from langchain.agents import load_tools, Tool, initialize_agent, AgentType
+
 
 load_dotenv()
 
@@ -64,6 +69,12 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+client = OpenAI(
+    api_key=operating_system.getenv("OPENAI_SECRET_KEY"),
+    organization="org-xZ19FcsARsvTdq3flptdn56l"
+)
+model = "gpt-3.5-turbo"
 
 
 async def get_member_avatar(user_id: int):
@@ -2060,6 +2071,7 @@ async def 옾2(ctx, keyword, count: int = 0):
 async def os2(ctx, keyword, count: int = 0):
     await os(ctx, keyword, 2, count)
 
+
 # 오픈씨 API 소스 백업
 # @bot.command()
 # async def os(ctx, keyword, search_type: int = 1, count: int = 0):
@@ -2263,7 +2275,8 @@ async def os(ctx, keyword, search_type: int = 1, count: int = 0):
         topbid_price_amount = topbid_price.get("amount")
         topbid_price_amount_native = topbid_price_amount.get("native")
         embed.add_field(name="""Top Bid Site""", value=f"```{site}```", inline=True)
-        embed.add_field(name="""Top Bid Price""", value=f"```{topbid_price_amount_native} {topbid_price_currency_symbol} ```", inline=True)
+        embed.add_field(name="""Top Bid Price""",
+                        value=f"```{topbid_price_amount_native} {topbid_price_currency_symbol} ```", inline=True)
     else:
         embed.add_field(name="""Top Bid Site""", value=f"```None```", inline=True)
         embed.add_field(name="""Top Bid Price""", value=f"```None```", inline=True)
@@ -2622,12 +2635,18 @@ async def coin2(ctx, coin_symbol: str):
             color=0x00ff00
         )
         embed.add_field(name="Last Price", value=f"```python\n{coin_info['price']:,.4f} USDT```")
-        embed.add_field(name="1h Change", value=f"```diff\n{'+' if coin_info['percent_change_1h'] > 0 else ''}{coin_info['percent_change_1h']:,.2f}%```")
-        embed.add_field(name="24h Change", value=f"```diff\n{'+' if coin_info['percent_change_24h'] > 0 else ''}{coin_info['percent_change_24h']:,.2f}%```")
-        embed.add_field(name="7d Change", value=f"```diff\n{'+' if coin_info['percent_change_7d'] > 0 else ''}{coin_info['percent_change_7d']:,.2f}%```")
-        embed.add_field(name="30d Change", value=f"```diff\n{'+' if coin_info['percent_change_30d'] > 0 else ''}{coin_info['percent_change_30d']:,.2f}%```")
-        embed.add_field(name="60d Change", value=f"```diff\n{'+' if coin_info['percent_change_60d'] > 0 else ''}{coin_info['percent_change_60d']:,.2f}%```")
-        embed.add_field(name="90d Change", value=f"```diff\n{'+' if coin_info['percent_change_90d'] > 0 else ''}{coin_info['percent_change_90d']:,.2f}%```")
+        embed.add_field(name="1h Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_1h'] > 0 else ''}{coin_info['percent_change_1h']:,.2f}%```")
+        embed.add_field(name="24h Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_24h'] > 0 else ''}{coin_info['percent_change_24h']:,.2f}%```")
+        embed.add_field(name="7d Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_7d'] > 0 else ''}{coin_info['percent_change_7d']:,.2f}%```")
+        embed.add_field(name="30d Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_30d'] > 0 else ''}{coin_info['percent_change_30d']:,.2f}%```")
+        embed.add_field(name="60d Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_60d'] > 0 else ''}{coin_info['percent_change_60d']:,.2f}%```")
+        embed.add_field(name="90d Change",
+                        value=f"```diff\n{'+' if coin_info['percent_change_90d'] > 0 else ''}{coin_info['percent_change_90d']:,.2f}%```")
         embed.add_field(name="Market Cap", value=f"```python\n{coin_info['market_cap']:,.2f} USDT```")
         embed.add_field(name="Volume (24h)", value=f"```python\n{coin_info['volume_24h']:,.2f} USDT```")
         embed.set_footer(text="Powered by SearchFi DEV")
@@ -2748,10 +2767,6 @@ async def 나무(ctx):
     await ctx.reply(embed=embed, mention_author=True)
 
 
-openai.organization = "org-xZ19FcsARsvTdq3flptdn56l"
-openai.api_key = operating_system.getenv("OPENAI_SECRET_KEY")
-
-
 @bot.command()
 async def ai(ctx, count="0", *prompts):
     await draw(ctx, count, *prompts)
@@ -2782,7 +2797,7 @@ async def ai2(ctx):
     # Use the image to create a new image
     try:
         with open(image_path, "rb") as image_file:
-            response = openai.Image.create_variation(
+            response = client.images.create_variation(
                 image=image_file.read(),
                 n=1,
                 size="1024x1024"
@@ -2851,11 +2866,11 @@ async def draw(ctx, count="0", *prompts):
     ]
 
     # ChatGPT API 호출하기
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=messages
     )
-    answer = response['choices'][0]['message']['content']
+    answer = response.choices[0].message.content
     print(answer)
 
     try:
@@ -3009,8 +3024,8 @@ async def gpt(ctx, *prompts):
         # print(messages)
         # print(len(str(messages)))
 
-        result = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+        result = client.chat.completions.create(
+            model=model,
             messages=messages
         )
     except Exception as e:
@@ -3020,8 +3035,81 @@ async def gpt(ctx, *prompts):
         await ctx.reply(embed=error_embed, mention_author=True)
         return
 
-    if 'choices' in result and len(result['choices']) > 0:
-        assistant_response = result['choices'][0]['message']['content']
+    if result and len(result.choices) > 0:
+        assistant_response = result.choices[0].message.content
+        embed = Embed(title="SearchFi AI Answer", description=assistant_response, color=random_color)
+        await ctx.reply(embed=embed, mention_author=True)
+
+        # Save user's message to the DB
+        Queries.insert_message(db, user_id, "user", prompt_text)
+
+        # Save AI's message to the DB
+        Queries.insert_message(db, user_id, "assistant", assistant_response)
+    else:
+        error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.",
+                            color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+
+
+@bot.command()
+async def calc(ctx, *prompts):
+    operating_system.environ["OPENAI_API_KEY"] = operating_system.getenv("OPENAI_SECRET_KEY")
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    llm_math_chain = LLMMathChain(llm=llm, verbose=True)
+    tools = [
+        Tool(
+            name="Math",
+            func=llm_math_chain.invoke,
+            description="Useful when you need to calculate questions about the current event"
+        ),
+    ]
+
+    user_id = ctx.message.author.id
+
+    if len(prompts) == 0:
+        error_embed = Embed(title="Error",
+                            description="No prompt provided. Please provide a prompt.\n\n프롬프트가 입력되지 않습니다. 프롬프트를 입력하십시오.",
+                            color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    random_color = random.randint(0, 0xFFFFFF)
+
+    embed = Embed(title="SearchFi AI Calculator Bot", color=random_color)
+    embed.set_footer(text="Waiting for an answer...")
+    await ctx.send(embed=embed)
+
+    prompt_text = " ".join(prompts)
+
+    # Load previous context for the current user
+    previous_context = Queries.select_message(db, user_id)
+
+    # If the user has sent messages before
+    if previous_context:
+        # Get the timestamp of the last message
+        last_message_time = previous_context[-1]['timestamp']
+
+        # Check if the user is sending a query within 5 seconds
+        if datetime.datetime.now() - last_message_time < datetime.timedelta(seconds=10):
+            error_embed = Embed(title="Error",
+                                description="You are sending queries too fast. Please wait a few seconds.\n\n질문을 너무 빠르게 보내고 있습니다. 몇 초 기다려 주세요.",
+                                color=0xFF0000)
+            await ctx.reply(embed=error_embed, mention_author=True)
+            return
+
+    try:
+        agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True)
+        messages = agent.run(prompt_text)
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        error_embed = Embed(title="Error", description="Failed to get a response from AI.\n\nAI로부터 응답을 받지 못했습니다.",
+                            color=0xFF0000)
+        await ctx.reply(embed=error_embed, mention_author=True)
+        return
+
+    if messages:
+        print(messages)
+        assistant_response = messages
         embed = Embed(title="SearchFi AI Answer", description=assistant_response, color=random_color)
         await ctx.reply(embed=embed, mention_author=True)
 
@@ -4873,7 +4961,7 @@ async def ai2_slash(ctx: ApplicationContext):
     # Use the image to create a new image
     try:
         with open(image_path, "rb") as image_file:
-            response = openai.Image.create_variation(
+            response = client.images.create_variation(
                 image=image_file.read(),
                 n=1,
                 size="1024x1024"
@@ -4923,11 +5011,11 @@ async def draw_slash(ctx: ApplicationContext, count: int, prompts: str):
     ]
 
     # ChatGPT API 호출하기
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=messages
     )
-    answer = response['choices'][0]['message']['content']
+    answer = response.choices[0].message.content
     # print(answer)
 
     try:
@@ -5091,8 +5179,8 @@ async def chat_answer(ctx: ApplicationContext, prompts: str):
         # print(messages)
         # print(len(str(messages)))
 
-        result = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+        result = client.chat.completions.create(
+            model=model,
             messages=messages
         )
     except Exception as e:
@@ -5104,9 +5192,9 @@ async def chat_answer(ctx: ApplicationContext, prompts: str):
         await ctx.respond(embed=error_embed, ephemeral=True)
         return
 
-    if 'choices' in result and len(result['choices']) > 0:
+    if result and len(result.choices) > 0:
         assistant_response = f"Q: {prompt_text}\n\n"
-        assistant_response += f"A: {result['choices'][0]['message']['content']}"
+        assistant_response += f"A: {result.choices[0].message.content}"
         embed = Embed(title="SearchFi AI Answer", description=assistant_response, color=random_color)
         await ctx.respond(embed=embed, ephemeral=False)
 
@@ -5294,7 +5382,6 @@ async def on_message(message):
                 from_language2 = "english"
 
             prompt_text = message.content
-            model = "gpt-3.5-turbo"
 
             messages = [
                 {
@@ -5332,11 +5419,11 @@ async def on_message(message):
             ]
 
             # ChatGPT API 호출하기
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=messages
             )
-            answer = response['choices'][0]['message']['content']
+            answer = response.choices[0].message.content
             await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
@@ -5346,7 +5433,8 @@ async def on_message(message):
         return
     else:
         # 첨부 파일이 이미지인지 확인
-        image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if attachment.content_type)
+        image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if
+                             attachment.content_type)
 
         # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
         if not image_attached or len(message.content.strip()) == 0:

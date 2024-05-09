@@ -39,10 +39,9 @@ from binance.client import Client
 from datetime import timedelta
 from oauth2client.service_account import ServiceAccountCredentials
 from PIL import Image, ImageSequence
-from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain.chains import LLMMathChain
-from langchain.agents import load_tools, Tool, initialize_agent, AgentType
+from langchain.agents import Tool, initialize_agent, AgentType
 
 
 load_dotenv()
@@ -5400,7 +5399,7 @@ async def on_message(message):
                         >>> Condition 5: If you only have a site link, answer that it can't be translated.
                         >>> Condition 6: Make sure to follow the above conditions
                         --------
-                        Context: {prompt_text}
+                        Context: ```{prompt_text}```
                         --------
                         Example:
                             - english: Hello

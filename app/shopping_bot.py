@@ -672,8 +672,13 @@ async def giveaway_check(ctx, user_tag):
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def give_tokens(ctx, user_tag, amount):
     try:
+        user_id = user_tag.id
+    except:
+        user_id = user_tag[2:-1]
+
+    try:
         params = {
-            'user_id': user_tag[2:-1],
+            'user_id': user_id,
             'token': int(amount),
             'action_type': 'give_tokens',
             'send_user_id': ctx.author.id,

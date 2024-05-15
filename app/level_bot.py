@@ -495,13 +495,22 @@ async def give_xp(ctx: ApplicationContext, member: Member, points: int):
             """, (user_id, guild_id))
             user_level = cursor.fetchone()
 
-            current_xp = int(user_level['xp'])
+            if user_level:
+                current_xp = int(user_level['xp'])
 
-            cursor.execute("""
-                UPDATE user_levels
-                SET xp = xp + %s, last_message_time = %s
-                WHERE user_id = %s AND guild_id = %s
-            """, (points, current_time, user_id, guild_id))
+                cursor.execute("""
+                    UPDATE user_levels
+                    SET xp = xp + %s, last_message_time = %s
+                    WHERE user_id = %s AND guild_id = %s
+                """, (points, current_time, user_id, guild_id))
+            else:
+                current_xp = 0
+
+                cursor.execute("""
+                    insert into user_levels (guild_id, user_id, xp, last_message_time) 
+                    values (%s, %s, %s, %s)
+                """, (guild_id, user_id, points, current_time))
+
             connection.commit()
 
             old_level = rank_to_level(current_xp)['level']

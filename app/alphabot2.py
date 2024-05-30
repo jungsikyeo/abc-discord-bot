@@ -5367,7 +5367,10 @@ async def on_message(message):
         return
 
     investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
-    if message.channel.category_id == investment_category_id:
+    if message.channel.category_id == investment_category_id or \
+            message.channel.id == 1215148551441485904 or \
+            message.channel.id == 974946294068043826 or \
+            message.channel.id == 1072435483466014730:
         if len(message.content.strip()) != 0:
             to_language, _ = langid.classify(message.content)
             if to_language == "en":
@@ -5380,7 +5383,8 @@ async def on_message(message):
                 from_language1 = "korean"
                 from_language2 = "english"
 
-            prompt_text = message.content
+            prompt_text: str = message.content
+            print(prompt_text.replace("\n", " "))
 
             messages = [
                 {
@@ -5401,18 +5405,18 @@ async def on_message(message):
                         --------
                         Context: ```{prompt_text}```
                         --------
-                        Example:
-                            - english: Hello
-                            - chinese: 你好
-                            
-                            - korean: 안녕
-                            - chinese: 你好
-                            
-                            - korean: 안녕
-                            - english: Hello
-                            
-                            - {from_language1}: :heart:
-                            - {from_language2}: :heart:
+                        Example 1:
+                            > english: Hello
+                            > chinese: 你好
+                        Example 2:
+                            > korean: 안녕
+                            > chinese: 你好
+                        Example 3:    
+                            > korean: 안녕
+                            > english: Hello
+                        Example 4:    
+                            > {from_language1}: :heart:
+                            > {from_language2}: :heart:
                     """
                 }
             ]

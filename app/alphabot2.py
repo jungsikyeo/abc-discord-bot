@@ -2071,118 +2071,55 @@ async def os2(ctx, keyword, count: int = 0):
     await os(ctx, keyword, 2, count)
 
 
-# 오픈씨 API 소스 백업
-# @bot.command()
-# async def os(ctx, keyword, search_type: int = 1, count: int = 0):
-#     time.sleep(1)
-#
-#     result = Queries.select_keyword(db, keyword)
-#     symbol = result['symbol']
-#
-#     api_key = operating_system.getenv("OPENSEA_API_KEY")
-#     headers = {"X-API-KEY": api_key}
-#     response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}", headers=headers)
-#     results = json.loads(response.text)
-#     # print(results)
-#
-#     try:
-#         if len(results.get('errors')) > 0:
-#             embed = Embed(title="Not Found", description=f"Collection with slug `{keyword}` not found.", color=0xff0000)
-#             embed.set_footer(text="Powered by SearchFi DEV")
-#             await ctx.reply(embed=embed, mention_author=True)
-#             return
-#     except:
-#         pass
-#
-#     try:
-#         if results.get('detail') == "Request was throttled. Expected available in 1 second.":
-#             print(f"retry {count + 1}")
-#             await 옾(ctx, keyword, count + 1)
-#             return
-#     except:
-#         pass
-#
-#     data = results
-#     # print(data)
-#
-#     projectName = data.get("name")
-#     projectImg = data.get('image_url')
-#     if projectImg == "None":
-#         projectImg = data.get("banner_image_url")
-#     projectTwitter = f"https://twitter.com/{data.get('twitter_username')}"
-#     projectDiscord = data.get('discord_url')
-#     projectWebsite = data.get('external_url')
-#     projectSupply = int(data.get('total_supply', 0))
-#
-#     chain = data.get('contracts')[0].get('chain')
-#     if chain == "matic":
-#         projectChain = "MATIC"
-#     elif chain == "klaytn":
-#         projectChain = "KLAY"
-#     elif chain == "bsc":
-#         projectChain = "BNB"
-#     elif chain == "solana":
-#         projectChain = "SOL"
-#     else:
-#         projectChain = "ETH"
-#
-#     projectLinks = f"[OpenSea](https://opensea.io/collection/{symbol})"
-#     if projectWebsite:
-#         projectLinks += f" | [Website]({projectWebsite})"
-#     if projectDiscord:
-#         projectLinks += f" | [Discord]({projectDiscord})"
-#     if projectTwitter:
-#         projectLinks += f" | [Twitter]({projectTwitter})"
-#
-#     response = requests.get(f"https://api.opensea.io/api/v2/collections/{symbol}/stats", headers=headers)
-#     results = json.loads(response.text)
-#     data = results.get('total')
-#
-#     floor_price_symbol = data.get('floor_price_symbol')
-#     if floor_price_symbol and floor_price_symbol != "":
-#         projectChain = floor_price_symbol
-#     projectFloorPrice = round(float(data.get('floor_price', 0)), 3)
-#     projectOwners = int(data.get('num_owners', 0))
-#
-#     sales_list = "```\n"
-#     sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format("Activity", "Volume", "Sales", "Average")
-#     sales_list += "-" * 44 + "\n"  # 24 characters + 10 characters + 10 characters
-#
-#     for row in results.get('intervals'):
-#         sales_list += "{:<12s}{:<13s}{:<8s}{:<9s}\n".format(
-#             row.get('interval'),
-#             f"{round(float(row.get('volume', 0)), 3)}",
-#             f"{int(row.get('sales'))}",
-#             f"{round(float(row.get('average_price')), 3)} ETH",
-#         )
-#     sales_list += "```"
-#
-#     embed = Embed(title=f"{projectName}", color=0x2081E2, url=f"https://opensea.io/collection/{symbol}")
-#     if projectImg and projectImg != "None":
-#         embed.set_thumbnail(url=f"{projectImg}")
-#     embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
-#     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
-#     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
-#
-#     if search_type == 2:
-#         try:
-#             data = await fetch_asset_events(symbol)
-#             df = process_asset_events(data['asset_events'])
-#             chart_image = await create_price_chart(df, symbol)
-#             now_in_seconds = time.time()
-#             now_in_milliseconds = int(now_in_seconds * 1000)
-#             embed.set_image(
-#                 url=f"{operating_system.getenv('SEARCHFI_BOT_DOMAIN')}/static/{chart_image}?v={now_in_milliseconds}")
-#         except Exception as e:
-#             logger.error(f"os set_image error: {e}")
-#             pass
-#     else:
-#         embed.add_field(name="Activity Info", value=sales_list, inline=False)
-#
-#     embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
-#     embed.set_footer(text="Powered by SearchFi DEV")
-#
-#     await ctx.reply(embed=embed, mention_author=True)
+@bot.command()
+async def 룬(ctx):
+    await runes(ctx)
+
+
+@bot.command()
+async def runes(ctx):
+    time.sleep(1)
+
+    response = requests.get(f"https://www.okx.com/priapi/v1/nft/inscription/rc20/tokens?scope=4&page=1&size=50&sortBy=volume&sort=&tokensLike=&timeType=1&tickerType=4&walletAddress=&t=1717106748326")
+    results = json.loads(response.text)
+
+    data = results.get("data")
+    rune_list = data.get("list")
+
+    num_pages = (len(rune_list) + 4) // 5
+    pages = []
+
+    for page in range(num_pages):
+        embed = Embed(title=f"**🏆 Runes Top 50 🏆**", color=0x00ff00)
+
+        for i in range(5):
+            index = page * 5 + i
+            if index >= len(rune_list):
+                break
+
+            item = rune_list[index]
+
+            ticker = item.get("ticker")
+            usd_price = round(float(item.get("usdPrice")), 4)
+            usd_volume = round(float(item.get("usdVolume")), 2)
+            volume = round(float(item.get("volume")), 4)
+            if round(float(item.get("priceChangeRate24H")) * 100, 1) > 0:
+                price_change_rate_24H = f'+{round(float(item.get("priceChangeRate24H")) * 100, 1)}'
+            else:
+                price_change_rate_24H = round(float(item.get("priceChangeRate24H")) * 100, 1)
+            image = item.get("image")
+            volume_currency_url = item.get("volumeCurrencyUrl")
+
+            field_name = f"`{index + 1}.` {ticker}"
+            field_value = f"```diff\n{price_change_rate_24H}% \n" \
+                          f"Price: ${usd_price} | Volume(24H): {volume}BTC```"
+            embed.add_field(name=field_name, value=field_value, inline=False)
+
+        embed.set_footer(text=f"by SearchFI Bot")
+
+        pages.append(embed)
+    paginator = Paginator(pages, disable_on_timeout=False, timeout=None)
+    await paginator.send(ctx, mention_author=True)
 
 
 # Reservoir API

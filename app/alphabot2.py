@@ -2080,7 +2080,12 @@ async def 룬(ctx):
 async def runes(ctx):
     time.sleep(1)
 
-    response = requests.get(f"https://www.okx.com/priapi/v1/nft/inscription/rc20/tokens?scope=4&page=1&size=50&sortBy=volume&sort=&tokensLike=&timeType=1&tickerType=4&walletAddress=&t=1717106748326")
+    scraper = cloudscraper.create_scraper(delay=10, browser={
+        'browser': 'chrome',
+        'platform': 'android',
+        'desktop': False,
+    })
+    response = scraper.get(f"https://www.okx.com/priapi/v1/nft/inscription/rc20/tokens?scope=4&page=1&size=50&sortBy=volume&sort=&tokensLike=&timeType=1&tickerType=4&walletAddress=&t=1717106748326")
     results = json.loads(response.text)
 
     data = results.get("data")
@@ -2101,14 +2106,14 @@ async def runes(ctx):
 
             ticker = item.get("ticker")
             usd_price = round(float(item.get("usdPrice")), 4)
-            usd_volume = round(float(item.get("usdVolume")), 2)
+            # usd_volume = round(float(item.get("usdVolume")), 2)
             volume = round(float(item.get("volume")), 4)
             if round(float(item.get("priceChangeRate24H")) * 100, 1) > 0:
                 price_change_rate_24H = f'+{round(float(item.get("priceChangeRate24H")) * 100, 1)}'
             else:
                 price_change_rate_24H = round(float(item.get("priceChangeRate24H")) * 100, 1)
-            image = item.get("image")
-            volume_currency_url = item.get("volumeCurrencyUrl")
+            # image = item.get("image")
+            # volume_currency_url = item.get("volumeCurrencyUrl")
 
             field_name = f"`{index + 1}.` {ticker}"
             field_value = f"```diff\n{price_change_rate_24H}% \n" \

@@ -5314,7 +5314,8 @@ async def on_message(message):
     allowed_channels = [
         1215148551441485904,
         974946294068043826,
-        1072435483466014730
+        1072435483466014730,
+        1212970029847678986
     ]
 
     if message.channel.category_id == investment_category_id or message.channel.id in allowed_channels:

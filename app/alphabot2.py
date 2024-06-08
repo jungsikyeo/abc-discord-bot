@@ -20,6 +20,7 @@ import io
 import base64
 import logging
 import langid
+import deepl
 import numpy as np
 from openai import OpenAI
 from datetime import timezone
@@ -57,6 +58,7 @@ bot_domain = operating_system.getenv("SEARCHFI_BOT_DOMAIN")
 discord_client_id = operating_system.getenv("DISCORD_CLIENT_ID")
 guild_ids = list(map(int, operating_system.getenv('GUILD_ID').split(',')))
 bot_log_folder = operating_system.getenv("BOT_LOG_FOLDER")
+deepl_api_key = operating_system.getenv("DEEPL_API_KEY")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -5309,66 +5311,41 @@ async def on_message(message):
         return
 
     investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
-    if message.channel.category_id == investment_category_id or \
-            message.channel.id == 1215148551441485904 or \
-            message.channel.id == 974946294068043826 or \
-            message.channel.id == 1072435483466014730:
+    allowed_channels = [
+        1215148551441485904,
+        974946294068043826,
+        1072435483466014730
+    ]
+
+    if message.channel.category_id == investment_category_id or message.channel.id in allowed_channels:
         if len(message.content.strip()) != 0:
+            translator = deepl.Translator(deepl_api_key)
             to_language, _ = langid.classify(message.content)
             if to_language == "en":
-                from_language1 = "korean"
-                from_language2 = "chinese"
+                from_language1 = "KO"
+                from_language2 = "ZH"
+                language1_name = "Korean"
+                language2_name = "Chinese"
             elif to_language == "ko":
-                from_language1 = "english"
-                from_language2 = "chinese"
+                from_language1 = "EN-US"
+                from_language2 = "ZH"
+                language1_name = "English"
+                language2_name = "Chinese"
             else:
-                from_language1 = "korean"
-                from_language2 = "english"
+                from_language1 = "KO"
+                from_language2 = "EN-US"
+                language1_name = "Korean"
+                language2_name = "English"
 
             prompt_text: str = message.content
-            print(prompt_text.replace("\n", " "))
 
-            messages = [
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant who is good at translating."
-                },
-                {
-                    "role": "user",
-                    "content": f"""
-                        >>> Condition 1: Please translate the contents of the context to {from_language1} and {from_language2} respectively.
-                        >>> Condition 2: Please print it out in the form below.
-                            - {from_language1}: Translated {from_language1}
-                            - {from_language2}: Translated {from_language2}
-                        >>> Condition 3: Please do not attach anything other than the form in Condition 2
-                        >>> Condition 4: If you only have a emoji, please show me the original text without translating it
-                        >>> Condition 5: If you only have a site link, answer that it can't be translated.
-                        >>> Condition 6: Make sure to follow the above conditions
-                        --------
-                        Context: ```{prompt_text}```
-                        --------
-                        Example 1:
-                            > english: Hello
-                            > chinese: 你好
-                        Example 2:
-                            > korean: 안녕
-                            > chinese: 你好
-                        Example 3:    
-                            > korean: 안녕
-                            > english: Hello
-                        Example 4:    
-                            > {from_language1}: :heart:
-                            > {from_language2}: :heart:
-                    """
-                }
-            ]
+            answer1 = translator.translate_text(prompt_text, target_lang=from_language1)
+            time.sleep(2)
+            answer2 = translator.translate_text(prompt_text, target_lang=from_language2)
 
-            # ChatGPT API 호출하기
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages
-            )
-            answer = response.choices[0].message.content
+            answer = f"- {language1_name}: {answer1}\n\n" \
+                     f"- {language2_name}: {answer2}"
+
             await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))

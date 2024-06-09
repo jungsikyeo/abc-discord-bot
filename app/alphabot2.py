@@ -2693,7 +2693,7 @@ async def 김프(ctx):
 
     if usdt_list:
         embed = discord.Embed(
-            title=f"Current USD/KRW: **{round(usdt_krw,2)}**",
+            title=f"Current USD/KRW: **{round(usdt_krw,2)} KRW**",
             description=f"Exchange USDT Information",
             color=0x00ff00
         )

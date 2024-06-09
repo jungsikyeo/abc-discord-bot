@@ -2069,7 +2069,7 @@ async def runes(ctx):
     pages = []
 
     for page in range(num_pages):
-        embed = Embed(title=f"**🏆 Runes Top 50 🏆**", color=0x00ff00)
+        embed = Embed(title=f"**🏆 Runes Top 50 🏆**", color=0xDF7903)
 
         for i in range(5):
             index = page * 5 + i
@@ -2695,7 +2695,7 @@ async def 김프(ctx):
         embed = discord.Embed(
             title=f"Current USD/KRW: **{round(usdt_krw,2)} KRW**",
             description=f"Exchange USDT Information",
-            color=0x00ff00
+            color=0xEFB90A
         )
         for usdt in usdt_list:
             price = usdt.get('price')

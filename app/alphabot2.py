@@ -1978,18 +1978,6 @@ async def me(ctx, keyword):
 
 
 # 오픈씨 API에서 거래 데이터
-# async def fetch_asset_events(collection_slug):
-#     api_key = operating_system.getenv("OPENSEA_API_KEY")
-#     headers = {
-#         "X-API-KEY": api_key,
-#         "accept": "application/json"
-#     }
-#     url = f"https://api.opensea.io/api/v2/events/collection/{collection_slug}?event_type=sale"
-#     response = requests.get(url, headers=headers)
-#     return json.loads(response.text)
-
-
-# 오픈씨 API에서 거래 데이터
 async def fetch_asset_events(collection_contract):
     api_key = operating_system.getenv("RESERVOIR_API_KEY")
     headers = {
@@ -1999,22 +1987,6 @@ async def fetch_asset_events(collection_contract):
     url = f"https://api.reservoir.tools/sales/v6?collection={collection_contract}&limit=1000"
     response = requests.get(url, headers=headers)
     return json.loads(response.text)
-
-
-# 오픈씨 거래 데이터를 DataFrame으로 변환
-# def process_asset_events(asset_events):
-#     # 빈 리스트를 생성하여 각 거래마다 필요한 정보를 저장
-#     processed_data = []
-#     for event in asset_events:
-#         # Unix 타임스탬프를 datetime으로 변환
-#         date = datetime.datetime.fromtimestamp(event['closing_date'])
-#         # ETH로 환산 (quantity가 Wei로 제공되므로)
-#         price = float(event['payment']['quantity']) / 10 ** 18
-#         processed_data.append({'date': date, 'price': price})
-#     # DataFrame 생성
-#     df = pd.DataFrame(processed_data)
-#     df.set_index('date', inplace=True)
-#     return df
 
 
 def process_asset_events(asset_events):
@@ -2593,6 +2565,146 @@ async def coin2(ctx, coin_symbol: str):
         embed.add_field(name="Market Cap", value=f"```python\n{coin_info['market_cap']:,.2f} USDT```")
         embed.add_field(name="Volume (24h)", value=f"```python\n{coin_info['volume_24h']:,.2f} USDT```")
         embed.set_footer(text="Powered by SearchFi DEV")
+
+        await ctx.send(embed=embed)
+    else:
+        embed = Embed(title="Warning",
+                      description="❌ Invalid symbol. Please check the symbol and try again.\n\n❌ 잘못된 기호입니다. 기호를 확인하고 다시 시도하십시오.",
+                      color=0xFFFFFF)
+        embed.set_footer(text="Powered by SearchFi DEV")
+
+
+@bot.command()
+async def 김프(ctx):
+    # Upbit
+    url = "https://api.upbit.com/v1/ticker?markets=KRW-USDT"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    usdt_list = []
+    if response.status_code == 200:
+        usdt = data[0].get("trade_price")
+        usdt_list.append({
+            "name": "Upbit     (USDT)",
+            "price": float(usdt)
+        })
+
+    # Bithumb
+    url = "https://api.bithumb.com/public/ticker/USDT_KRW"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    if response.status_code == 200:
+        usdt = data.get("data").get("closing_price")
+        usdt_list.append({
+            "name": "Bithumb   (USDT)",
+            "price": float(usdt)
+        })
+
+    # Coinone(USDT)
+    url = "https://api.coinone.co.kr/public/v2/ticker_utc_new/KRW/USDT?additional_data=true"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    if response.status_code == 200:
+        usdt = data.get("tickers")[0].get("last")
+        usdt_list.append({
+            "name": "Coinone   (USDT)",
+            "price": float(usdt)
+        })
+
+    # Coinone(USDC)
+    url = "https://api.coinone.co.kr/public/v2/ticker_utc_new/KRW/USDC?additional_data=true"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    if response.status_code == 200:
+        usdt = data.get("tickers")[0].get("last")
+        usdt_list.append({
+            "name": "Coinone   (USDC)",
+            "price": float(usdt)
+        })
+
+    # Korbit
+    url = "https://api.korbit.co.kr/v1/ticker?currency_pair=usdt_krw"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    if response.status_code == 200:
+        usdt = data.get("last")
+        usdt_list.append({
+            "name": "Korbit    (USDT)",
+            "price": float(usdt)
+        })
+
+    # Gopax
+    url = "https://api.gopax.co.kr/trading-pairs/USDT-KRW/ticker"
+    headers = {
+        'Accepts': 'application/json'
+    }
+
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    # print(data)
+
+    if response.status_code == 200:
+        usdt = data.get("price")
+        usdt_list.append({
+            "name": "Gopax     (USDT)",
+            "price": float(usdt)
+        })
+
+    # KRW-USDT
+    ex_api_key = operating_system.getenv("EXCHANGERATE_API_KEY")
+    exchange_rate_api_url = f"https://v6.exchangerate-api.com/v6/{ex_api_key}/latest/USD"
+
+    response = requests.get(exchange_rate_api_url)
+    if response.status_code != 200:
+        await ctx.send("Error getting exchange rates.")
+        return
+    exchange_rates = response.json()['conversion_rates']
+    usdt_krw = exchange_rates['KRW']
+    # print(usdt_krw)
+
+    if usdt_list:
+        embed = discord.Embed(
+            title=f"Current USD/KRW: **{round(usdt_krw,2)}**",
+            description=f"Exchange USDT Information",
+            color=0x00ff00
+        )
+        for usdt in usdt_list:
+            price = usdt.get('price')
+            rate = (price - usdt_krw) / usdt_krw * 100
+            if rate > 0:
+                flag = f"+"
+            else:
+                flag = ""
+            embed.add_field(name=f"{usdt.get('name')}", value=f"```diff\n{flag}{{:,.1f}}%\n{{:,.2f}} KRW```".format(rate, price), inline=True)
 
         await ctx.send(embed=embed)
     else:

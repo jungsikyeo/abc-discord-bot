@@ -2072,27 +2072,30 @@ async def runes(ctx):
         embed = Embed(title=f"**🏆 Runes Top 50 🏆**", color=0xDF7903)
 
         for i in range(5):
-            index = page * 5 + i
-            if index >= len(rune_list):
-                break
+            try:
+                index = page * 5 + i
+                if index >= len(rune_list):
+                    break
 
-            item = rune_list[index]
+                item = rune_list[index]
 
-            ticker = item.get("ticker")
-            usd_price = round(float(item.get("usdPrice")), 4)
-            # usd_volume = round(float(item.get("usdVolume")), 2)
-            volume = round(float(item.get("volume")), 4)
-            if round(float(item.get("priceChangeRate24H")) * 100, 1) > 0:
-                price_change_rate_24H = f'+{round(float(item.get("priceChangeRate24H")) * 100, 1)}'
-            else:
-                price_change_rate_24H = round(float(item.get("priceChangeRate24H")) * 100, 1)
-            # image = item.get("image")
-            # volume_currency_url = item.get("volumeCurrencyUrl")
+                ticker = item.get("ticker")
+                usd_price = round(float(item.get("usdPrice")), 4)
+                # usd_volume = round(float(item.get("usdVolume")), 2)
+                volume = round(float(item.get("volume")), 4)
+                if round(float(item.get("priceChangeRate24H")) * 100, 1) > 0:
+                    price_change_rate_24H = f'+{round(float(item.get("priceChangeRate24H")) * 100, 1)}'
+                else:
+                    price_change_rate_24H = round(float(item.get("priceChangeRate24H")) * 100, 1)
+                # image = item.get("image")
+                # volume_currency_url = item.get("volumeCurrencyUrl")
 
-            field_name = f"`{index + 1}.` {ticker}"
-            field_value = f"```diff\n{price_change_rate_24H}% \n" \
-                          f"Price: ${usd_price} | Volume(24H): {volume}BTC```"
-            embed.add_field(name=field_name, value=field_value, inline=False)
+                field_name = f"`{index + 1}.` {ticker}"
+                field_value = f"```diff\n{price_change_rate_24H}% \n" \
+                              f"Price: ${usd_price} | Volume(24H): {volume}BTC```"
+                embed.add_field(name=field_name, value=field_value, inline=False)
+            except:
+                pass
 
         embed.set_footer(text=f"by SearchFI Bot")
 

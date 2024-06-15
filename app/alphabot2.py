@@ -1853,6 +1853,55 @@ async def me_sol(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 
+async def me_base(ctx, symbol):
+    api_key = operating_system.getenv("MAGICEDEN_API_KEY")
+    scraper = cloudscraper.create_scraper(delay=10, browser={
+        'browser': 'chrome',
+        'platform': 'android',
+        'desktop': False,
+    })
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+    }
+    response = requests.get(f"https://stats-mainnet.magiceden.io/collection_stats/stats?chain=base&collectionId={symbol}").text
+    print(response)
+    data = json.loads(response)
+    print(data)
+
+    try:
+        if data['msg'] == "Invalid collection name.":
+            embed = Embed(title="Not Found", description=f"Collection with slug `{symbol}` not found.", color=0xff0000)
+            embed.set_footer(text="Powered by SearchFi DEV")
+            await ctx.reply(embed=embed, mention_author=True)
+            return
+    except:
+        pass
+
+    projectName = data["collectionSymbol"]
+    projectImg = data['image']
+    projectChain = 'ETH'
+
+    projectLinks = f"[MegicEden](https://magiceden.io/ko/marketplace/{symbol})"
+    projectFloorPrice = float(data['floorPrice']['amount'])
+
+    try:
+        projectSupply = data['tokenCount']
+        projectOwners = data['ownerCount']
+    except:
+        projectSupply = "-"
+        projectOwners = "-"
+
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/ko/marketplace/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.set_footer(text="Powered by SearchFi DEV")
+
+    await ctx.reply(embed=embed, mention_author=True)
+
+
 async def me_matic(ctx, symbol):
     api_key = operating_system.getenv("MAGICEDEN_API_KEY")
     scraper = cloudscraper.create_scraper(delay=10, browser={
@@ -1975,6 +2024,8 @@ async def me(ctx, keyword):
         await me_sol(ctx, result['symbol'])
     elif result['blockchain'] == "MATIC":
         await me_matic(ctx, result['symbol'])
+    elif result['blockchain'] == "BASE":
+        await me_base(ctx, result['symbol'])
 
 
 # 오픈씨 API에서 거래 데이터

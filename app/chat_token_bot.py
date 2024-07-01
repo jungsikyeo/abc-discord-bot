@@ -69,7 +69,7 @@ weekly_top = []
 
 searchfi_amount = 100
 min_win = 1
-max_win = 5
+max_win = 10
 win_limit = 4
 
 lock_status = True

@@ -3412,13 +3412,13 @@ async def g(ctx):
     gas_prices = get_gas_prices()
     current_eth_price = get_current_eth_price()
 
-    fast = int(gas_prices['FastGasPrice'])
-    average = int(gas_prices['ProposeGasPrice'])
-    slow = int(gas_prices['SafeGasPrice'])
+    fast = float(gas_prices['FastGasPrice'])
+    average = float(gas_prices['ProposeGasPrice'])
+    slow = float(gas_prices['SafeGasPrice'])
 
-    eth_fast = fast * 21000 / 1e9 * current_eth_price
-    eth_average = average * 21000 / 1e9 * current_eth_price
-    eth_slow = slow * 21000 / 1e9 * current_eth_price
+    eth_fast = round(fast * 21000 / 1e9 * current_eth_price, 2)
+    eth_average = round(average * 21000 / 1e9 * current_eth_price, 2)
+    eth_slow = round(slow * 21000 / 1e9 * current_eth_price, 2)
     transaction_list = "```"
     transaction_list += "{:<18s}{:<8s}{:<9s}{:<9s}\n".format("Action", "Low", "Average", "Fast")
     transaction_list += "-" * 42 + "\n"

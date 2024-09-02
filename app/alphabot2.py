@@ -3557,7 +3557,7 @@ async def jirasan(ctx, token_id: int):
                            f"-Token ID {token_id}는 Lock입니다."
                            f"```")
         else:
-            await ctx.send(f"```\n"
+            await ctx.send(f"```diff\n"
                            f"+Token ID {token_id}는 Lock이 아닙니다."
                            f"```")
     except Exception as e:

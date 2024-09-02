@@ -43,7 +43,7 @@ from PIL import Image, ImageSequence
 from langchain_openai import ChatOpenAI
 from langchain.chains import LLMMathChain
 from langchain.agents import Tool, initialize_agent, AgentType
-
+from web3 import Web3
 
 load_dotenv()
 
@@ -3526,6 +3526,42 @@ def image_to_string(img):
     img.save(img_byte_arr, format='PNG')
     my_encoded_img = base64.encodebytes(img_byte_arr.getvalue()).decode('ascii')
     return my_encoded_img
+
+
+# Web3 설정
+web3 = Web3(Web3.HTTPProvider('https://ethereum.publicnode.com'))
+
+# 컨트랙트 주소를 체크섬 주소로 변환
+contract_address = Web3.to_checksum_address('0x7fb2d396a3cc840f2c4213f044566ed400159b40')
+
+# 컨트랙트 ABI (soulbound 함수만 포함)
+contract_abi = [
+    {
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "soulbound",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
+contract = web3.eth.contract(address=contract_address, abi=contract_abi)
+
+
+@bot.command()
+async def jirasan(ctx, token_id: int):
+    try:
+        result = contract.functions.soulbound(token_id).call()
+        if result:
+            await ctx.send(f"```diff\n"
+                           f"-Token ID {token_id}는 Lock입니다."
+                           f"```")
+        else:
+            await ctx.send(f"```\n"
+                           f"+Token ID {token_id}는 Lock이 아닙니다."
+                           f"```")
+    except Exception as e:
+        await ctx.send(f"오류 발생: {str(e)}")
 
 
 @bot.event

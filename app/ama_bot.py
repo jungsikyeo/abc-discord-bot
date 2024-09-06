@@ -912,6 +912,98 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
 
 @bot.command()
 @commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def bulk_role_tokens(ctx, role: Union[discord.Role, int, str], tokens: int):
+    # 입력값이 롤 객체인 경우
+    if isinstance(role, discord.Role):
+        role_found = role
+    # 입력값이 역할 ID인 경우
+    elif isinstance(role, int):
+        role_found = discord.utils.get(ctx.guild.roles, id=role)
+    # 입력값이 역할 이름인 경우
+    else:
+        role_found = discord.utils.get(ctx.guild.roles, name=role)
+
+    if role_found is None:
+        embed = Embed(title="Error",
+                      description=f"❌ Role not found for name, ID, or mention {role}. Please enter a valid role name, ID, or mention.\n\n"
+                                  f"❌ {role} 이름, ID 또는 멘션의 역할을 찾을 수 없습니다. 올바른 역할 이름, ID 또는 멘션을 입력해주세요.",
+                      color=0xff0000)
+        await ctx.reply(embed=embed, mention_author=True)
+        return
+
+    user_ids = []
+    action_tokens = tokens
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        for member in ctx.guild.members:
+            for member_role in member.roles:
+                if member_role == role_found:
+                    user_ids.append(member.id)
+
+        # 각 사용자에게 토큰을 부여합니다.
+        for user_id in user_ids:
+            member = ctx.guild.get_member(user_id)
+            user_name = str(member.name)
+            send_user_id = str(ctx.author.id)
+            send_user_name = str(bot.get_user(ctx.author.id).name)
+            channel_id = str(ctx.channel.id)
+            channel_name = f"{bot.get_channel(ctx.channel.id)}"
+            action_type = 'bulk-role-token'
+
+            cursor.execute("""
+                select tokens
+                from user_tokens
+                where user_id = %s
+            """, user_id)
+            user = cursor.fetchone()
+
+            if user:
+                before_tokens = int(user.get('tokens'))
+                after_tokens = before_tokens + action_tokens
+
+                cursor.execute("""
+                    update user_tokens set tokens = tokens + %s
+                    where user_id = %s 
+                """, (action_tokens, user_id, ))
+            else:
+                before_tokens = 0
+                after_tokens = action_tokens
+
+                cursor.execute("""
+                    insert into user_tokens (user_id, tokens) 
+                    values (%s, %s)
+                """, (user_id, action_tokens, ))
+
+            cursor.execute("""
+                insert into user_token_logs (
+                    user_id, user_name, action_tokens, before_tokens, after_tokens, action_type, 
+                    send_user_id, send_user_name, channel_id, channel_name)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, user_name, action_tokens, before_tokens, after_tokens, action_type,
+                  send_user_id, send_user_name, channel_id, channel_name, ))
+
+            connection.commit()
+
+            await ctx.channel.send(f"🟢 Successfully given {tokens} tokens to {member.mention}")
+
+        embed = discord.Embed(title=f"{role_found.name} give tokens",
+                              description=f"✅ 총 {len(user_ids)}명의 {role_found.name} 사용자에게 {tokens}개의 토큰이 부여되었습니다.\n\n"
+                                          f"✅ A total of {role_found.name} users of {len(user_ids)} were given {tokens} tokens.",
+                              color=0x00ff00)
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+        logger.error(f'Error: {e}')
+        embed = discord.Embed(title="Error",
+                              description="🔴 명령어 처리 중 오류가 발생했습니다.\n\n"
+                                          "🔴 An error occurred while processing the command.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
 async def ama_give_tokens(ctx):
     connection = db.get_connection()
     cursor = connection.cursor()

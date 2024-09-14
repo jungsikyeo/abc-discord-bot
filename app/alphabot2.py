@@ -3611,8 +3611,8 @@ async def on_message(message):
             await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
-    proof_channel_id = int(operating_system.getenv('PROOF_BACKUP_CHANNEL_ID'))
-    proof_backup_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))
+    proof_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))
+    proof_backup_channel_id = int(operating_system.getenv('PROOF_BACKUP_CHANNEL_ID'))
     exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
     if (
         message.channel.id != sharing_channel_id

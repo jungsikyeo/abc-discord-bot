@@ -1863,7 +1863,8 @@ async def me_base(ctx, symbol):
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
-    response = requests.get(f"https://stats-mainnet.magiceden.io/collection_stats/stats?chain=base&collectionId={symbol}").text
+    response = requests.get(
+        f"https://stats-mainnet.magiceden.io/collection_stats/stats?chain=base&collectionId={symbol}").text
     print(response)
     data = json.loads(response)
     print(data)
@@ -2110,7 +2111,8 @@ async def runes(ctx):
         'platform': 'android',
         'desktop': False,
     })
-    response = scraper.get(f"https://www.okx.com/priapi/v1/nft/inscription/rc20/tokens?scope=4&page=1&size=50&sortBy=volume&sort=&tokensLike=&timeType=1&tickerType=4&walletAddress=&t=1717106748326")
+    response = scraper.get(
+        f"https://www.okx.com/priapi/v1/nft/inscription/rc20/tokens?scope=4&page=1&size=50&sortBy=volume&sort=&tokensLike=&timeType=1&tickerType=4&walletAddress=&t=1717106748326")
     results = json.loads(response.text)
 
     data = results.get("data")
@@ -2747,7 +2749,7 @@ async def 김프(ctx):
 
     if usdt_list:
         embed = discord.Embed(
-            title=f"Current USD/KRW: **{round(usdt_krw,2)} KRW**",
+            title=f"Current USD/KRW: **{round(usdt_krw, 2)} KRW**",
             description=f"Exchange USDT Information",
             color=0xEFB90A
         )
@@ -2758,7 +2760,8 @@ async def 김프(ctx):
                 flag = f"+"
             else:
                 flag = ""
-            embed.add_field(name=f"{usdt.get('name')}", value=f"```diff\n{flag}{{:,.1f}}%\n{{:,.2f}} KRW```".format(rate, price), inline=True)
+            embed.add_field(name=f"{usdt.get('name')}",
+                            value=f"```diff\n{flag}{{:,.1f}}%\n{{:,.2f}} KRW```".format(rate, price), inline=True)
 
         await ctx.send(embed=embed)
     else:
@@ -3608,8 +3611,13 @@ async def on_message(message):
             await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
+    proof_channel_id = int(operating_system.getenv('PROOF_BACKUP_CHANNEL_ID'))
+    proof_backup_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))
     exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
-    if message.channel.id != sharing_channel_id or any(role.id in exclude_role_list for role in message.author.roles):
+    if (
+        message.channel.id != sharing_channel_id
+        and message.channel.id != proof_channel_id
+    ) or any(role.id in exclude_role_list for role in message.author.roles):
         await bot.process_commands(message)
         return
     else:
@@ -3617,14 +3625,43 @@ async def on_message(message):
         image_attached = any(attachment.content_type.startswith('image/') for attachment in message.attachments if
                              attachment.content_type)
 
-        # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
-        if not image_attached or len(message.content.strip()) == 0:
-            await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
-            # 사용자에게 규칙을 알리는 메시지를 보냄
-            warning_msg = await message.channel.send(
-                f"{message.author.mention}, please post both an image and some text together!"
-            )
-            await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+        if message.channel.id == sharing_channel_id:
+            # 메시지에 이미지 첨부 파일과 텍스트가 모두 포함되어 있는지 검사
+            if not image_attached or len(message.content.strip()) == 0:
+                await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
+                # 사용자에게 규칙을 알리는 메시지를 보냄
+                warning_msg = await message.channel.send(
+                    f"{message.author.mention}, please post both an image and some text together!"
+                )
+                await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+                return
+        elif message.channel.id == proof_channel_id:
+            # 메시지에 이미지 첨부 파일이 포함되어 있는지 검사
+            if not image_attached:
+                await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
+                # 사용자에게 규칙을 알리는 메시지를 보냄
+                warning_msg = await message.channel.send(
+                    f"{message.author.mention}, please post an proof image!"
+                )
+                await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+                return
+            else:
+                # 인증 채널의 모든 메시지를 가져와 예전 업로드 이력이 있는지 체크.
+                async for history_message in bot.get_channel(proof_channel_id).history(limit=None, oldest_first=True):
+                    if message != history_message and message.author == history_message.author:
+                        await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
+                        # 사용자에게 규칙을 알리는 메시지를 보냄
+                        warning_msg = await message.channel.send(
+                            f"{message.author.mention}, You already have a proof image uploaded!"
+                        )
+                        await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
+                        return
+                    backup_message = f"----- Proof images of {message.author.mention} -----\n"
+                    for attachment in message.attachments:
+                        backup_message += f"{attachment} \n"
+                    await bot.get_channel(proof_backup_channel_id).send(backup_message)
+                    backup_message = "--------------------------------------------------"
+                    await bot.get_channel(proof_backup_channel_id).send(backup_message)
 
 
 @bot.event

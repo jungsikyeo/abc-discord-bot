@@ -33,6 +33,7 @@ level_2_role_id = int(os.getenv('LEVEL_2_ROLE_ID'))
 level_5_role_id = int(os.getenv('LEVEL_5_ROLE_ID'))
 level_10_role_id = int(os.getenv('LEVEL_10_ROLE_ID'))
 pioneer_role_id = int(os.getenv('PIONEER_ROLE_ID'))
+pioneer_cert_role_id = int(os.getenv('PIONEER_CERT_ROLE_ID'))
 mysql_ip = os.getenv("MYSQL_IP")
 mysql_port = os.getenv("MYSQL_PORT")
 mysql_id = os.getenv("MYSQL_ID")
@@ -819,36 +820,45 @@ async def give_role_top_users(ctx: ApplicationContext):
                 where guild_id = %s
                   and user_id not in({no_rank_members_str})
                 order by xp desc
-                limit 200
+                limit 400
             """, guild_id)
             top_users = cursor.fetchall()
 
             # user_id와 랭킹을 딕셔너리로 변환
-        top_users_dict = {str(user['user_id']): user['user_rank'] for user in top_users}
+            top_users_dict = {str(user['user_id']): user['user_rank'] for user in top_users}
 
-        pioneer_role = ctx.guild.get_role(pioneer_role_id)
+            pioneer_role = ctx.guild.get_role(pioneer_role_id)
+            pioneer_cert_role = ctx.guild.get_role(pioneer_cert_role_id)
+            top_200_count = 0
 
-        for member in ctx.guild.members:
-            user_rank = top_users_dict.get(str(member.id))
-            if user_rank:
-                # 멤버가 상위 200명 안에 있다면 역할 추가
-                if pioneer_role not in member.roles:
-                    await member.add_roles(pioneer_role)
-                    logger.info(f"{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
-            else:
-                # 멤버가 상위 200명 밖이라면 역할 제거
-                if pioneer_role in member.roles:
-                    await member.remove_roles(pioneer_role)
-                    logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+            for member in ctx.guild.members:
+                user_rank = top_users_dict.get(str(member.id))
+                if user_rank:
+                    # 멤버가 파이오니아 인증 역할이 없으면 역할 제거
+                    if pioneer_cert_role not in member.roles:
+                        await member.remove_roles(pioneer_role)
+                        logger.info(f"{member.name} ({member.id}) -> Not in pioneer_cert_role, removed pioneer_role")
+                        continue
 
-            # await asyncio.sleep(0.2)
+                    # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
+                    if top_200_count < 200:
+                        await member.add_roles(pioneer_role)
+                        top_200_count += 1
+                        logger.info(f"[{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
+                else:
+                    # 멤버가 상위 400명 밖이라면 역할 제거
+                    if pioneer_role in member.roles:
+                        await member.remove_roles(pioneer_role)
+                        logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
 
-        embed = make_embed({
-            "title": "Top Users Refreshed!",
-            "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
-            "color": 0x37e37b,
-        })
-        await ctx.respond(embed=embed, ephemeral=False)
+                # await asyncio.sleep(0.2)
+
+            embed = make_embed({
+                "title": "Top Users Refreshed!",
+                "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
+                "color": 0x37e37b,
+            })
+            await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         connection.rollback()

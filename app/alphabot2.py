@@ -3669,6 +3669,7 @@ async def on_raw_reaction_add(payload):
     # 관리자가 사용할 이모지와 그에 해당하는 역할 이름
     EMOJI_ROLE_MAP = {
         '✅': int(operating_system.getenv('PIONEER_CERT_ROLE_ID')),
+        '❌': int(operating_system.getenv('PIONEER_CERT_ROLE_ID')),
     }
 
     proof_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))
@@ -3693,8 +3694,12 @@ async def on_raw_reaction_add(payload):
             logger.error(f"Role {pioneer_cert_role.mention} not found")
             return
 
-        await message.author.add_roles(pioneer_cert_role)
-        logger.info(f"Assigned {pioneer_cert_role.mention} to {message.author}")
+        if str(payload.emoji) == '✅':
+            await message.author.add_roles(pioneer_cert_role)
+            logger.info(f"Assigned {pioneer_cert_role.mention} to {message.author}")
+        elif str(payload.emoji) == '❌':
+            await message.author.remove_roles(pioneer_cert_role)
+            logger.info(f"Removed {pioneer_cert_role.mention} to {message.author}")
 
 
 @bot.event

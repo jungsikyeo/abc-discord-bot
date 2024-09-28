@@ -3665,6 +3665,39 @@ async def on_message(message):
 
 
 @bot.event
+async def on_raw_reaction_add(payload):
+    # 관리자가 사용할 이모지와 그에 해당하는 역할 이름
+    EMOJI_ROLE_MAP = {
+        '✅': int(operating_system.getenv('PIONEER_CERT_ROLE_ID')),
+    }
+
+    proof_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))
+    if payload.channel_id != proof_channel_id:
+        return
+
+    if str(payload.emoji) not in EMOJI_ROLE_MAP:
+        return
+
+    guild = bot.get_guild(payload.guild_id)
+    channel = guild.get_channel(payload.channel_id)
+    message = await channel.fetch_message(payload.message_id)
+
+    # 리액션을 추가한 사용자가 관리자인지 확인
+    exclude_role_list = list(map(int, operating_system.getenv('C2E_EXCLUDE_ROLE_LIST').split(',')))
+    if any(role.id in exclude_role_list for role in payload.member.roles):
+        # 메시지 작성자에게 역할 부여
+        pioneer_cert_role_id = EMOJI_ROLE_MAP[str(payload.emoji)]
+        pioneer_cert_role = guild.get_role(pioneer_cert_role_id)
+
+        if pioneer_cert_role is None:
+            logger.error(f"Role {pioneer_cert_role.mention} not found")
+            return
+
+        await message.author.add_roles(pioneer_cert_role)
+        logger.info(f"Assigned {pioneer_cert_role.mention} to {message.author}")
+
+
+@bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return

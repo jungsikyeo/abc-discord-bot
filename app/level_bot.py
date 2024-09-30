@@ -873,4 +873,82 @@ async def give_role_top_users(ctx: ApplicationContext):
         change_bulk(False, "")
 
 
+@bot.slash_command(
+    name="give_role_top_users_old",
+    description="Give special role to the top 200 users",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def give_role_top_users_old(ctx: ApplicationContext):
+    guild_id = ctx.guild.id
+
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            await ctx.defer()
+
+            global bulk
+            if bulk.get("flag"):
+                embed = make_embed({
+                    "title": "Warning",
+                    "description": f"Bulk operation is in progress, please try again later.",
+                    "color": 0xff0000,
+                })
+                await ctx.respond(embed=embed, ephemeral=True)
+                logger.warning(f"Bulk operation is in progress, func: {bulk.get('func')}")
+                return
+
+            change_bulk(True, "give_role_top_users")
+
+            no_rank_members_str = ','.join([f"{member_id}" for member_id in no_rank_members])
+
+            cursor.execute(f"""
+                select user_id, xp, rank() over(order by xp desc, last_message_time) as user_rank
+                from user_levels
+                where guild_id = %s
+                  and user_id not in({no_rank_members_str})
+                order by xp desc
+                limit 200
+            """, guild_id)
+            top_users = cursor.fetchall()
+
+            # user_id와 랭킹을 딕셔너리로 변환
+        top_users_dict = {str(user['user_id']): user['user_rank'] for user in top_users}
+
+        pioneer_role = ctx.guild.get_role(pioneer_role_id)
+
+        for member in ctx.guild.members:
+            user_rank = top_users_dict.get(str(member.id))
+            if user_rank:
+                # 멤버가 상위 200명 안에 있다면 역할 추가
+                if pioneer_role not in member.roles:
+                    await member.add_roles(pioneer_role)
+                    logger.info(f"{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
+            else:
+                # 멤버가 상위 200명 밖이라면 역할 제거
+                if pioneer_role in member.roles:
+                    await member.remove_roles(pioneer_role)
+                    logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+
+            # await asyncio.sleep(0.2)
+
+        embed = make_embed({
+            "title": "Top Users Refreshed!",
+            "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
+            "color": 0x37e37b,
+        })
+        await ctx.respond(embed=embed, ephemeral=False)
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        connection.rollback()
+        embed = make_embed({
+            "title": "Error",
+            "description": f"An error occurred: {str(e)}",
+            "color": 0xff0000,
+        })
+        await ctx.respond(embed=embed, ephemeral=True)
+    finally:
+        connection.close()
+        change_bulk(False, "")
+
 bot.run(bot_token)

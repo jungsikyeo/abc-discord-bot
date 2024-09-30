@@ -859,29 +859,24 @@ async def bulk_xspace_role(ctx, role: Union[discord.Role, int, str]):
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    pioneer_cert_role_id = int(os.getenv('PIONEER_CERT_ROLE_ID'))
+    # 컨텍스트가 스레드인지 확인
+    if not isinstance(ctx.channel, discord.Thread):
+        embed = discord.Embed(title="Error",
+                              description="❌ 이 명령어는 스레드 내에서만 사용할 수 있습니다.\n\n"
+                                          "❌ This command can only be used within a thread.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
+        return
 
-    # 파이오니아 인증 롤 부여는 채널 체크 패스
-    print(int(role_found.id), pioneer_cert_role_id)
-    if int(role_found.id) != pioneer_cert_role_id:
-        # 컨텍스트가 스레드인지 확인
-        if not isinstance(ctx.channel, discord.Thread):
-            embed = discord.Embed(title="Error",
-                                  description="❌ 이 명령어는 스레드 내에서만 사용할 수 있습니다.\n\n"
-                                              "❌ This command can only be used within a thread.",
-                                  color=0xff0000)
-            await ctx.send(embed=embed)
-            return
-
-        # 스레드가 특정 카테고리에 속하는지 확인
-        category_id = int(os.getenv("AMA_PROOF_CATEGORY_ID"))  # 카테고리 ID 설정
-        if ctx.channel.parent_id != category_id:
-            embed = discord.Embed(title="Error",
-                                  description=f"❌ 이 스레드는 <#{category_id}> 카테고리에 속하지 않습니다.\n\n"
-                                              f"❌ This thread does not belong to <#{category_id}> category.",
-                                  color=0xff0000)
-            await ctx.send(embed=embed)
-            return
+    # 스레드가 특정 카테고리에 속하는지 확인
+    category_id = int(os.getenv("AMA_PROOF_CATEGORY_ID"))  # 카테고리 ID 설정
+    if ctx.channel.parent_id != category_id:
+        embed = discord.Embed(title="Error",
+                              description=f"❌ 이 스레드는 <#{category_id}> 카테고리에 속하지 않습니다.\n\n"
+                                          f"❌ This thread does not belong to <#{category_id}> category.",
+                              color=0xff0000)
+        await ctx.send(embed=embed)
+        return
 
     user_ids = []
     try:

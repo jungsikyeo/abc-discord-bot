@@ -3656,12 +3656,12 @@ async def on_message(message):
                         )
                         await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
                         return
-                    backup_message = f"----- Proof images of {message.author.mention} -----\n"
-                    for attachment in message.attachments:
-                        backup_message += f"{attachment} \n"
-                    await bot.get_channel(proof_backup_channel_id).send(backup_message)
-                    backup_message = "--------------------------------------------------"
-                    await bot.get_channel(proof_backup_channel_id).send(backup_message)
+                backup_message = f"----- Proof images of {message.author.mention} -----\n"
+                for attachment in message.attachments:
+                    backup_message += f"{attachment} \n"
+                await bot.get_channel(proof_backup_channel_id).send(backup_message)
+                backup_message = "--------------------------------------------------"
+                await bot.get_channel(proof_backup_channel_id).send(backup_message)
 
 
 @bot.event

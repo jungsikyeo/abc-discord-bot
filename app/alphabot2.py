@@ -3649,13 +3649,14 @@ async def on_message(message):
                 # 인증 채널의 모든 메시지를 가져와 예전 업로드 이력이 있는지 체크.
                 async for history_message in bot.get_channel(proof_channel_id).history(limit=None, oldest_first=True):
                     if message != history_message and message.author == history_message.author:
+                        print(history_message)
                         await message.delete()  # 조건을 만족하지 않으면 메시지 삭제
                         # 사용자에게 규칙을 알리는 메시지를 보냄
                         warning_msg = await message.channel.send(
                             f"{message.author.mention}, You already have a proof image uploaded!"
                         )
                         await warning_msg.delete(delay=10)  # 경고 메시지는 5초 후 자동 삭제
-                        return
+                        break
                 backup_message = f"----- Proof images of {message.author.mention} -----\n"
                 for attachment in message.attachments:
                     backup_message += f"{attachment} \n"

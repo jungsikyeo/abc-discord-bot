@@ -1678,10 +1678,10 @@ async def me_btc(ctx, symbol):
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
     print(response)
-    logger.error(response)
+    logger.error(11111, response)
     data = json.loads(response)
     print(data)
-    logger.error(data)
+    logger.error(22222, data)
 
     try:
         if not data:

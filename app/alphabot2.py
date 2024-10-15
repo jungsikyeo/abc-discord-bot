@@ -1678,8 +1678,10 @@ async def me_btc(ctx, symbol):
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
     print(response)
+    logger.error(response)
     data = json.loads(response)
     print(data)
+    logger.error(data)
 
     try:
         if not data:
@@ -1708,6 +1710,7 @@ async def me_btc(ctx, symbol):
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/stat?collectionSymbol={symbol}",
                            headers=headers).text
     # print(response)
+    logger.error(response)
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 100000000
@@ -2018,6 +2021,7 @@ async def 메(ctx, keyword):
 async def me(ctx, keyword):
     result = Queries.select_keyword(db, keyword)
     print(result['blockchain'], result['symbol'])
+    logger.error(result['blockchain'], result['symbol'])
 
     if result['blockchain'] == "BTC":
         await me_btc(ctx, result['symbol'])

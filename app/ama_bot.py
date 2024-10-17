@@ -944,6 +944,7 @@ async def bulk_role_tokens(ctx, role: Union[discord.Role, int, str], tokens: int
         # 각 사용자에게 토큰을 부여합니다.
         for user_id in user_ids:
             member = ctx.guild.get_member(user_id)
+            logger.info(member)
             user_name = str(member.name)
             send_user_id = str(ctx.author.id)
             send_user_name = str(bot.get_user(ctx.author.id).name)
@@ -994,6 +995,7 @@ async def bulk_role_tokens(ctx, role: Union[discord.Role, int, str], tokens: int
         await ctx.send(embed=embed)
 
     except Exception as e:
+        connection.rollback()
         logger.error(f'Error: {e}')
         embed = discord.Embed(title="Error",
                               description="🔴 명령어 처리 중 오류가 발생했습니다.\n\n"
@@ -1089,6 +1091,7 @@ async def ama_give_tokens(ctx):
                               color=0x00ff00)
         await ctx.reply(embed=embed, mention_author=True)
     except Exception as e:
+        connection.rollback()
         logger.error(f'ama_give_tokens error: {e}')
     finally:
         cursor.close()

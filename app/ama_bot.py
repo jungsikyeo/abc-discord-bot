@@ -5,6 +5,9 @@ import logging
 import time
 import pymysql
 import datetime
+import asyncio
+import aiomysql
+from contextlib import asynccontextmanager
 from discord import Embed
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -54,7 +57,7 @@ class Database:
     def __init__(self, host, port, user, password, db):
         self.pool = PooledDB(
             creator=pymysql,
-            maxconnections=5,
+            maxconnections=100,
             mincached=2,
             host=host,
             port=int(port),
@@ -68,6 +71,16 @@ class Database:
     def get_connection(self):
         return self.pool.connection()
 
+
+@asynccontextmanager
+async def get_db_connection():
+    conn = await aiomysql.connect(host=mysql_ip, port=int(mysql_port),
+                                  user=mysql_id, password=mysql_passwd,
+                                  db=mysql_db, autocommit=False)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=f"{command_flag}", intents=intents)
@@ -931,77 +944,55 @@ async def bulk_role_tokens(ctx, role: Union[discord.Role, int, str], tokens: int
         await ctx.reply(embed=embed, mention_author=True)
         return
 
-    user_ids = []
-    action_tokens = tokens
-    connection = db.get_connection()
-    cursor = connection.cursor()
-    try:
-        for member in ctx.guild.members:
-            for member_role in member.roles:
-                if member_role == role_found:
-                    user_ids.append(member.id)
+    async with get_db_connection() as conn:
+        async with conn.cursor() as cursor:
+            try:
+                await conn.begin()
 
-        # 각 사용자에게 토큰을 부여합니다.
-        for user_id in user_ids:
-            member = ctx.guild.get_member(user_id)
-            logger.info(member)
-            user_name = str(member.name)
-            send_user_id = str(ctx.author.id)
-            send_user_name = str(bot.get_user(ctx.author.id).name)
-            channel_id = str(ctx.channel.id)
-            channel_name = f"{bot.get_channel(ctx.channel.id)}"
-            action_type = 'bulk-role-token'
+                user_ids = [member.id for member in ctx.guild.members if role_found in member.roles]
 
-            cursor.execute("""
-                select tokens
-                from user_tokens
-                where user_id = %s
-            """, user_id)
-            user = cursor.fetchone()
+                # 새로운 쿼리 구문
+                query = """
+                INSERT INTO user_tokens (user_id, tokens) 
+                VALUES (%s, %s) 
+                AS new_values
+                ON DUPLICATE KEY UPDATE 
+                tokens = user_tokens.tokens + new_values.tokens
+                """
 
-            if user:
-                before_tokens = int(user.get('tokens'))
-                after_tokens = before_tokens + action_tokens
+                insert_data = [(user_id, tokens) for user_id in user_ids]
 
-                cursor.execute("""
-                    update user_tokens set tokens = tokens + %s
-                    where user_id = %s 
-                """, (action_tokens, user_id, ))
-            else:
-                before_tokens = 0
-                after_tokens = action_tokens
+                # 벌크 업데이트 수행
+                await cursor.executemany(query, insert_data)
 
-                cursor.execute("""
-                    insert into user_tokens (user_id, tokens) 
-                    values (%s, %s)
-                """, (user_id, action_tokens, ))
+                # 로그 데이터 삽입 (이전과 동일)
+                log_data = [(user_id, str(ctx.guild.get_member(user_id).name), tokens,
+                             'bulk-role-token', str(ctx.author.id), str(ctx.author.name),
+                             str(ctx.channel.id), str(ctx.channel)) for user_id in user_ids]
 
-            cursor.execute("""
-                insert into user_token_logs (
-                    user_id, user_name, action_tokens, before_tokens, after_tokens, action_type, 
-                    send_user_id, send_user_name, channel_id, channel_name)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, user_name, action_tokens, before_tokens, after_tokens, action_type,
-                  send_user_id, send_user_name, channel_id, channel_name, ))
+                await cursor.executemany("""
+                    INSERT INTO user_token_logs 
+                    (user_id, user_name, action_tokens, action_type, 
+                     send_user_id, send_user_name, channel_id, channel_name)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, log_data)
 
-            connection.commit()
+                await conn.commit()
 
-            await ctx.channel.send(f"🟢 Successfully given {tokens} tokens to {member.mention}")
+                embed = discord.Embed(title=f"{role_found.name} give tokens",
+                                      description=f"✅ 총 {len(user_ids)}명의 {role_found.name} 사용자에게 {tokens}개의 토큰이 부여되었습니다.\n\n"
+                                                  f"✅ A total of {role_found.name} users of {len(user_ids)} were given {tokens} tokens.",
+                                      color=0x00ff00)
+                await ctx.send(embed=embed)
 
-        embed = discord.Embed(title=f"{role_found.name} give tokens",
-                              description=f"✅ 총 {len(user_ids)}명의 {role_found.name} 사용자에게 {tokens}개의 토큰이 부여되었습니다.\n\n"
-                                          f"✅ A total of {role_found.name} users of {len(user_ids)} were given {tokens} tokens.",
-                              color=0x00ff00)
-        await ctx.send(embed=embed)
-
-    except Exception as e:
-        connection.rollback()
-        logger.error(f'Error: {e}')
-        embed = discord.Embed(title="Error",
-                              description="🔴 명령어 처리 중 오류가 발생했습니다.\n\n"
-                                          "🔴 An error occurred while processing the command.",
-                              color=0xff0000)
-        await ctx.send(embed=embed)
+            except Exception as e:
+                await conn.rollback()
+                logger.error(f'Error in bulk_role_tokens: {e}')
+                embed = discord.Embed(title="Error",
+                                      description="🔴 명령어 처리 중 오류가 발생했습니다.\n\n"
+                                                  "🔴 An error occurred while processing the command.",
+                                      color=0xff0000)
+                await ctx.send(embed=embed)
 
 
 @bot.command()

@@ -1571,7 +1571,7 @@ class BidButtonView(View):
         self.end_time = end_time
         self.org_interaction = org_interaction
         self.loop = asyncio.get_event_loop()
-        asyncio.create_task(self.check_end_time_periodically())
+        # asyncio.create_task(self.check_end_time_periodically())
 
     async def check_end_time_periodically(self):
         while True:

@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import time
 import pymysql
@@ -1677,11 +1678,11 @@ async def me_btc(ctx, symbol):
         "Authorization": f"Bearer {api_key}",
     }
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/collections/{symbol}", headers=headers).text
-    print(response)
-    logger.error(11111, response)
+    print(111111111)
+    logger.info(response)
     data = json.loads(response)
-    print(data)
-    logger.error(22222, data)
+    print(2222222222)
+    logger.info(data)
 
     try:
         if not data:
@@ -1706,7 +1707,7 @@ async def me_btc(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/ord/btc/stat?collectionSymbol={symbol}",
                            headers=headers).text
     # print(response)
@@ -1723,7 +1724,7 @@ async def me_btc(ctx, symbol):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(
         f"https://api-mainnet.magiceden.dev/v2/ord/btc/activities?kind=buying_broadcasted&collectionSymbol={symbol}&limit=20",
         headers=headers).text
@@ -1780,14 +1781,14 @@ async def me_sol(ctx, symbol):
     if projectTwitter:
         projectLinks += f" | [Twitter]({projectTwitter})"
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats").text
     print("stats:", response)
     data = json.loads(response)
 
     projectFloorPrice = float(data['floorPrice']) / 1000000000
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/holder_stats").text
     print("holder_stats:", response)
     data = json.loads(response)
@@ -1805,7 +1806,7 @@ async def me_sol(ctx, symbol):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/activities").text
     print("activities:", response)
     data = json.loads(response)
@@ -1817,7 +1818,7 @@ async def me_sol(ctx, symbol):
             break
         if activity.get("type") == "buyNow":
             token_mint = activity.get("tokenMint")
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
             response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/tokens/{token_mint}").text
             data = json.loads(response)
 
@@ -1962,7 +1963,7 @@ async def me_matic(ctx, symbol):
     embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
     embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
 
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/activities").text
     # print("activities:", response)
     data = json.loads(response)
@@ -1974,7 +1975,7 @@ async def me_matic(ctx, symbol):
             break
         if activity.get("type") == "buyNow":
             token_mint = activity.get("tokenMint")
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
             response = scraper.get(f"https://api-mainnet.magiceden.dev/v2/tokens/{token_mint}").text
             data = json.loads(response)
 
@@ -2021,7 +2022,7 @@ async def 메(ctx, keyword):
 async def me(ctx, keyword):
     result = Queries.select_keyword(db, keyword)
     print(result['blockchain'], result['symbol'])
-    logger.error(result['blockchain'], result['symbol'])
+    logger.info(f"{result['blockchain']} {result['symbol']}")
 
     if result['blockchain'] == "BTC":
         await me_btc(ctx, result['symbol'])
@@ -2108,7 +2109,7 @@ async def 룬(ctx):
 
 @bot.command()
 async def runes(ctx):
-    time.sleep(1)
+    await asyncio.sleep(1)
 
     scraper = cloudscraper.create_scraper(delay=10, browser={
         'browser': 'chrome',
@@ -2164,7 +2165,7 @@ async def runes(ctx):
 # Reservoir API
 @bot.command()
 async def os(ctx, keyword, search_type: int = 1, count: int = 0):
-    time.sleep(1)
+    await asyncio.sleep(1)
 
     result = Queries.select_keyword(db, keyword)
     symbol = result['symbol']
@@ -3606,7 +3607,7 @@ async def on_message(message):
             prompt_text: str = message.content
 
             answer1 = translator.translate_text(prompt_text, target_lang=from_language1)
-            time.sleep(2)
+            await asyncio.sleep(2)
             answer2 = translator.translate_text(prompt_text, target_lang=from_language2)
 
             answer = f"- {language1_name}: {answer1}\n\n" \

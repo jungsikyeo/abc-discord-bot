@@ -835,8 +835,9 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             logger.info(f"total_member: {len(total_members)}")
 
-            index = 1
+            index = 0
             for member in ctx.guild.members:
+                index += 1
                 user_rank = top_users_dict.get(str(member.id))
                 if user_rank:
                     # 멤버가 파이오니아 인증 역할이 없으면 역할 제거

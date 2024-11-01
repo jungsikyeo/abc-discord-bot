@@ -83,6 +83,7 @@ level_2_role = None
 level_5_role = None
 level_10_role = None
 pioneer_role = None
+pioneer_cert_role = None
 
 rank_search_users = {}
 
@@ -284,12 +285,13 @@ async def on_message(message):
 async def on_ready():
     logger.info(f'{bot.user} has connected to Discord!')
 
-    global level_2_role, level_5_role, level_10_role, pioneer_role
+    global level_2_role, level_5_role, level_10_role, pioneer_role, pioneer_cert_role
 
     level_2_role = bot.get_guild(local_server).get_role(level_2_role_id)
     level_5_role = bot.get_guild(local_server).get_role(level_5_role_id)
     level_10_role = bot.get_guild(local_server).get_role(level_10_role_id)
     pioneer_role = bot.get_guild(local_server).get_role(pioneer_role_id)
+    pioneer_cert_role = bot.get_guild(local_server).get_role(pioneer_cert_role_id)
 
 
 ##############################
@@ -827,15 +829,13 @@ async def give_role_top_users(ctx: ApplicationContext):
             # user_id와 랭킹을 딕셔너리로 변환
             top_users_dict = {str(user['user_id']): user['user_rank'] for user in top_users}
 
-            pioneer_role = ctx.guild.get_role(pioneer_role_id)
-            pioneer_cert_role = ctx.guild.get_role(pioneer_cert_role_id)
             total_members = ctx.guild.members
             logger.info(f"total_member: {len(total_members)}")
 
             member_index = 0
             top_200_count = 0
             for member in ctx.guild.members:
-                member_index = member_index + 1
+                member_index += 1
                 user_rank = top_users_dict.get(str(member.id))
                 if user_rank:
                     # 멤버가 파이오니아 인증 역할이 없으면 역할 제거
@@ -845,7 +845,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                         continue
 
                     # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
-                    if top_200_count < 200:
+                    if top_200_count < 200 and level_2_role in member.roles:
                         await member.add_roles(pioneer_role)
                         top_200_count += 1
                         logger.info(f"[{member_index}][TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")

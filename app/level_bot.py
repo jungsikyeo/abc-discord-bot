@@ -835,6 +835,12 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             logger.info(f"total_member: {len(total_members)}")
 
+            total_member_index = 1
+            for member in ctx.guild.members:
+                await member.remove_roles(pioneer_role)
+                logger.info(f"[{total_member_index}]{member.name} ({member.id}) -> removed pioneer_role")
+                total_member_index += 1
+
             # for member in ctx.guild.members:
             #     user_rank = top_users_dict.get(str(member.id))
             #     if user_rank:
@@ -854,15 +860,15 @@ async def give_role_top_users(ctx: ApplicationContext):
             #         if pioneer_role in member.roles:
             #             await member.remove_roles(pioneer_role)
             #             logger.info(f"{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
-            #
-            #     # await asyncio.sleep(0.2)
 
-            # embed = make_embed({
-            #     "title": "Top Users Refreshed!",
-            #     "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
-            #     "color": 0x37e37b,
-            # })
-            # await ctx.respond(embed=embed, ephemeral=False)
+                # await asyncio.sleep(0.2)
+
+            embed = make_embed({
+                "title": "Top Users Refreshed!",
+                "description": f"✅ Successfully Given top 200 users {pioneer_role.mention}",
+                "color": 0x37e37b,
+            })
+            await ctx.respond(embed=embed, ephemeral=False)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         connection.rollback()

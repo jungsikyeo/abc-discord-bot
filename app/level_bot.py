@@ -841,8 +841,9 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             member_index = 0
             top_200_count = 0
-            for member in top_users:
-                user_rank = top_users_dict.get(str(member.get("user_id")))
+            for user in top_users:
+                member = ctx.guild.get_member(user.get("user_id"))
+                user_rank = top_users_dict.get(str(member.id))
                 if user_rank:
                     # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
                     if top_200_count < 200 and level_2_role in member.roles:

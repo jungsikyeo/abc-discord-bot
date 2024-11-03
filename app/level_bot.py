@@ -834,7 +834,7 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             member_index = 0
             for member in ctx.guild.members:
-                if pioneer_cert_role not in member.roles:
+                if pioneer_cert_role in member.roles:
                     member_index += 1
                     await member.remove_roles(pioneer_role)
                     logger.info(f"[reset: {member_index}]{member.name} ({member.id}) -> reset pioneer_role")

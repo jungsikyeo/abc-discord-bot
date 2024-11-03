@@ -833,17 +833,18 @@ async def give_role_top_users(ctx: ApplicationContext):
             logger.info(f"total_member: {len(total_members)}")
 
             member_index = 0
+            for member in ctx.guild.members:
+                if pioneer_cert_role not in member.roles:
+                    member_index += 1
+                    await member.remove_roles(pioneer_role)
+                    logger.info(f"[reset: {member_index}]{member.name} ({member.id}) -> reset pioneer_role")
+
+            member_index = 0
             top_200_count = 0
             for member in ctx.guild.members:
                 member_index += 1
                 user_rank = top_users_dict.get(str(member.id))
                 if user_rank:
-                    # 멤버가 파이오니아 인증 역할이 없으면 역할 제거
-                    if pioneer_cert_role not in member.roles:
-                        await member.remove_roles(pioneer_role)
-                        logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in pioneer_cert_role, removed pioneer_role")
-                        continue
-
                     # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
                     if top_200_count < 200 and level_2_role in member.roles:
                         await member.add_roles(pioneer_role)
@@ -851,14 +852,10 @@ async def give_role_top_users(ctx: ApplicationContext):
                         logger.info(f"[{member_index}][TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
                     else:
                         # 멤버가 상위 200명 밖이라면 역할 제거
-                        if pioneer_role in member.roles:
-                            await member.remove_roles(pioneer_role)
-                        logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+                        logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200 or no lv.2")
                 else:
                     # 멤버가 상위 400명 밖이라면 역할 제거
-                    if pioneer_role in member.roles:
-                        await member.remove_roles(pioneer_role)
-                    logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 400, removed pioneer_role")
+                    logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 400")
 
             embed = make_embed({
                 "title": "Top Users Refreshed!",

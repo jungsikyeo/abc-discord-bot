@@ -841,16 +841,19 @@ async def give_role_top_users(ctx: ApplicationContext):
 
             top_200_count = 0
             for top_user in top_users:
-                member = ctx.guild.get_member(int(top_user.get("user_id")))
-                user_rank = top_user.get("user_rank")
-                # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
-                if top_200_count < 200 and level_2_role in member.roles and pioneer_cert_role in member.roles:
-                    await member.add_roles(pioneer_role)
-                    top_200_count += 1
-                    logger.info(f"[TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
-                else:
-                    # 멤버가 상위 200명 밖이라면 역할 제거
-                    logger.info(f"{member.name} ({member.id}) -> Not in top 200 or no lv.2 or Not in Pioneer Certification")
+                try:
+                    member = ctx.guild.get_member(int(top_user.get("user_id")))
+                    user_rank = top_user.get("user_rank")
+                    # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
+                    if top_200_count < 200 and level_2_role in member.roles and pioneer_cert_role in member.roles:
+                        await member.add_roles(pioneer_role)
+                        top_200_count += 1
+                        logger.info(f"[TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
+                    else:
+                        # 멤버가 상위 200명 밖이라면 역할 제거
+                        logger.info(f"{member.name} ({member.id}) -> Not in top 200 or no lv.2 or Not in Pioneer Certification")
+                except Exception as e:
+                    logger.error(f"[ErrorUser: {member.name} ({member.id})] An error occurred: {str(e)}")
 
             embed = make_embed({
                 "title": "Top Users Refreshed!",

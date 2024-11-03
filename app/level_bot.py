@@ -853,7 +853,7 @@ async def give_role_top_users(ctx: ApplicationContext):
                         # 멤버가 상위 200명 밖이라면 역할 제거
                         logger.info(f"{member.name} ({member.id}) -> Not in top 200 or no lv.2 or Not in Pioneer Certification")
                 except Exception as e:
-                    logger.error(f"[ErrorUser: {member.name} ({member.id})] An error occurred: {str(e)}")
+                    logger.error(f"An error occurred: {str(e)}")
 
             embed = make_embed({
                 "title": "Top Users Refreshed!",

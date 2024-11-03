@@ -853,12 +853,12 @@ async def give_role_top_users(ctx: ApplicationContext):
                         # 멤버가 상위 200명 밖이라면 역할 제거
                         if pioneer_role in member.roles:
                             await member.remove_roles(pioneer_role)
-                            logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+                        logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
                 else:
                     # 멤버가 상위 400명 밖이라면 역할 제거
                     if pioneer_role in member.roles:
                         await member.remove_roles(pioneer_role)
-                    logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200, removed pioneer_role")
+                    logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 400, removed pioneer_role")
 
             embed = make_embed({
                 "title": "Top Users Refreshed!",

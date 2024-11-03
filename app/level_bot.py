@@ -832,30 +832,25 @@ async def give_role_top_users(ctx: ApplicationContext):
             total_members = ctx.guild.members
             logger.info(f"total_member: {len(total_members)}")
 
-            # member_index = 0
-            # for member in ctx.guild.members:
-            #     if pioneer_cert_role in member.roles:
-            #         member_index += 1
-            #         await member.remove_roles(pioneer_role)
-            #         logger.info(f"[reset: {member_index}]{member.name} ({member.id}) -> reset pioneer_role")
-
             member_index = 0
+            for member in ctx.guild.members:
+                if pioneer_cert_role in member.roles:
+                    member_index += 1
+                    await member.remove_roles(pioneer_role)
+                    logger.info(f"[reset: {member_index}]{member.name} ({member.id}) -> reset pioneer_role")
+
             top_200_count = 0
             for top_user in top_users:
                 member = ctx.guild.get_member(int(top_user.get("user_id")))
-                user_rank = top_users_dict.get(str(member.id))
-                if user_rank:
-                    # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
-                    if top_200_count < 200 and level_2_role in member.roles:
-                        await member.add_roles(pioneer_role)
-                        top_200_count += 1
-                        logger.info(f"[{member_index}][TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
-                    else:
-                        # 멤버가 상위 200명 밖이라면 역할 제거
-                        logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 200 or no lv.2")
+                user_rank = top_user.get("user_rank")
+                # 멤버가 파이오니아 인증 역할이 있고, 상위 200명 안에 있다면 역할 추가
+                if top_200_count < 200 and level_2_role in member.roles and pioneer_cert_role in member.roles:
+                    await member.add_roles(pioneer_role)
+                    top_200_count += 1
+                    logger.info(f"[TOP:{top_200_count}]{member.name} ({member.id}) -> Rank {user_rank} added pioneer_role")
                 else:
-                    # 멤버가 상위 400명 밖이라면 역할 제거
-                    logger.info(f"[{member_index}]{member.name} ({member.id}) -> Not in top 400")
+                    # 멤버가 상위 200명 밖이라면 역할 제거
+                    logger.info(f"{member.name} ({member.id}) -> Not in top 200 or no lv.2 or Not in Pioneer Certification")
 
             embed = make_embed({
                 "title": "Top Users Refreshed!",

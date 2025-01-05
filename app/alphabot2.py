@@ -950,12 +950,12 @@ async def member_count_update():
     for guild in bot.guilds:
         if guild.id != self_guild_id:
             continue
-        role = discord.utils.get(guild.roles, name="SF.Super")
+        role = discord.utils.get(guild.roles, name="SF.PASS")
         member_count = sum(1 for member in guild.members if role in member.roles)
         channel = discord.utils.get(guild.channels, id=super_count_channel_id)
     if channel:
-        await channel.edit(name=f'SUPER: {member_count}')
-        logger.info("Changed SF.Super member count!")
+        await channel.edit(name=f'SF.PASS: {member_count}')
+        logger.info("Changed SF.PASS member count!")
     else:
         logger.error("Channel not found")
 

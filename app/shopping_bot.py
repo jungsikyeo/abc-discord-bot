@@ -490,7 +490,7 @@ def start_raffle(db):
                 winner = pick_winner(weights)
                 winners.setdefault(prize, []).append(winner)
                 already_won.add(winner)
-        pprint(winners)
+        # pprint(winners)
 
         cursor.execute("""
             update products set product_status = %s

@@ -1932,12 +1932,21 @@ async def me_abs(ctx, symbol):
         "sec-fetch-site": "same-site",
         "user-agent": "Mozilla/5.0"
     }
-    payloads = {
-        "chain": "abstract",
-        "collectionSlugs": [
-            urllib.parse.unquote(symbol)
-        ]
-    }
+
+    if len(symbol) > 30:
+        payloads = {
+            "chain": "abstract",
+            "collectionIds": [
+                symbol
+            ],
+        }
+    else:
+        payloads = {
+            "chain": "abstract",
+            "collectionSlugs": [
+                urllib.parse.unquote(symbol)
+            ],
+        }
 
     response = scraper.post(
         url=f"https://api-mainnet.magiceden.io/v4/collections",

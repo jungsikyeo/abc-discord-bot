@@ -1988,6 +1988,85 @@ async def me_abs(ctx, symbol):
     await ctx.reply(embed=embed, mention_author=True)
 
 
+async def me_bera(ctx, symbol):
+    api_key = operating_system.getenv("MAGICEDEN_API_KEY")
+    scraper = cloudscraper.create_scraper(delay=10, browser={
+        'browser': 'chrome',
+        'platform': 'android',
+        'desktop': False,
+    })
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "Authorization": f"Bearer {api_key}",
+        # "Accept-Encoding": "gzip, deflate, br, zstd",
+        # "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,de;q=0.6,es;q=0.5",
+        "Content-Length": "59",
+        "Content-Type": "application/json",
+        "Origin": "https://magiceden.io",
+        "Priority": "u=1, i",
+        "Referer": "https://magiceden.io/",
+        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "macOS",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "user-agent": "Mozilla/5.0"
+    }
+
+    if len(symbol) > 30:
+        payloads = {
+            "chain": "berachain",
+            "collectionIds": [
+                symbol
+            ],
+        }
+    else:
+        payloads = {
+            "chain": "berachain",
+            "collectionSlugs": [
+                urllib.parse.unquote(symbol)
+            ],
+        }
+
+    response = scraper.post(
+        url=f"https://api-mainnet.magiceden.io/v4/collections",
+        data=json.dumps(payloads),
+        headers=headers
+    ).text
+    print(response)
+    data = json.loads(response)['collections'][0]
+    print(data)
+
+    projectId = data['id']
+    projectName = data['name']
+    projectImg = data['media']['url']
+
+    await asyncio.sleep(0.5)
+
+    response = requests.get(
+        url=f"https://stats-mainnet.magiceden.io/collection_stats/stats?chain=berachain&collectionId={projectId}",
+        headers={"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36"}
+    ).text
+    print(response)
+    data = json.loads(response)
+    print(data)
+
+    projectFloorPrice = data['floorPrice']['amount']
+    projectChain = data['floorPrice']['currency']
+    projectSupply = data['tokenCount']
+    projectOwners = data['ownerCount']
+    projectLinks = f"[MagicEden](https://magiceden.io/collections/berachain/{symbol})"
+
+    embed = Embed(title=f"{projectName}", color=0xbc2467, url=f"https://magiceden.io/collections/berachain/{symbol}")
+    embed.set_thumbnail(url=f"{projectImg}")
+    embed.add_field(name=f"""Floor""", value=f"```{projectFloorPrice} {projectChain}     ```""", inline=True)
+    embed.add_field(name=f"""Supply""", value=f"```{projectSupply}       ```", inline=True)
+    embed.add_field(name=f"""Owners""", value=f"```{projectOwners}       ```", inline=True)
+    embed.add_field(name=f"""Links""", value=f"{projectLinks}", inline=True)
+    embed.set_footer(text="Powered by SearchFi DEV")
+
+    await ctx.reply(embed=embed, mention_author=True)
 
 
 async def me_matic(ctx, symbol):
@@ -2117,6 +2196,8 @@ async def me(ctx, keyword):
         await me_base(ctx, result['symbol'])
     elif result['blockchain'] == "ABS":
         await me_abs(ctx, result['symbol'])
+    elif result['blockchain'] == "BERA":
+        await me_bera(ctx, result['symbol'])
 
 
 # 오픈씨 API에서 거래 데이터

@@ -213,9 +213,22 @@ async def on_message(message):
 
                 # 2분 이내 동일 채팅인 경우 패스
                 if not check_message:
-                    # print((current_time.timestamp() - last_message['last_message_time'].timestamp()))
+                    try:
+                        last_message_time = last_message['last_message_time']
+                        # datetime 객체인지 확인
+                        if not isinstance(last_message_time, datetime):
+                            last_message_time = datetime.fromtimestamp(last_message_time)
+
+                        # 시간 차이 계산 (초 단위)
+                        time_diff = (current_time - last_message_time).total_seconds()
+
+                    except (KeyError, TypeError, ValueError) as e:
+                        logger.error(f"Error processing time difference: {e}")
+                        # 오류 발생 시 기본값으로 진행 (XP 부여하지 않음)
+                        time_diff = 0
+
                     # 45초 이내 채팅인 경우 패스
-                    if (current_time.timestamp() - last_message['last_message_time'].timestamp()) > 45:
+                    if time_diff > 45:
                         # 메시지 필터링 및 포인트 계산 로직
                         cursor.execute("""
                             SELECT COUNT(DISTINCT message_hash) AS filtered_count

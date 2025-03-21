@@ -107,7 +107,7 @@ class TranslateButton(View):
         self.db = db
         self.message_id = message_id
 
-    @button(label="Korean", style=discord.ButtonStyle.primary, custom_id="korean_button")
+    @button(label="Korean", style=discord.ButtonStyle.gray, custom_id="korean_button")
     async def button_kor(self, _, interaction: Interaction):
         connection = db.get_connection()
         cursor = connection.cursor()
@@ -150,7 +150,7 @@ class TranslateButton(View):
             cursor.close()
             connection.close()
 
-    @button(label="English", style=discord.ButtonStyle.primary, custom_id="english_button")
+    @button(label="English", style=discord.ButtonStyle.gray, custom_id="english_button")
     async def button_eng(self, _, interaction: Interaction):
         connection = db.get_connection()
         cursor = connection.cursor()
@@ -193,7 +193,7 @@ class TranslateButton(View):
             cursor.close()
             connection.close()
 
-    @button(label="Chinese", style=discord.ButtonStyle.primary, custom_id="chinese_button")
+    @button(label="Chinese", style=discord.ButtonStyle.gray, custom_id="chinese_button")
     async def button_chn(self, _, interaction: Interaction):
         connection = db.get_connection()
         cursor = connection.cursor()

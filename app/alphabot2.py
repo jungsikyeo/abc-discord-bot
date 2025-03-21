@@ -3743,43 +3743,43 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
-    allowed_channels = [
-        1215148551441485904,
-        974946294068043826,
-        1072435483466014730
-    ]
+    # investment_category_id = int(operating_system.getenv("INVESTMENT_CATEGORY_ID"))
+    # allowed_channels = [
+    #     1215148551441485904,
+    #     974946294068043826,
+    #     1072435483466014730
+    # ]
 
-    if message.channel.category_id == investment_category_id or message.channel.id in allowed_channels:
-        if len(message.content.strip()) != 0:
-            translator = deepl.Translator(deepl_api_key)
-            to_language, _ = langid.classify(message.content)
-            if to_language == "en":
-                from_language1 = "KO"
-                from_language2 = "ZH"
-                language1_name = "Korean"
-                language2_name = "Chinese"
-            elif to_language == "ko":
-                from_language1 = "EN-US"
-                from_language2 = "ZH"
-                language1_name = "English"
-                language2_name = "Chinese"
-            else:
-                from_language1 = "KO"
-                from_language2 = "EN-US"
-                language1_name = "Korean"
-                language2_name = "English"
-
-            prompt_text: str = message.content
-
-            answer1 = translator.translate_text(prompt_text, target_lang=from_language1)
-            await asyncio.sleep(2)
-            answer2 = translator.translate_text(prompt_text, target_lang=from_language2)
-
-            answer = f"- {language1_name}: {answer1}\n\n" \
-                     f"- {language2_name}: {answer2}"
-
-            await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
+    # if message.channel.category_id == investment_category_id or message.channel.id in allowed_channels:
+    #     if len(message.content.strip()) != 0:
+    #         translator = deepl.Translator(deepl_api_key)
+    #         to_language, _ = langid.classify(message.content)
+    #         if to_language == "en":
+    #             from_language1 = "KO"
+    #             from_language2 = "ZH"
+    #             language1_name = "Korean"
+    #             language2_name = "Chinese"
+    #         elif to_language == "ko":
+    #             from_language1 = "EN-US"
+    #             from_language2 = "ZH"
+    #             language1_name = "English"
+    #             language2_name = "Chinese"
+    #         else:
+    #             from_language1 = "KO"
+    #             from_language2 = "EN-US"
+    #             language1_name = "Korean"
+    #             language2_name = "English"
+    #
+    #         prompt_text: str = message.content
+    #
+    #         answer1 = translator.translate_text(prompt_text, target_lang=from_language1)
+    #         await asyncio.sleep(2)
+    #         answer2 = translator.translate_text(prompt_text, target_lang=from_language2)
+    #
+    #         answer = f"- {language1_name}: {answer1}\n\n" \
+    #                  f"- {language2_name}: {answer2}"
+    #
+    #         await message.channel.send(f"**[AI Translation]**\n{answer}", reference=message)
 
     sharing_channel_id = int(operating_system.getenv('SHARING_CHANNEL_ID'))
     proof_channel_id = int(operating_system.getenv('PROOF_CHANNEL_ID'))

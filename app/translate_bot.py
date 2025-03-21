@@ -242,38 +242,35 @@ async def on_message(message):
     if message.author == bot.user or message.author.bot:
         return
 
-    if message.channel.id not in allowed_channels and len(message.content.strip()) == 0:
-        await bot.process_commands(message)
-        return
-
-    connection = db.get_connection()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                select id
-                from messages_translate
-                where message_id = %s
-            """, message.id)
-            result = cursor.fetchone()
-
-            if not result:
+    if message.channel.id in allowed_channels and len(message.content.strip()) > 0:
+        connection = db.get_connection()
+        try:
+            with connection.cursor() as cursor:
                 cursor.execute("""
-                    insert into messages_translate(message_id, channel_name, user_id, user_name, message_org)
-                    values (%s, %s, %s, %s, %s) 
-                """, (message.id, message.channel.name, message.author.id, message.author, message.content))
-                connection.commit()
+                    select id
+                    from messages_translate
+                    where message_id = %s
+                """, message.id)
+                result = cursor.fetchone()
 
-            view = TranslateButton(db, message.id)
-            # custom_id를 각 버튼에 추가하여 영구적으로 만들기
-            for child in view.children:
-                if isinstance(child, discord.ui.Button):
-                    child.custom_id = f"{child.label.lower()}_{message.id}"
-            await message.channel.send(view=view, reference=message)
-    except Exception as e:
-        logger.error(f"Error handling message: {e}")
-        connection.rollback()
-    finally:
-        connection.close()
+                if not result:
+                    cursor.execute("""
+                        insert into messages_translate(message_id, channel_name, user_id, user_name, message_org)
+                        values (%s, %s, %s, %s, %s) 
+                    """, (message.id, message.channel.name, message.author.id, message.author, message.content))
+                    connection.commit()
+
+                view = TranslateButton(db, message.id)
+                # custom_id를 각 버튼에 추가하여 영구적으로 만들기
+                for child in view.children:
+                    if isinstance(child, discord.ui.Button):
+                        child.custom_id = f"{child.label.lower()}_{message.id}"
+                await message.channel.send(view=view, reference=message)
+        except Exception as e:
+            logger.error(f"Error handling message: {e}")
+            connection.rollback()
+        finally:
+            connection.close()
 
 
 @bot.event

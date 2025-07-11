@@ -550,7 +550,7 @@ def get_user_tickets(db):
             select u.user_id, p.name, count(u.id) tickets
             from user_tickets u
             inner join products p on p.id = u.product_id
-            inner join user_whitelist uw on u.user_id = uw.user_id
+            inner join user_whitelist uw on u.user_id = uw.user_id and p.id = uw.product_id
             where p.product_status = 'OPEN'
               and p.whitelist_use = 'Y'
             group by u.user_id, p.id, p.name
@@ -2132,6 +2132,337 @@ async def open_auction(ctx):
                   color=0xFFFFFF)
 
     await ctx.send(embed=embed, view=OpenMarketView(db, markets, prizes))
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def export_shop_tickets(ctx):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+            select
+                p.id as product_id,
+                p.name,
+                p.price,
+                p.quantity,
+                ut.user_id,
+                (select max(user_name) from user_token_logs where user_id = ut.user_id) user_name,
+                ut.timestamp
+            from user_tickets ut, products p
+            where ut.product_id = p.id
+              and p.product_status = 'OPEN'
+        """)
+        tickets_data = cursor.fetchall()
+        
+        if not tickets_data:
+            description = "```ℹ️ 내보낼 데이터가 없습니다.\n\nℹ️ There is no data to export.```"
+            await ctx.reply(description, mention_author=True)
+            return
+        
+        # CSV 파일 생성
+        csv_buffer = io.StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        
+        # 헤더 추가
+        csv_writer.writerow(['Product ID', 'Prize Name', 'Price', 'Quantity', 'User ID', 'User Name', 'Timestamp'])
+        
+        # 데이터 추가
+        for row in tickets_data:
+            csv_writer.writerow([
+                row['product_id'],
+                row['name'],
+                row['price'],
+                row['quantity'],
+                row['user_id'],
+                row['user_name'] or 'Unknown',
+                row['timestamp']
+            ])
+        
+        # CSV 파일을 Discord 파일로 전송
+        csv_buffer.seek(0)
+        csv_file = discord.File(
+            io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
+            filename=f"user_tickets_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        )
+        
+        embed = Embed(
+            title="📊 User Tickets Export",
+            description=f"✅ 총 `{len(tickets_data)}`개의 티켓 데이터를 CSV 파일로 내보냈습니다.\n\n"
+                        f"✅ Exported `{len(tickets_data)}` ticket records to CSV file.",
+            color=0x00ff00
+        )
+        
+        await ctx.reply(embed=embed, file=csv_file, mention_author=True)
+        
+    except Exception as e:
+        logger.error(f'export_tickets_csv error: {e}')
+        description = "```❌ CSV 파일 생성 중에 문제가 발생했습니다.\n\n❌ There was a problem creating the CSV file.```"
+        await ctx.reply(description, mention_author=True)
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.slash_command(
+    name="export_tickets_csv",
+    description="Export user tickets data to CSV file",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def export_shop_tickets(ctx: ApplicationContext):
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        await ctx.defer()
+        
+        cursor.execute("""
+            select
+                p.id as product_id,
+                p.name,
+                p.price,
+                p.quantity,
+                ut.user_id,
+                (select max(user_name) from user_token_logs where user_id = ut.user_id) user_name,
+                ut.timestamp
+            from user_tickets ut, products p
+            where ut.product_id = p.id
+              and p.product_status = 'OPEN'
+        """)
+        tickets_data = cursor.fetchall()
+        
+        if not tickets_data:
+            description = "```ℹ️ 내보낼 데이터가 없습니다.\n\nℹ️ There is no data to export.```"
+            await ctx.followup.send(description, ephemeral=True)
+            return
+        
+        # CSV 파일 생성
+        csv_buffer = io.StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        
+        # 헤더 추가
+        csv_writer.writerow(['Product ID', 'Prize Name', 'Price', 'Quantity', 'User ID', 'User Name', 'Timestamp'])
+        
+        # 데이터 추가
+        for row in tickets_data:
+            csv_writer.writerow([
+                row['product_id'],
+                row['name'],
+                row['price'],
+                row['quantity'],
+                row['user_id'],
+                row['user_name'] or 'Unknown',
+                row['timestamp']
+            ])
+        
+        # CSV 파일을 Discord 파일로 전송
+        csv_buffer.seek(0)
+        csv_file = discord.File(
+            io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
+            filename=f"user_tickets_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        )
+        
+        embed = Embed(
+            title="📊 User Tickets Export",
+            description=f"✅ 총 `{len(tickets_data)}`개의 티켓 데이터를 CSV 파일로 내보냈습니다.\n\n"
+                        f"✅ Exported `{len(tickets_data)}` ticket records to CSV file.",
+            color=0x00ff00
+        )
+        
+        await ctx.followup.send(embed=embed, file=csv_file, ephemeral=False)
+        
+    except Exception as e:
+        logger.error(f'export_tickets_csv_slash error: {e}')
+        description = "```❌ CSV 파일 생성 중에 문제가 발생했습니다.\n\n❌ There was a problem creating the CSV file.```"
+        await ctx.followup.send(description, ephemeral=True)
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.command()
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def import_whitelist(ctx):
+    if len(ctx.message.attachments) == 0:
+        description = "```❌ CSV 파일을 첨부해주세요.\n\n❌ Please attach a CSV file.```"
+        await ctx.reply(description, mention_author=True)
+        return
+
+    file = ctx.message.attachments[0]
+    
+    # CSV 파일 확장자 확인
+    if not file.filename.lower().endswith('.csv'):
+        description = "```❌ CSV 파일만 업로드 가능합니다.\n\n❌ Only CSV files can be uploaded.```"
+        await ctx.reply(description, mention_author=True)
+        return
+
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        file_bytes = await file.read()
+        file_content = io.StringIO(file_bytes.decode('utf-8'))
+        csv_reader = csv.reader(file_content, delimiter=',')
+        
+        # 헤더 건너뛰기
+        next(csv_reader, None)
+        
+        success_count = 0
+        error_count = 0
+        
+        # 기존 데이터 삭제
+        cursor.execute("delete from user_whitelist")
+        deleted_count = cursor.rowcount
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # 헤더 제외하고 2부터 시작
+            try:
+                if len(row) < 6:  # 최소 6개 컬럼 필요 (Product ID, Prize Name, Price, Quantity, User ID, User Name)
+                    error_count += 1
+                    continue
+                
+                product_id = row[0].strip()
+                user_id = row[4].strip()  # User ID는 5번째 컬럼
+                user_name = row[5].strip()  # User Name은 6번째 컬럼
+                
+                # 데이터 유효성 검사
+                if not product_id or not user_id or not user_name:
+                    error_count += 1
+                    continue
+                
+                try:
+                    product_id = int(product_id)
+                except ValueError:
+                    error_count += 1
+                    continue
+                
+                # 데이터 삽입
+                cursor.execute("""
+                    insert into user_whitelist (product_id, user_id, user_name)
+                    values (%s, %s, %s)
+                """, (product_id, user_id, user_name))
+                
+                success_count += 1
+                
+            except Exception as e:
+                logger.error(f'import_whitelist row {row_num} error: {e}')
+                error_count += 1
+                continue
+        
+        connection.commit()
+        
+        description = f"✅ **Whitelist Import Complete**\n\n" \
+                      f"🗑️ Deleted existing records: `{deleted_count}` records\n" \
+                      f"✅ Successfully imported: `{success_count}` records\n" \
+                      f"❌ Error records: `{error_count}` records"
+        
+        embed = Embed(
+            title="📋 Whitelist Import Result",
+            description=description,
+            color=0x00ff00
+        )
+        
+        await ctx.reply(embed=embed, mention_author=True)
+        
+    except Exception as e:
+        logger.error(f'import_whitelist error: {e}')
+        connection.rollback()
+        description = "```❌ CSV 파일 처리 중에 문제가 발생했습니다.\n\n❌ There was a problem processing the CSV file.```"
+        await ctx.reply(description, mention_author=True)
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@bot.slash_command(
+    name="import_whitelist",
+    description="Import whitelist data from CSV file",
+    guild_ids=guild_ids
+)
+@commands.has_any_role('SF.Team', 'SF.Guardian', 'SF.dev')
+async def import_whitelist_slash(ctx: ApplicationContext,
+                           file: Option(discord.Attachment, "Upload the CSV file", required=True)):
+    
+    # CSV 파일 확장자 확인
+    if not file.filename.lower().endswith('.csv'):
+        description = "```❌ CSV 파일만 업로드 가능합니다.\n\n❌ Only CSV files can be uploaded.```"
+        await ctx.respond(description, ephemeral=True)
+        return
+
+    connection = db.get_connection()
+    cursor = connection.cursor()
+    try:
+        await ctx.defer()
+        
+        file_bytes = await file.read()
+        file_content = io.StringIO(file_bytes.decode('utf-8'))
+        csv_reader = csv.reader(file_content, delimiter=',')
+        
+        # 헤더 건너뛰기
+        next(csv_reader, None)
+        
+        success_count = 0
+        error_count = 0
+        
+        # 기존 데이터 삭제
+        cursor.execute("delete from user_whitelist")
+        deleted_count = cursor.rowcount
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # 헤더 제외하고 2부터 시작
+            try:
+                if len(row) < 6:  # 최소 6개 컬럼 필요 (Product ID, Prize Name, Price, Quantity, User ID, User Name)
+                    error_count += 1
+                    continue
+                
+                product_id = row[0].strip()
+                user_id = row[4].strip()  # User ID는 5번째 컬럼
+                user_name = row[5].strip()  # User Name은 6번째 컬럼
+                
+                # 데이터 유효성 검사
+                if not product_id or not user_id or not user_name:
+                    error_count += 1
+                    continue
+                
+                try:
+                    product_id = int(product_id)
+                except ValueError:
+                    error_count += 1
+                    continue
+                
+                # 데이터 삽입
+                cursor.execute("""
+                    insert into user_whitelist (product_id, user_id, user_name)
+                    values (%s, %s, %s)
+                """, (product_id, user_id, user_name))
+                
+                success_count += 1
+                
+            except Exception as e:
+                logger.error(f'import_whitelist_slash row {row_num} error: {e}')
+                error_count += 1
+                continue
+        
+        connection.commit()
+        
+        description = f"✅ **Whitelist Import Complete**\n\n" \
+                      f"🗑️ Deleted existing records: `{deleted_count}` records\n" \
+                      f"✅ Successfully imported: `{success_count}` records\n" \
+                      f"❌ Error records: `{error_count}` records"
+        
+        embed = Embed(
+            title="📋 Whitelist Import Result",
+            description=description,
+            color=0x00ff00
+        )
+        
+        await ctx.followup.send(embed=embed, ephemeral=False)
+        
+    except Exception as e:
+        logger.error(f'import_whitelist_slash error: {e}')
+        connection.rollback()
+        description = "```❌ CSV 파일 처리 중에 문제가 발생했습니다.\n\n❌ There was a problem processing the CSV file.```"
+        await ctx.followup.send(description, ephemeral=True)
+    finally:
+        cursor.close()
+        connection.close()
 
 
 bot.run(bot_token)

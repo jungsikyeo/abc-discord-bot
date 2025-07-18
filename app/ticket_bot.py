@@ -754,11 +754,31 @@ async def on_ready():
 
 @tasks.loop(minutes=1)
 async def richpresence():
-    guild = bot.get_guild(guild_id)
-    category1 = discord.utils.get(guild.categories, id=int(category_id1))
-    category2 = discord.utils.get(guild.categories, id=int(category_id2))
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
-                                                        name=f'Tickets | {len(category1.channels) + len(category2.channels)}'))
+    try:
+        guild = bot.get_guild(guild_id)
+        if not guild:
+            logger.warning(f"Guild with ID {guild_id} not found")
+            return
+            
+        category1 = discord.utils.get(guild.categories, id=int(category_id1))
+        category2 = discord.utils.get(guild.categories, id=int(category_id2))
+        
+        # 카테고리가 None인 경우 처리
+        category1_channels = len(category1.channels) if category1 else 0
+        category2_channels = len(category2.channels) if category2 else 0
+        
+        total_channels = category1_channels + category2_channels
+        
+        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
+                                                            name=f'Tickets | {total_channels}'))
+    except Exception as error:
+        logger.error(f"Error in richpresence task: {str(error)}")
+        # 에러 발생 시 기본 상태로 설정
+        try:
+            await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
+                                                                name='Tickets | Error'))
+        except:
+            pass
 
 
 @bot.event

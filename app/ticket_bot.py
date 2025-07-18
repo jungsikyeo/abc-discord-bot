@@ -1,6 +1,8 @@
 import discord
 import os
 import io
+import logging
+import asyncio
 import pymysql
 import chat_exporter
 import pytz
@@ -11,6 +13,7 @@ from discord.ext.pages import Paginator
 from pymysql.cursors import DictCursor
 from dbutils.pooled_db import PooledDB
 from dotenv import load_dotenv
+from contextlib import contextmanager
 
 load_dotenv()
 
@@ -62,11 +65,24 @@ class Database:
 
     def get_connection(self):
         return self.pool.connection()
+    
+    @contextmanager
+    def get_cursor(self):
+        """Context manager for database cursor"""
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            yield cursor
+            connection.commit()
+        except Exception as e:
+            connection.rollback()
+            raise e
+        finally:
+            cursor.close()
+            connection.close()
 
 
 db = Database(mysql_ip, mysql_port, mysql_id, mysql_passwd, mysql_db)
-connection = db.get_connection()
-cursor = connection.cursor()
 
 
 class TicketSystem(commands.Cog):
@@ -85,11 +101,6 @@ class TicketSystem(commands.Cog):
         self.bot.add_view(CloseButton())
         self.bot.add_view(TicketOptions())
 
-    @commands.Cog.listener()
-    async def on_bot_shutdown(self):
-        cursor.close()
-        connection.close()
-
 
 async def make_button(category_id: int, interaction: Interaction):
     category = interaction.guild.get_channel(category_id)
@@ -98,98 +109,116 @@ async def make_button(category_id: int, interaction: Interaction):
         guild = interaction.guild
         user_id = interaction.user.id
         user_name = interaction.user.name
-        cursor.execute(
-            """
-                SELECT user_id
-                FROM tickets
-                WHERE user_id = %s
-                and category_id = %s
-                and ticket_status = 'OPEN'
-            """,
-            (user_id, category_id)
-        )
-        existing_ticket = cursor.fetchone()
-        if existing_ticket is None:
-            cursor.execute(
-                """
-                    INSERT INTO tickets (category_id, category_name, user_id, user_name)
-                    VALUES (%s, %s, %s, %s)
-                """,
-                (category_id, category.name, user_id, user_name)
-            )
-            connection.commit()
-            cursor.execute(
-                """
-                    SELECT id
-                    FROM tickets
-                    WHERE category_id = %s
-                    and user_id = %s
-                    and ticket_status = 'OPEN'
-                """,
-                (category_id, user_id))
-            ticket_number = cursor.fetchone()['id']
-            ticket_channel = await guild.create_text_channel(f"{user_name}-ticket",
-                                                             category=category,
-                                                             topic=f"{interaction.user.id}-{ticket_number}")
-            await ticket_channel.set_permissions(guild.get_role(team_role1),
-                                                 send_messages=True,
-                                                 read_messages=True,
-                                                 add_reactions=False,
-                                                 embed_links=True,
-                                                 attach_files=True,
-                                                 read_message_history=True,
-                                                 external_emojis=True)
-            await ticket_channel.set_permissions(guild.get_role(team_role2),
-                                                 send_messages=True,
-                                                 read_messages=True,
-                                                 add_reactions=False,
-                                                 embed_links=True,
-                                                 attach_files=True,
-                                                 read_message_history=True,
-                                                 external_emojis=True)
-            await ticket_channel.set_permissions(interaction.user,
-                                                 send_messages=True,
-                                                 read_messages=True,
-                                                 add_reactions=False,
-                                                 embed_links=True,
-                                                 attach_files=True,
-                                                 read_message_history=True,
-                                                 external_emojis=True,
-                                                 use_slash_commands=False)
-            await ticket_channel.set_permissions(guild.default_role,
-                                                 send_messages=False,
-                                                 read_messages=False,
-                                                 view_channel=False)
+        
+        try:
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT user_id
+                        FROM tickets
+                        WHERE user_id = %s
+                        and category_id = %s
+                        and ticket_status = 'OPEN'
+                    """,
+                    (user_id, category_id)
+                )
+                existing_ticket = cursor.fetchone()
+                
+                if existing_ticket is None:
+                    cursor.execute(
+                        """
+                            INSERT INTO tickets (category_id, category_name, user_id, user_name)
+                            VALUES (%s, %s, %s, %s)
+                        """,
+                        (category_id, category.name, user_id, user_name)
+                    )
+                    
+                    cursor.execute(
+                        """
+                            SELECT id
+                            FROM tickets
+                            WHERE category_id = %s
+                            and user_id = %s
+                            and ticket_status = 'OPEN'
+                        """,
+                        (category_id, user_id))
+                    ticket_number = cursor.fetchone()['id']
+                    
+                    ticket_channel = await guild.create_text_channel(f"{user_name}-ticket",
+                                                                     category=category,
+                                                                     topic=f"{interaction.user.id}-{ticket_number}")
+                    
+                    # 권한 설정을 함수로 분리
+                    await set_ticket_permissions(ticket_channel, guild, interaction.user)
 
-            if category_id == category_id1:
-                title = "☎️  Support Ticket"
-                description = "This is a ticket for suggestions and reports.\n\n" \
-                              "If you open the wrong ticket, please close it.\n\n"\
-                              "Based on the example below, please write down the content that will help the community.\n"\
-                              "(Anything is possible, even if it is not an example.)\n\n"\
-                              "ㆍInconvenience\n"\
-                              "ㆍProposal items\n"\
-                              "ㆍEvent proposal\n"\
-                              "ㆍReporting scams"
-            else:
-                title = "🎉  Giveaway Winner Ticket"
-                description = "Please leave a proof photo (screenshot) and wallet address after opening the ticket.\n\n" \
-                              "ㆍDiscord : Discord G/A screenshot\n" \
-                              "ㆍTwitter : Screenshot of winning, DM history, your profile (to show profile correction)" \
+                    if category_id == category_id1:
+                        title = "☎️  Support Ticket"
+                        description = "This is a ticket for suggestions and reports.\n\n" \
+                                      "If you open the wrong ticket, please close it.\n\n"\
+                                      "Based on the example below, please write down the content that will help the community.\n"\
+                                      "(Anything is possible, even if it is not an example.)\n\n"\
+                                      "ㆍInconvenience\n"\
+                                      "ㆍProposal items\n"\
+                                      "ㆍEvent proposal\n"\
+                                      "ㆍReporting scams"
+                    else:
+                        title = "🎉  Giveaway Winner Ticket"
+                        description = "Please leave a proof photo (screenshot) and wallet address after opening the ticket.\n\n" \
+                                      "ㆍDiscord : Discord G/A screenshot\n" \
+                                      "ㆍTwitter : Screenshot of winning, DM history, your profile (to show profile correction)" \
 
-            embed = Embed(title=title,
-                          description=description,
-                          color=discord.colour.Color.blue())
-            await ticket_channel.send(content=f"{interaction.user.mention}",
-                                      embed=embed,
-                                      view=CloseButton())
+                    embed = Embed(title=title,
+                                  description=description,
+                                  color=discord.colour.Color.blue())
+                    await ticket_channel.send(content=f"{interaction.user.mention}",
+                                              embed=embed,
+                                              view=CloseButton())
 
-            embed = Embed(description=f'📬 Ticket was Created! Look here --> {ticket_channel.mention}',
-                          color=discord.colour.Color.green())
+                    embed = Embed(description=f'📬 Ticket was Created! Look here --> {ticket_channel.mention}',
+                                  color=discord.colour.Color.green())
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                else:
+                    embed = Embed(title="You already have an open ticket", color=0xff0000)
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as error:
+            logger.error(f"Error in make_button: {str(error)}")
+            embed = Embed(title="Error", description="Failed to create ticket. Please try again.", color=0xff0000)
             await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            embed = Embed(title=f"You already have a open Ticket", color=0xff0000)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+async def set_ticket_permissions(channel, guild, user):
+    """Set permissions for ticket channel"""
+    team_role1_obj = guild.get_role(team_role1)
+    team_role2_obj = guild.get_role(team_role2)
+    
+    # Team roles permissions
+    for role in [team_role1_obj, team_role2_obj]:
+        if role:
+            await channel.set_permissions(role,
+                                         send_messages=True,
+                                         read_messages=True,
+                                         add_reactions=False,
+                                         embed_links=True,
+                                         attach_files=True,
+                                         read_message_history=True,
+                                         external_emojis=True)
+    
+    # User permissions
+    await channel.set_permissions(user,
+                                 send_messages=True,
+                                 read_messages=True,
+                                 add_reactions=False,
+                                 embed_links=True,
+                                 attach_files=True,
+                                 read_message_history=True,
+                                 external_emojis=True,
+                                 use_slash_commands=False)
+    
+    # Default role permissions (deny all)
+    await channel.set_permissions(guild.default_role,
+                                 send_messages=False,
+                                 read_messages=False,
+                                 view_channel=False)
 
 
 class TicketView(View):
@@ -222,32 +251,41 @@ class CloseButton(View):
         try:
             guild = interaction.guild
             ticket_topic = interaction.channel.topic
-            cursor.execute(
-                """
-                    SELECT id, user_id
-                    FROM tickets 
-                    WHERE concat(user_id,'-',id) = %s
-                    and ticket_status = 'OPEN'
-                """,
-                (ticket_topic,)
-            )
-            ticket = cursor.fetchone()
-            ticket_id = ticket.get("id")
-            ticket_user_id = ticket.get("user_id")
-            ticket_creator = guild.get_member(int(ticket_user_id))
+            
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT id, user_id
+                        FROM tickets 
+                        WHERE concat(user_id,'-',id) = %s
+                        and ticket_status = 'OPEN'
+                    """,
+                    (ticket_topic,)
+                )
+                ticket = cursor.fetchone()
+                
+                if not ticket:
+                    embed = Embed(title="Error", description="Ticket not found or already closed.", color=0xff0000)
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                ticket_id = ticket.get("id")
+                ticket_user_id = ticket.get("user_id")
+                ticket_creator = guild.get_member(int(ticket_user_id))
 
-            cursor.execute(
-                """
-                    UPDATE tickets SET ticket_status = 'CLOSE'
-                    WHERE id = %s
-                """,
-                (ticket_id,)
-            )
-            connection.commit()
+                cursor.execute(
+                    """
+                        UPDATE tickets SET ticket_status = 'CLOSE'
+                        WHERE id = %s
+                    """,
+                    (ticket_id,)
+                )
 
             embed = Embed(title="Ticket Closed 🎫",
                           description=f"The ticket has been closed by {ticket_creator}",
                           color=discord.colour.Color.green())
+            
+            # 사용자 권한 제거
             await interaction.channel.set_permissions(ticket_creator,
                                                       send_messages=False,
                                                       read_messages=False,
@@ -256,13 +294,16 @@ class CloseButton(View):
                                                       attach_files=False,
                                                       read_message_history=False,
                                                       external_emojis=False)
+            
             await interaction.channel.edit(name=f"ticket-closed-{ticket_creator.name}-ticket")
             await interaction.response.send_message(embed=embed,
                                                     view=TicketOptions())
             button.disabled = True
             await interaction.message.edit(view=self)
         except Exception as error:
-            logger.error(f"An error occurred: {str(error)}")
+            logger.error(f"Error in close button: {str(error)}")
+            embed = Embed(title="Error", description="Failed to close ticket. Please try again.", color=0xff0000)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class TicketOptions(View):
@@ -276,22 +317,30 @@ class TicketOptions(View):
             log_channel = interaction.guild.get_channel(log_channel_id)
             ticket_topic = interaction.channel.topic
 
-            cursor.execute(
-                """
-                    SELECT id, user_id, category_name
-                    FROM tickets 
-                    WHERE concat(user_id, '-', id) = %s
-                    and ticket_status = 'CLOSE'
-                """,
-                (ticket_topic,)
-            )
-            ticket = cursor.fetchone()
-            ticket_id = ticket.get("id")
-            ticket_user_id = ticket.get("user_id")
-            ticket_category_name = ticket.get("category_name")
-            ticket_creator = guild.get_member(int(ticket_user_id))
+            # 1단계: 티켓 정보 조회
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT id, user_id, category_name
+                        FROM tickets 
+                        WHERE concat(user_id, '-', id) = %s
+                        and ticket_status = 'CLOSE'
+                    """,
+                    (ticket_topic,)
+                )
+                ticket = cursor.fetchone()
+                
+                if not ticket:
+                    embed = Embed(title="Error", description="Ticket not found or not closed.", color=0xff0000)
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                ticket_id = ticket.get("id")
+                ticket_user_id = ticket.get("user_id")
+                ticket_category_name = ticket.get("category_name")
+                ticket_creator = guild.get_member(int(ticket_user_id))
 
-            # Creating the Transcript
+            # 2단계: 트랜스크립트 생성
             military_time: bool = True
             transcript = await chat_exporter.export(
                 interaction.channel,
@@ -301,6 +350,8 @@ class TicketOptions(View):
                 bot=bot,
             )
             if transcript is None:
+                embed = Embed(title="Error", description="Failed to create transcript.", color=0xff0000)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             else:
                 lines = transcript.split('\n')
@@ -314,16 +365,36 @@ class TicketOptions(View):
                         new_transcript += line
                 transcript = new_transcript
 
-            cursor.execute(
-                """
-                    UPDATE tickets SET ticket_status = 'DELETE', ticket_description = %s
-                    WHERE concat(user_id, '-', id) = %s
-                    and ticket_status = 'CLOSE' 
-                """,
-                (transcript, ticket_topic,)
-            )
-            connection.commit()
+            # 3단계: DB 상태 업데이트 (가장 중요한 부분)
+            update_success = False
+            try:
+                with db.get_cursor() as cursor:
+                    cursor.execute(
+                        """
+                            UPDATE tickets SET ticket_status = 'DELETE', ticket_description = %s
+                            WHERE concat(user_id, '-', id) = %s
+                            and ticket_status = 'CLOSE' 
+                        """,
+                        (transcript, ticket_topic,)
+                    )
+                    # 업데이트된 행 수 확인
+                    if cursor.rowcount > 0:
+                        update_success = True
+                        logger.info(f"Successfully updated ticket {ticket_id} status to DELETE")
+                    else:
+                        logger.error(f"No rows updated for ticket {ticket_id}")
+            except Exception as db_error:
+                logger.error(f"Database update failed for ticket {ticket_id}: {str(db_error)}")
+                embed = Embed(title="Database Error", description="Failed to update ticket status in database.", color=0xff0000)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
 
+            if not update_success:
+                embed = Embed(title="Error", description="Failed to update ticket status. Please try again.", color=0xff0000)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # 4단계: 파일 생성 및 메시지 전송
             transcript_file = discord.File(
                 io.BytesIO(transcript.encode()),
                 filename=f"transcript-{interaction.channel.name}.html")
@@ -331,7 +402,7 @@ class TicketOptions(View):
                 io.BytesIO(transcript.encode()),
                 filename=f"transcript-{interaction.channel.name}.html")
 
-            embed = Embed(description=f'Ticket is deliting in 5 seconds.', color=0xff0000)
+            embed = Embed(description='Ticket is deleting in 5 seconds.', color=0xff0000)
             transcript_info = Embed(title=f"Ticket Deleting | {interaction.channel.name}",
                                     description=f"- **Ticket ID:** {ticket_id}\n"
                                                 f"- **Ticket from:** {ticket_creator.mention}\n"
@@ -345,16 +416,28 @@ class TicketOptions(View):
             try:
                 await ticket_creator.send(embed=transcript_info,
                                           file=transcript_file)
-            except:
+            except Exception as e:
+                logger.warning(f"Could not send transcript to user {ticket_creator.id}: {e}")
                 transcript_info.add_field(name="Error",
                                           value="Couldn't send the Transcript to the User because he has his DMs disabled!",
                                           inline=True)
+            
             await log_channel.send(embed=transcript_info,
                                    file=transcript_file2)
+            
+            # 5단계: 채널 삭제 (DB 업데이트가 성공한 후에만)
             await asyncio.sleep(3)
-            await interaction.channel.delete(reason="Ticket got Deleted!")
+            try:
+                await interaction.channel.delete(reason="Ticket got Deleted!")
+                logger.info(f"Successfully deleted channel for ticket {ticket_id}")
+            except Exception as delete_error:
+                logger.error(f"Failed to delete channel for ticket {ticket_id}: {str(delete_error)}")
+                # 채널 삭제 실패 시에도 DB는 이미 업데이트되었으므로 성공으로 처리
+                
         except Exception as error:
-            logger.error(f"An error occurred: {str(error)}")
+            logger.error(f"Error in delete button: {str(error)}")
+            embed = Embed(title="Error", description="Failed to delete ticket. Please try again.", color=0xff0000)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class TicketCommand(commands.Cog):
@@ -367,11 +450,6 @@ class TicketCommand(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f'Bot Loaded | ticket_commands.py ✅')
-
-    @commands.Cog.listener()
-    async def on_bot_shutdown(self):
-        cursor.close()
-        connection.close()
 
     @commands.slash_command(
         name="ticket",
@@ -413,28 +491,35 @@ class TicketCommand(commands.Cog):
         try:
             guild = ctx.guild
             ticket_topic = ctx.channel.topic
-            cursor.execute(
-                """
-                    SELECT id, user_id
-                    FROM tickets 
-                    WHERE concat(user_id,'-',id) = %s
-                    and ticket_status = 'OPEN'
-                """,
-                (ticket_topic,)
-            )
-            ticket = cursor.fetchone()
-            ticket_id = ticket.get("id")
-            ticket_user_id = ticket.get("user_id")
-            ticket_creator = guild.get_member(int(ticket_user_id))
+            
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT id, user_id
+                        FROM tickets 
+                        WHERE concat(user_id,'-',id) = %s
+                        and ticket_status = 'OPEN'
+                    """,
+                    (ticket_topic,)
+                )
+                ticket = cursor.fetchone()
+                
+                if not ticket:
+                    embed = Embed(title="Error", description="Ticket not found or already closed.", color=0xff0000)
+                    await ctx.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                ticket_id = ticket.get("id")
+                ticket_user_id = ticket.get("user_id")
+                ticket_creator = guild.get_member(int(ticket_user_id))
 
-            cursor.execute(
-                """
-                    UPDATE tickets SET ticket_status = 'CLOSE'
-                    WHERE id = %s
-                """,
-                (ticket_id,)
-            )
-            connection.commit()
+                cursor.execute(
+                    """
+                        UPDATE tickets SET ticket_status = 'CLOSE'
+                        WHERE id = %s
+                    """,
+                    (ticket_id,)
+                )
 
             embed = Embed(title="Ticket Closed 🎫",
                           description=f"The ticket has been closed by {ticket_creator}",
@@ -451,7 +536,9 @@ class TicketCommand(commands.Cog):
             await ctx.response.send_message(embed=embed,
                                                     view=TicketOptions())
         except Exception as error:
-            logger.error(f"An error occurred: {str(error)}")
+            logger.error(f"Error in close command: {str(error)}")
+            embed = Embed(title="Error", description="Failed to close ticket. Please try again.", color=0xff0000)
+            await ctx.response.send_message(embed=embed, ephemeral=True)
 
     @commands.slash_command(
         name="delete-ticket",
@@ -465,22 +552,30 @@ class TicketCommand(commands.Cog):
             log_channel = ctx.guild.get_channel(log_channel_id)
             ticket_topic = ctx.channel.topic
 
-            cursor.execute(
-                """
-                    SELECT id, user_id, category_name
-                    FROM tickets 
-                    WHERE concat(user_id, '-', id) = %s
-                    and ticket_status = 'CLOSE'
-                """,
-                (ticket_topic,)
-            )
-            ticket = cursor.fetchone()
-            ticket_id = ticket.get("id")
-            ticket_user_id = ticket.get("user_id")
-            ticket_category_name = ticket.get("category_name")
-            ticket_creator = guild.get_member(int(ticket_user_id))
+            # 1단계: 티켓 정보 조회
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                        SELECT id, user_id, category_name
+                        FROM tickets 
+                        WHERE concat(user_id, '-', id) = %s
+                        and ticket_status = 'CLOSE'
+                    """,
+                    (ticket_topic,)
+                )
+                ticket = cursor.fetchone()
+                
+                if not ticket:
+                    embed = Embed(title="Error", description="Ticket not found or not closed.", color=0xff0000)
+                    await ctx.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                ticket_id = ticket.get("id")
+                ticket_user_id = ticket.get("user_id")
+                ticket_category_name = ticket.get("category_name")
+                ticket_creator = guild.get_member(int(ticket_user_id))
 
-            # Creating the Transcript
+            # 2단계: 트랜스크립트 생성
             military_time: bool = True
             transcript = await chat_exporter.export(
                 ctx.channel,
@@ -490,6 +585,8 @@ class TicketCommand(commands.Cog):
                 bot=bot,
             )
             if transcript is None:
+                embed = Embed(title="Error", description="Failed to create transcript.", color=0xff0000)
+                await ctx.response.send_message(embed=embed, ephemeral=True)
                 return
             else:
                 lines = transcript.split('\n')
@@ -503,16 +600,36 @@ class TicketCommand(commands.Cog):
                         new_transcript += line
                 transcript = new_transcript
 
-            cursor.execute(
-                """
-                    UPDATE tickets SET ticket_status = 'DELETE', ticket_description = %s
-                    WHERE concat(user_id, '-', id) = %s
-                    and ticket_status = 'CLOSE' 
-                """,
-                (transcript, ticket_topic,)
-            )
-            connection.commit()
+            # 3단계: DB 상태 업데이트 (가장 중요한 부분)
+            update_success = False
+            try:
+                with db.get_cursor() as cursor:
+                    cursor.execute(
+                        """
+                            UPDATE tickets SET ticket_status = 'DELETE', ticket_description = %s
+                            WHERE concat(user_id, '-', id) = %s
+                            and ticket_status = 'CLOSE' 
+                        """,
+                        (transcript, ticket_topic,)
+                    )
+                    # 업데이트된 행 수 확인
+                    if cursor.rowcount > 0:
+                        update_success = True
+                        logger.info(f"Successfully updated ticket {ticket_id} status to DELETE")
+                    else:
+                        logger.error(f"No rows updated for ticket {ticket_id}")
+            except Exception as db_error:
+                logger.error(f"Database update failed for ticket {ticket_id}: {str(db_error)}")
+                embed = Embed(title="Database Error", description="Failed to update ticket status in database.", color=0xff0000)
+                await ctx.response.send_message(embed=embed, ephemeral=True)
+                return
 
+            if not update_success:
+                embed = Embed(title="Error", description="Failed to update ticket status. Please try again.", color=0xff0000)
+                await ctx.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # 4단계: 파일 생성 및 메시지 전송
             transcript_file = discord.File(
                 io.BytesIO(transcript.encode()),
                 filename=f"transcript-{ctx.channel.name}.html")
@@ -520,7 +637,7 @@ class TicketCommand(commands.Cog):
                 io.BytesIO(transcript.encode()),
                 filename=f"transcript-{ctx.channel.name}.html")
 
-            embed = Embed(description=f'Ticket is deliting in 5 seconds.', color=0xff0000)
+            embed = Embed(description='Ticket is deleting in 5 seconds.', color=0xff0000)
             transcript_info = Embed(title=f"Ticket Deleting | {ctx.channel.name}",
                                     description=f"- **Ticket ID:** {ticket_id}\n"
                                                 f"- **Ticket from:** {ticket_creator.mention}\n"
@@ -534,16 +651,28 @@ class TicketCommand(commands.Cog):
             try:
                 await ticket_creator.send(embed=transcript_info,
                                           file=transcript_file)
-            except:
+            except Exception as e:
+                logger.warning(f"Could not send transcript to user {ticket_creator.id}: {e}")
                 transcript_info.add_field(name="Error",
                                           value="Couldn't send the Transcript to the User because he has his DMs disabled!",
                                           inline=True)
+            
             await log_channel.send(embed=transcript_info,
                                    file=transcript_file2)
+            
+            # 5단계: 채널 삭제 (DB 업데이트가 성공한 후에만)
             await asyncio.sleep(3)
-            await ctx.channel.delete(reason="Ticket got Deleted!")
+            try:
+                await ctx.channel.delete(reason="Ticket got Deleted!")
+                logger.info(f"Successfully deleted channel for ticket {ticket_id}")
+            except Exception as delete_error:
+                logger.error(f"Failed to delete channel for ticket {ticket_id}: {str(delete_error)}")
+                # 채널 삭제 실패 시에도 DB는 이미 업데이트되었으므로 성공으로 처리
+                
         except Exception as error:
-            logger.error(f"An error occurred: {str(error)}")
+            logger.error(f"Error in delete_ticket command: {str(error)}")
+            embed = Embed(title="Error", description="Failed to delete ticket. Please try again.", color=0xff0000)
+            await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
     @commands.slash_command(
@@ -559,30 +688,36 @@ class TicketCommand(commands.Cog):
         try:
             if search_user is None and search_message is None:
                 embed = Embed(title="Error",
-                              description=f"You must enter either a user or a message that you want to search for.",
+                              description="You must enter either a user or a message that you want to search for.",
                               color=0xff0000)
                 await ctx.respond(embed=embed, ephemeral=True)
                 return
 
-            where = ""
-            where_params = []
+            # SQL injection 방지를 위해 조건을 안전하게 구성
+            query = """
+                SELECT id, user_id, user_name, category_name, ticket_created, ticket_status
+                FROM tickets 
+                WHERE 1=1
+            """
+            params = []
+            
             if search_user:
-                where += "and user_id = %s "
-                where_params.append(search_user.id)
+                query += " AND user_id = %s"
+                params.append(search_user.id)
             if search_message:
-                where += "and ticket_description like %s "
-                where_params.append(f"%{search_message}%")
+                query += " AND ticket_description LIKE %s"
+                params.append(f"%{search_message}%")
 
-            cursor.execute(
-                f"""
-                    SELECT id, user_id, user_name, category_name, ticket_created, ticket_status
-                    FROM tickets 
-                    WHERE 1=1 
-                        {where}
-                """,
-                where_params
-            )
-            tickets = cursor.fetchall()
+            with db.get_cursor() as cursor:
+                cursor.execute(query, params)
+                tickets = cursor.fetchall()
+
+            if not tickets:
+                embed = Embed(title="No Results",
+                              description="No tickets found matching your search criteria.",
+                              color=0xff0000)
+                await ctx.respond(embed=embed, ephemeral=True)
+                return
 
             pages = []
             for ticket in tickets:
@@ -606,7 +741,9 @@ class TicketCommand(commands.Cog):
             paginator = Paginator(pages=pages)
             await paginator.respond(ctx.interaction, ephemeral=False)
         except Exception as error:
-            logger.error(f"An error occurred: {str(error)}")
+            logger.error(f"Error in ticket_search: {str(error)}")
+            embed = Embed(title="Error", description="Failed to search tickets. Please try again.", color=0xff0000)
+            await ctx.respond(embed=embed, ephemeral=True)
 
 
 @bot.event
